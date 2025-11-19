@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firebase 测试 · Darwin Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="font-family:system-ui; padding:20px;">
+  <h1>Firebase 测试页面</h1>
+  <p>点击下面的按钮，如果 Firestore 里能看到新数据，就说明 Netlify 网站已经成功连上 Firebase。</p>
+
+  <button id="btn">写入一条测试数据</button>
+  <p id="status" style="margin-top:10px;color:#555;"></p>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      serverTimestamp,
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // 你的 firebaseConfig（就是控制台那段）
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMQ8iHk-rZxEUBuf18uksrgfwzM8LZFY",
+      authDomain: "darwin-portal.firebaseapp.com",
+      projectId: "darwin-portal",
+      storageBucket: "darwin-portal.appspot.com",
+      messagingSenderId: "178556543442",
+      appId: "1:178556543442:web:ab1cee82835d98b8c0680b",
+      measurementId: "G-R7LQ8MLYH69",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const btn = document.getElementById("btn");
+    const status = document.getElementById("status");
+
+    btn.addEventListener("click", async () => {
+      status.textContent = "正在写入 Firestore…";
+
+      try {
+        await addDoc(collection(db, "posts"), {
+          title: "test from website",
+          content: "这是一条来自 firetest.html 的测试数据",
+          createdAt: serverTimestamp(),
+        });
+        status.style.color = "green";
+        status.textContent = "写入成功！去 Firebase 控制台的 posts 集合里看一下。";
+      } catch (e) {
+        console.error(e);
+        status.style.color = "red";
+        status.textContent = "写入失败：" + e.message;
+      }
+    });
+  </script>
+</body>
+</html>

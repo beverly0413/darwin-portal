@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Darwin Portal · 论坛</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --primary:#16a34a;
+      --bg:#f5f9f5;
+      --text-main:#0f172a;
+      --text-muted:#6b7280;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text-main);
+      padding:24px 16px 40px;
+    }
+    h1,h2{color:#14532d;margin-bottom:12px;}
+    form{
+      background:#ffffff;
+      padding:16px;
+      border-radius:12px;
+      max-width:600px;
+      box-shadow:0 6px 20px rgba(15,23,42,0.06);
+      margin-bottom:20px;
+    }
+    input,textarea{
+      width:100%;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid #d1e5d4;
+      font-family:inherit;
+      font-size:14px;
+      margin-bottom:10px;
+    }
+    button{
+      padding:8px 16px;
+      border-radius:999px;
+      border:none;
+      background:#16a34a;
+      color:#f9fafb;
+      cursor:pointer;
+    }
+    button:hover{
+      background:#15803d;
+    }
+    #postList > div{
+      background:#ffffff;
+      padding:12px 14px;
+      border-radius:10px;
+      margin-bottom:10px;
+      box-shadow:0 4px 14px rgba(15,23,42,0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>论坛发布</h1>
+
+  <!-- 发布表单 -->
+  <form id="postForm">
+    <input id="title" placeholder="标题" required><br><br>
+    <textarea id="content" rows="5" placeholder="内容" required></textarea><br><br>
+    <button type="submit">发布</button>
+  </form>
+
+  <p id="status"></p>
+
+  <hr style="margin:16px 0; border:none; border-top:1px solid #d1e5d4;">
+
+  <!-- 实时帖子列表 -->
+  <h2>所有帖子</h2>
+  <div id="postList"></div>
+
+  <script type="module" src="./forum.js"></script>
+</body>
+</html>
