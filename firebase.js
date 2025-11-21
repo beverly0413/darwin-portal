@@ -1,15 +1,17 @@
+// firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// ✅ 新项目 darwin-life-hub 的配置
 const firebaseConfig = {
-  apiKey: "AIzaSyBtmVdF6O0A1AIPLZV1h5bA9L5AXajHQNs",
-  authDomain: "darwin-portal.firebaseapp.com",
-  projectId: "darwin-portal",
-  storageBucket: "darwin-portal.firebasestorage.app",
-  messagingSenderId: "178556543442",
-  appId: "1:178556543442:web:b99aab0be45772edc0680b",
-  measurementId: "G-SN8XJL31TB"
+  apiKey: "AIzaSyAGLdakGGRZIS_S9zjSlERgLMjp5a0OeI",
+  authDomain: "darwin-life-hub.firebaseapp.com",
+  projectId: "darwin-life-hub",
+  storageBucket: "darwin-life-hub.firebasestorage.app",
+  messagingSenderId: "198696032332",
+  appId: "1:198696032332:web:0f6b83515066549b9fbce9",
+  measurementId: "G-RHRRP1LH4T"
 };
 
 export const app = initializeApp(firebaseConfig);

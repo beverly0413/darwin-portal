@@ -2,353 +2,416 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · Admin</title>
+  <title>Darwin Life Hub · 后台管理</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg:#f5f9f5;
-      --card-bg:#ffffff;
-      --primary:#16a34a;
-      --danger:#dc2626;
-      --text-main:#0f172a;
-      --text-muted:#6b7280;
-      --border:#d1e5d4;
-    }
-    *{box-sizing:border-box;}
-
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:radial-gradient(circle at top left,#bbf7d0,#f5f9f5);
-      color:var(--text-main);
+      --bg: #f5f9f5;
+      --bg-card: #ffffff;
+      --primary: #16a34a;
+      --primary-soft: #dcfce7;
+      --primary-dark: #15803d;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --border: #d1e5d4;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --max-width: 1120px;
     }
 
-    /* 顶部导航 */
-    .top-nav{
-      width:100%;
-      background:#e8f5ec;
-      padding:10px 0;
-      border-bottom:1px solid #cfe8d8;
-      position:sticky;
-      top:0;
-      z-index:30;
-      box-shadow:0 2px 4px rgba(15,23,42,0.06);
-    }
-    .nav-inner{
-      max-width:1100px;
-      margin:0 auto;
-      padding:0 16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .brand-logo{
-      width:42px;height:42px;
-      border-radius:10px;
-      background:linear-gradient(135deg,#16a34a,#166534);
-      display:flex;align-items:center;justify-content:center;
-      color:#f0fdf4;
-      font-size:18px;font-weight:700;
-      box-shadow:0 4px 10px rgba(22,101,52,0.4);
-    }
-    .brand-text-main{font-size:18px;font-weight:600;color:#022c22;}
-    .brand-text-sub{font-size:13px;color:var(--text-muted);margin-top:-2px;}
-
-    nav.nav-links{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      font-size:15px;
-    }
-    nav.nav-links a{
-      padding:6px 12px;
-      border-radius:6px;
-      color:#0f172a;
-      text-decoration:none;
-      transition:0.15s ease;
-    }
-    nav.nav-links a:hover{background:#d9fbe5;}
-    nav.nav-links a.active{
-      background:var(--primary);
-      color:#f0fdf4;
+    * {box-sizing: border-box; margin: 0; padding: 0;}
+    body {
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
     }
 
-    .page{
-      max-width:1100px;
-      margin:0 auto;
-      padding:24px 16px 60px;
+    a { color: inherit; text-decoration: none; }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
     }
-    h1{
-      margin-top:0;
-      font-size:26px;
-      color:#064e3b;
-      letter-spacing:0.06em;
+    .nav {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .lead{
-      font-size:14px;
-      color:var(--text-muted);
-      margin-bottom:18px;
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    .nav-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .tag-admin {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 600;
     }
 
-    .card{
-      background:var(--card-bg);
-      border-radius:12px;
-      border:1px solid var(--border);
-      box-shadow:0 8px 24px rgba(15,23,42,0.08);
-      padding:16px 18px;
-      margin-bottom:18px;
+    .shell {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 20px 16px 40px;
     }
 
-    .card-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:8px;
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
     }
-    .card-title{
-      font-size:18px;
-      font-weight:600;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .badge{
-      font-size:11px;
-      padding:2px 6px;
-      border-radius:999px;
-      background:#dcfce7;
-      color:#15803d;
+    .section-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
     }
 
-    label{
-      font-size:14px;
-      display:block;
-      margin-top:8px;
-      margin-bottom:4px;
-    }
-    input, textarea, select{
-      width:100%;
-      padding:6px 8px;
-      border-radius:6px;
-      border:1px solid #cbd5e1;
-      font-size:14px;
-      font-family:inherit;
-    }
-    textarea{min-height:80px;resize:vertical;}
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 14px;
-      border-radius:999px;
-      border:none;
-      font-size:14px;
-      cursor:pointer;
-      gap:6px;
-      margin-top:10px;
-    }
-    .btn-primary{
-      background:var(--primary);
-      color:#f0fdf4;
-    }
-    .btn-outline{
-      background:transparent;
-      color:var(--primary);
-      border:1px solid var(--primary);
-    }
-    .btn-danger{
-      background:var(--danger);
-      color:#fee2e2;
-    }
-    .btn-sm{
-      padding:4px 10px;
-      font-size:12px;
-      border-radius:999px;
+    .grid-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      gap: 20px;
     }
 
-    .flex-row{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
+    .card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 18px 16px 16px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
     }
-    .flex-1{flex:1 1 0;}
-
-    .login-box{
-      max-width:360px;
-      margin:40px auto 0;
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
     }
-    .muted{color:var(--text-muted);font-size:13px;}
-
-    .list-table{
-      width:100%;
-      border-collapse:collapse;
-      margin-top:6px;
-      font-size:13px;
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
     }
-    .list-table th,
-    .list-table td{
-      padding:6px 4px;
-      border-bottom:1px solid #e2e8f0;
-      vertical-align:top;
-    }
-    .list-table th{font-weight:600;text-align:left;color:#475569;}
-    .pill-id{
-      font-family:monospace;
-      font-size:11px;
-      background:#e2e8f0;
-      padding:1px 4px;
-      border-radius:4px;
+    .card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
-    .status{
-      font-size:13px;
-      margin-top:6px;
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: var(--text-muted);
     }
-    .status.ok{color:#16a34a;}
-    .status.err{color:#dc2626;}
+    input[type="email"],
+    input[type="password"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      background: #f9fafb;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+    input:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px var(--primary-soft);
+      background: #fff;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      cursor: pointer;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 500;
+      transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
+    }
+    .btn:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 8px 18px rgba(22, 163, 74, .25);
+    }
+    .btn:active {
+      transform: scale(.97);
+      box-shadow: none;
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--primary-dark);
+      border-color: var(--primary);
+    }
+    .btn-outline:hover {
+      background: var(--primary-soft);
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    .status {
+      margin-top: 6px;
+      font-size: 13px;
+      min-height: 18px;
+    }
+    .status-error {
+      color: var(--danger);
+    }
+    .status-ok {
+      color: var(--primary-dark);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: #f9fafb;
+      color: var(--text-muted);
+    }
+
+    .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+
+    .list {
+      max-height: 360px;
+      overflow: auto;
+      margin-top: 4px;
+      padding-right: 4px;
+    }
+    .item {
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #fcfcfc;
+    }
+    .item + .item {
+      margin-top: 8px;
+    }
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+    .item-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .item-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .chips {
+      display: inline-flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .chip-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 860px) {
+      .grid-two { grid-template-columns: minmax(0,1fr); }
+    }
   </style>
 </head>
 <body>
-<header class="top-nav">
-  <div class="nav-inner">
-    <div class="brand">
-      <div class="brand-logo">DL</div>
+<header>
+  <div class="nav">
+    <div class="nav-left">
+      <div class="nav-logo">DL</div>
       <div>
-        <div class="brand-text-main">Darwin Life Hub</div>
-        <div class="brand-text-sub">后台管理 · Admin</div>
+        <div>Darwin Life Hub</div>
+        <div style="font-size:12px;color:#6b7280;">达尔文华人生活门户 · 后台</div>
       </div>
     </div>
-    <nav class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="news.html">News</a>
-      <a href="jobs.html">Jobs</a>
-      <a href="rent.html">Rent</a>
-      <a href="forum.html">Forum</a>
-      <a href="admin.html" class="active">Admin</a>
-    </nav>
+    <div class="nav-right">
+      <span class="tag-admin">Admin</span>
+      <button id="logoutBtn" class="btn btn-sm btn-outline hidden">退出登录</button>
+    </div>
   </div>
 </header>
 
-<main class="page">
-
+<main class="shell">
   <!-- 未登录：登录卡片 -->
-  <section id="loginSection" class="login-box card">
-    <div class="card-header">
-      <div class="card-title">
-        管理员登录
-        <span class="badge">Email / Password</span>
-      </div>
-    </div>
-    <label for="loginEmail">邮箱</label>
-    <input id="loginEmail" type="email" placeholder="admin@darwinlifehub.com" />
-
-    <label for="loginPassword">密码</label>
-    <input id="loginPassword" type="password" placeholder="至少 6 位密码" />
-
-    <button id="loginBtn" class="btn btn-primary" type="button">登录后台</button>
-    <p id="loginStatus" class="status"></p>
-    <p class="muted">
-      登录账号需要在 Firebase 控制台 → Authentication 中提前创建。
+  <section id="loginSection">
+    <h1 class="section-title">管理员登录</h1>
+    <p class="section-desc">
+      使用 Firebase Authentication 里的邮箱 / 密码登录后台，只有登录用户才能发布新闻、管理帖子。
     </p>
+
+    <div class="card" style="max-width:420px;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Email / Password</div>
+          <div class="card-sub">管理员账号需要在 Firebase 控制台 → Authentication 中事先创建。</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="loginEmail">邮箱</label>
+        <input id="loginEmail" type="email" placeholder="admin@example.com" />
+      </div>
+      <div class="field">
+        <label for="loginPassword">密码</label>
+        <input id="loginPassword" type="password" placeholder="••••••••" />
+      </div>
+
+      <button id="loginBtn" class="btn mt-12" type="button">登录后台</button>
+      <div id="loginStatus" class="status"></div>
+    </div>
   </section>
 
-  <!-- 已登录：后台内容 -->
-  <section id="adminSection" style="display:none;">
-    <div class="card">
+  <!-- 已登录：管理面板 -->
+  <section id="adminSection" class="hidden">
+    <div class="card mt-8">
       <div class="card-header">
-        <div class="card-title">
-          后台总览
-          <span class="badge" id="adminEmailBadge"></span>
+        <div>
+          <div class="card-title">欢迎，<span id="adminEmail"></span></div>
+          <div class="card-sub">你可以在这里发布本地新闻、删除帖子。</div>
         </div>
-        <button id="logoutBtn" class="btn btn-outline btn-sm" type="button">
-          退出登录
-        </button>
+        <span class="pill">已登录</span>
       </div>
-      <p class="lead">
-        在这里可以发布新闻、管理并删除帖子（posts / jobs / rents / cvs），仅供你自己使用。
-      </p>
     </div>
 
-    <!-- 发布新闻 -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">发布新闻</div>
-      </div>
-      <div class="flex-row">
-        <div class="flex-1">
+    <div class="grid-two mt-16">
+      <!-- 发布新闻 -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">发布本地新闻</div>
+            <div class="card-sub">写入 Firestore 集合 <code>news</code>，前端 News 页面会读取。</div>
+          </div>
+        </div>
+
+        <div class="field">
           <label for="newsTitle">标题</label>
-          <input id="newsTitle" placeholder="例如：达尔文今日油价更新" />
+          <input id="newsTitle" type="text" placeholder="例如：达尔文今日油价调整" />
+        </div>
+        <div class="field">
+          <label for="newsSummary">摘要 / 简介</label>
+          <textarea id="newsSummary" placeholder="简要描述新闻内容，用于列表展示"></textarea>
+        </div>
+        <div class="field">
+          <label for="newsImage">图片地址（可选）</label>
+          <input id="newsImage" type="text" placeholder="https://..." />
+        </div>
+        <div class="field">
+          <label for="newsContent">正文内容（可选，详情页用）</label>
+          <textarea id="newsContent" placeholder="可以先留空，后续扩展详情页再使用"></textarea>
+        </div>
 
-          <label for="newsSummary">内容摘要</label>
-          <textarea id="newsSummary"
-                    placeholder="简要写一下新闻内容，可控制在 2–5 行内。"></textarea>
-        </div>
-        <div class="flex-1">
-          <label for="newsImageUrl">封面图片 URL（可选）</label>
-          <input id="newsImageUrl" placeholder="https://example.com/image.jpg" />
-          <p class="muted">可以先用占位图，比如：https://via.placeholder.com/600x350?text=Darwin+News</p>
-        </div>
+        <button id="publishNewsBtn" class="btn mt-12" type="button">发布新闻</button>
+        <div id="newsStatus" class="status"></div>
       </div>
-      <button id="publishNewsBtn" class="btn btn-primary" type="button">
-        发布新闻
-      </button>
-      <p id="newsStatus" class="status"></p>
+
+      <!-- 新闻列表 + 删除 -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">最新新闻列表</div>
+            <div class="card-sub">从 <code>news</code> 集合读取最近 30 条，可一键删除。</div>
+          </div>
+          <button id="refreshNewsBtn" class="btn btn-sm btn-outline" type="button">刷新</button>
+        </div>
+        <div id="newsListEmpty" class="card-sub">暂无新闻记录。</div>
+        <div id="newsList" class="list"></div>
+      </div>
     </div>
 
-    <!-- 管理 / 删除：news + posts + jobs + rents + cvs -->
-    <div class="card">
+    <!-- 帖子管理（jobs / rents / posts / cvs） -->
+    <div class="card mt-16">
       <div class="card-header">
-        <div class="card-title">管理与删除内容</div>
-        <button id="reloadAllBtn" class="btn btn-outline btn-sm" type="button">
-          刷新列表
-        </button>
+        <div>
+          <div class="card-title">帖子管理</div>
+          <div class="card-sub">
+            下方读取各个集合最近 30 条记录，你可以删除违规 / 过期内容。删除后前端页面会自动消失。
+          </div>
+        </div>
+        <button id="refreshAllBtn" class="btn btn-sm btn-outline" type="button">刷新列表</button>
       </div>
 
-      <div class="flex-row">
-        <div class="flex-1">
-          <h3 style="margin:6px 0;">News（新闻）</h3>
-          <div id="newsListBox" class="muted">加载中...</div>
+      <div class="grid-two">
+        <div>
+          <h3 class="card-sub" style="font-weight:600;">Jobs 招聘 / 求职</h3>
+          <div id="jobsListEmpty" class="card-sub">暂无数据。</div>
+          <div id="jobsList" class="list"></div>
+
+          <h3 class="card-sub mt-12" style="font-weight:600;">Rent 房屋出租 / 求租</h3>
+          <div id="rentsListEmpty" class="card-sub">暂无数据。</div>
+          <div id="rentsList" class="list"></div>
         </div>
-        <div class="flex-1">
-          <h3 style="margin:6px 0;">Posts（论坛）</h3>
-          <div id="postsListBox" class="muted">加载中...</div>
+
+        <div>
+          <h3 class="card-sub" style="font-weight:600;">Forum 帖子（posts）</h3>
+          <div id="postsListEmpty" class="card-sub">暂无数据。</div>
+          <div id="postsList" class="list"></div>
+
+          <h3 class="card-sub mt-12" style="font-weight:600;">CV 简历库（cvs）</h3>
+          <div id="cvsListEmpty" class="card-sub">暂无数据。</div>
+          <div id="cvsList" class="list"></div>
         </div>
       </div>
-
-      <div class="flex-row">
-        <div class="flex-1">
-          <h3 style="margin:6px 0;">Jobs（工作）</h3>
-          <div id="jobsListBox" class="muted">加载中...</div>
-        </div>
-        <div class="flex-1">
-          <h3 style="margin:6px 0;">Rents（租房）</h3>
-          <div id="rentsListBox" class="muted">加载中...</div>
-        </div>
-      </div>
-
-      <div class="flex-row">
-        <div class="flex-1">
-          <h3 style="margin:6px 0;">CVs（简历）</h3>
-          <div id="cvsListBox" class="muted">加载中...</div>
-        </div>
-      </div>
-
-      <p class="muted" style="margin-top:10px;">
-        每个模块最多显示最近 30 条记录，仅供快速查看 / 删除。如果要看全部数据，可以在 Firebase 控制台中查看。
-      </p>
     </div>
   </section>
 </main>
 
-<!-- 管理脚本 -->
 <script type="module" src="./admin.js"></script>
 </body>
 </html>
