@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jobs · Darwin Life Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg:#f5f9f5;
+      --bg-card:#ffffff;
+      --primary:#16a34a;
+      --text-main:#111827;
+      --text-muted:#6b7280;
+      --border:#d1e5d4;
+      --max-width:1040px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text-main);
+    }
+    a{color:inherit;text-decoration:none;}
+
+    header{
+      background:#ffffff;
+      border-bottom:1px solid var(--border);
+    }
+    .shell{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:10px 16px 24px;
+    }
+    .brand{
+      font-size:20px;
+      font-weight:700;
+    }
+    nav{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    nav a{
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:14px;
+      color:var(--text-muted);
+      border:1px solid transparent;
+    }
+    nav a.active{
+      border-color:var(--primary);
+      color:var(--primary);
+      background:rgba(22,163,74,0.06);
+    }
+
+    main{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:16px;
+    }
+    .card{
+      background:var(--bg-card);
+      border-radius:14px;
+      border:1px solid var(--border);
+      padding:18px 16px 20px;
+      box-shadow:0 10px 28px rgba(15,23,42,0.04);
+    }
+    h2{
+      font-size:20px;
+      margin-bottom:4px;
+    }
+    .muted{
+      font-size:13px;
+      color:var(--text-muted);
+      margin-bottom:14px;
+    }
+
+    .post{
+      border-top:1px dashed #e5e7eb;
+      padding-top:10px;
+      margin-top:10px;
+      font-size:14px;
+    }
+    .post h3{
+      font-size:15px;
+      margin-bottom:4px;
+    }
+
+    .form-section{
+      margin-top:18px;
+      border-top:1px solid #e5e7eb;
+      padding-top:14px;
+    }
+    .form-section h3{
+      font-size:16px;
+      margin-bottom:10px;
+    }
+    label{
+      display:block;
+      font-size:13px;
+      margin-bottom:4px;
+      color:#374151;
+    }
+    input,textarea{
+      width:100%;
+      padding:9px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      font-size:14px;
+      margin-bottom:9px;
+      font-family:inherit;
+    }
+    textarea{
+      min-height:80px;
+      resize:vertical;
+    }
+    button[type="submit"]{
+      margin-top:4px;
+      width:110px;
+      padding:9px 0;
+      border:none;
+      border-radius:999px;
+      background:var(--primary);
+      color:#ffffff;
+      font-size:14px;
+      cursor:pointer;
+    }
+    button[type="submit"]:hover{
+      background:#15803d;
+    }
+    #jobStatus{
+      margin-top:8px;
+      font-size:13px;
+      min-height:18px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="shell">
+    <div class="brand">Darwin Life Hub</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="news.html">News</a>
+      <a href="cv.html">CV</a>
+      <a href="jobs.html" class="active">Jobs</a>
+      <a href="rent.html">Rent</a>
+      <a href="forum.html">Forum</a>
+      <a href="about.html">About</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>招聘信息 · Jobs</h2>
+    <p class="muted">发布达尔文本地招聘信息（职位名称、联系方式、工作内容）。</p>
+
+    <!-- 列表：jobs.js 会把数据渲染到这里 -->
+    <div id="jobList"></div>
+
+    <!-- 发布表单 -->
+    <div class="form-section">
+      <h3>发布招聘</h3>
+      <form id="jobForm">
+        <label for="jobTitle">职位名称（必填）</label>
+        <input id="jobTitle" placeholder="例如：兼职除草 / 搬运工" required />
+
+        <label for="jobContact">联系方式（必填）</label>
+        <input id="jobContact" placeholder="微信 / 电话 / 邮箱" required />
+
+        <label for="jobContent">工作内容介绍</label>
+        <textarea id="jobContent"
+          placeholder="工作时间、薪资范围、地点、其他要求等"></textarea>
+
+        <button type="submit">发布</button>
+        <div id="jobStatus"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- Supabase & 业务脚本 -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="jobs.js"></script>
+</body>
+</html>
