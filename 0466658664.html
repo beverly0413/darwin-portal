@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Darwin Life Hub · 新闻发布</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg:#f5f9f5; --bg-card:#ffffff; --primary:#16a34a;
+      --primary-soft:#dcfce7; --primary-dark:#15803d;
+      --text-main:#111827; --text-muted:#6b7280; --border:#d1e5d4;
+      --danger:#dc2626; --max-width:1040px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);color:var(--text-main);
+    }
+    header{background:#fff;border-bottom:1px solid var(--border);}
+    .nav{
+      max-width:var(--max-width);margin:0 auto;padding:10px 16px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .nav-left{display:flex;align-items:center;gap:10px;}
+    .nav-logo{
+      width:30px;height:30px;border-radius:999px;background:var(--primary);
+      display:flex;align-items:center;justify-content:center;color:#fff;
+      font-weight:700;font-size:16px;
+    }
+    .nav-title-main{font-size:17px;font-weight:600;}
+    .nav-title-sub{font-size:12px;color:var(--text-muted);}
+    .tag{padding:3px 8px;border-radius:999px;background:var(--primary-soft);
+      color:var(--primary-dark);font-size:11px;font-weight:600;}
+
+    .shell{max-width:var(--max-width);margin:0 auto;padding:20px 16px 32px;}
+    .section-title{font-size:20px;font-weight:700;margin-bottom:8px;}
+    .section-desc{font-size:13px;color:var(--text-muted);margin-bottom:18px;}
+
+    .card{
+      background:var(--bg-card);border-radius:16px;border:1px solid var(--border);
+      padding:16px;box-shadow:0 8px 18px rgba(15,23,42,.04);
+    }
+    .card-header{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;}
+    .card-title{font-size:16px;font-weight:600;}
+    .card-sub{font-size:12px;color:var(--text-muted);}
+
+    label{display:block;font-size:13px;margin-bottom:4px;color:var(--text-muted);}
+    input,textarea{
+      width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border);
+      font-size:14px;background:#f9fafb;outline:none;
+    }
+    textarea{resize:vertical;min-height:70px;}
+    input:focus,textarea:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 1px var(--primary-soft);background:#fff;
+    }
+    .field{margin-bottom:10px;}
+
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      padding:7px 14px;border-radius:999px;border:1px solid transparent;
+      background:var(--primary);color:#fff;font-size:14px;font-weight:500;
+      cursor:pointer;
+    }
+    .btn:hover{background:var(--primary-dark);}
+    .btn-sm{padding:4px 10px;font-size:12px;}
+    .btn-danger{
+      background:#fff;color:var(--danger);border-color:var(--danger);
+    }
+    .status{font-size:13px;margin-top:6px;min-height:18px;}
+    .status-ok{color:var(--primary-dark);}
+    .status-error{color:var(--danger);}
+
+    .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr);gap:18px;}
+    @media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr);} }
+
+    .list{max-height:380px;overflow:auto;margin-top:4px;padding-right:4px;}
+    .item{border-radius:10px;border:1px solid #e5e7eb;padding:8px 10px;font-size:13px;
+      background:#fcfcfc;display:flex;flex-direction:column;gap:4px;}
+    .item + .item{margin-top:8px;}
+    .item-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+    .item-title{font-weight:600;font-size:13px;}
+    .item-meta{font-size:11px;color:var(--text-muted);}
+    .mt-8{margin-top:8px;}
+    .mt-16{margin-top:16px;}
+  </style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="nav-left">
+      <div class="nav-logo">DL</div>
+      <div>
+        <div class="nav-title-main">Darwin Life Hub</div>
+        <div class="nav-title-sub">达尔文华人生活门户 · 新闻发布页</div>
+      </div>
+    </div>
+    <span class="tag">仅自己知道网址</span>
+  </div>
+</header>
+
+<main class="shell">
+  <h1 class="section-title">发布 / 管理 本地新闻</h1>
+  <p class="section-desc">
+    这个页面不会出现在导航里，也没有登录验证。只要别人不知道
+    <code>0466658664.html</code>，基本就只有你能访问。
+  </p>
+
+  <div class="grid">
+    <!-- 发布 -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">发布新闻</div>
+          <div class="card-sub">写入 Firestore 集合 <code>news</code>，前端 News 页面只读展示。</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="newsTitle">标题</label>
+        <input id="newsTitle" type="text" placeholder="例如：达尔文今日油价调整">
+      </div>
+
+      <div class="field">
+        <label for="newsSummary">摘要 / 简介</label>
+        <textarea id="newsSummary" placeholder="简要描述新闻内容，用于列表展示"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="newsImage">图片地址（可选）</label>
+        <input id="newsImage" type="text" placeholder="https://...">
+      </div>
+
+      <button id="publishBtn" class="btn mt-8" type="button">发布新闻</button>
+      <div id="publishStatus" class="status"></div>
+    </section>
+
+    <!-- 列表 -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">最新新闻列表</div>
+          <div class="card-sub">从 <code>news</code> 集合读取最近 30 条，可一键删除。</div>
+        </div>
+        <button id="refreshBtn" class="btn btn-sm" type="button">刷新</button>
+      </div>
+      <div id="emptyHint" class="card-sub">暂无新闻。</div>
+      <div id="newsList" class="list"></div>
+    </section>
+  </div>
+</main>
+
+<script type="module" src="./0466658664.js"></script>
+</body>
+</html>
