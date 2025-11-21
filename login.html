@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>登录 · Darwin Life Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin:0;
+      padding:40px 16px 60px;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:#f5f6f7;
+      color:#0f172a;
+    }
+    h1 {
+      text-align:center;
+      margin-bottom:6px;
+      font-size:28px;
+    }
+    .subtitle {
+      text-align:center;
+      color:#6b7280;
+      margin-bottom:20px;
+      font-size:14px;
+    }
+    .box {
+      max-width:420px;
+      margin:0 auto;
+      background:white;
+      padding:24px 20px 22px;
+      border-radius:14px;
+      border:1px solid #d1e5d4;
+      box-shadow:0 10px 28px rgba(15,23,42,0.08);
+    }
+    label {
+      display:block;
+      font-size:14px;
+      margin-bottom:4px;
+      color:#374151;
+    }
+    input {
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #d1e5d4;
+      font-size:14px;
+      margin-bottom:10px;
+      font-family:inherit;
+    }
+    button {
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+      font-family:inherit;
+    }
+    #loginBtn {
+      width:100%;
+      padding:11px;
+      margin-top:12px;
+      background:#16a34a;
+      color:white;
+      font-size:15px;
+    }
+    #loginBtn:hover {
+      background:#15803d;
+    }
+    #msg {
+      margin-top:10px;
+      font-size:13px;
+      color:#6b7280;
+      min-height:18px;
+    }
+    .tip {
+      margin-top:8px;
+      font-size:12px;
+      color:#9ca3af;
+      line-height:1.4;
+    }
+    .tip a {
+      color:#16a34a;
+      text-decoration:none;
+    }
+    .back-link {
+      text-align:center;
+      margin-top:16px;
+      font-size:14px;
+    }
+    .back-link a {
+      color:#16a34a;
+      text-decoration:none;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Darwin Life Hub</h1>
+  <div class="subtitle">使用邮箱登录你的账户</div>
+
+  <div class="box">
+    <form id="loginForm">
+      <label for="email">邮箱 Email</label>
+      <input id="email" type="email" placeholder="example@email.com" required />
+
+      <label for="password">密码 Password</label>
+      <input id="password" type="password" placeholder="至少 6 位密码" required />
+
+      <button type="submit" id="loginBtn">登录</button>
+      <div id="msg"></div>
+      <div class="tip">
+        · 已有账户：请输入注册时的邮箱和密码登录。<br/>
+        · 还没有账户？<a href="register.html">点击这里去注册</a>。
+      </div>
+    </form>
+  </div>
+
+  <div class="back-link">
+    <a href="index.html">返回首页</a>
+  </div>
+
+  <!-- 顺序：Supabase CDN → supabase.js → login.js -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

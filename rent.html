@@ -77,6 +77,7 @@
     .fab:hover{background:#15803d;}
   </style>
 </head>
+
 <body>
   <div class="shell">
     <header>
@@ -95,6 +96,7 @@
         <a href="rent.html" class="active">Rent</a>
         <a href="forum.html">Forum</a>
         <a href="about.html">About</a>
+        <a href="login.html">Login</a>
       </nav>
     </header>
 
@@ -121,11 +123,16 @@
 
   <button class="fab" id="fabRent">+</button>
 
-  <script type="module" src="./rent.js"></script>
   <script>
-    document.getElementById('fabRent').addEventListener('click', () => {
-      document.getElementById('rentFormSection').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById("fabRent").addEventListener("click", () => {
+      document.getElementById("rentFormSection").scrollIntoView({ behavior: "smooth" });
     });
   </script>
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="rent.js"></script>
+
 </body>
 </html>

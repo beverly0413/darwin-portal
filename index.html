@@ -214,17 +214,10 @@
     </div>
   </main>
 
-  <!-- ✨ Supabase 初始化（加入在 body 最底部） -->
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    const supabaseUrl = 'https://lhmvgvqxuqljlncyvke.supabase.co';
-    const supabaseKey = 'YOUR_PUBLISHABLE_KEY';
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log("Supabase ready:", supabase);
-  </script>
+  <!-- ✅ 在 body 底部统一加载 Supabase（供其它页面/后续功能使用） -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <!-- 如果以后首页也需要登录状态、欢迎语之类，再加 index.js -->
 
 </body>
 </html>

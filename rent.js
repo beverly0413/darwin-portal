@@ -1,47 +1,53 @@
 // rent.js
-import { db } from "./firebase.js";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  onSnapshot,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const supabase = window.supabaseClient;
 
-// 集合：rents
-const rentsRef = collection(db, "rents");
-
+const rentList = document.getElementById("rentList");
 const form = document.getElementById("rentForm");
 const statusEl = document.getElementById("rentStatus");
-const listEl = document.getElementById("rentList");
 
-// 实时监听最新房源
-const q = query(rentsRef, orderBy("createdAt", "desc"));
-onSnapshot(q, (snap) => {
-  listEl.innerHTML = "";
-  snap.forEach((doc) => {
-    const r = doc.data();
-    const created =
-      r.createdAt && r.createdAt.toDate
-        ? r.createdAt.toDate().toLocaleString()
-        : "刚刚";
+// 加载房源列表
+async function loadRents() {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("category", "rent")
+    .order("id", { ascending: false });
 
+  if (error) {
+    console.error(error);
+    rentList.innerHTML = "加载失败：" + error.message;
+    return;
+  }
+
+  rentList.innerHTML = "";
+
+  data.forEach((r) => {
     const div = document.createElement("div");
-    div.className = "card";
+    div.className = "post";
     div.innerHTML = `
       <h3>${r.title || "未命名房源"}</h3>
       <p><strong>联系方式：</strong>${r.contact || "未填写"}</p>
       <p>${(r.content || "").replace(/\n/g, "<br>")}</p>
-      <small>${created}</small>
     `;
-    listEl.appendChild(div);
+    rentList.appendChild(div);
   });
-});
+}
 
-// 提交房源
+loadRents();
+
+// 发布房源
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+
+  if (!user) {
+    alert("请先登录！");
+    window.location.href = "login.html";
+    return;
+  }
+
   const title = document.getElementById("rentTitle").value.trim();
   const contact = document.getElementById("rentContact").value.trim();
   const content = document.getElementById("rentContent").value.trim();
@@ -52,19 +58,23 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  try {
-    await addDoc(rentsRef, {
-      title,
-      contact,
-      content,
-      createdAt: serverTimestamp(),
-    });
-    statusEl.textContent = "房源已发布！";
-    statusEl.style.color = "green";
-    form.reset();
-  } catch (err) {
-    console.error(err);
-    statusEl.textContent = "发布失败：" + err.message;
+  const { error } = await supabase.from("posts").insert({
+    user_id: user.id,
+    category: "rent",
+    title,
+    contact,
+    content,
+  });
+
+  if (error) {
+    console.error(error);
+    statusEl.textContent = "发布失败：" + error.message;
     statusEl.style.color = "red";
+    return;
   }
+
+  statusEl.textContent = "已发布！";
+  statusEl.style.color = "green";
+  form.reset();
+  loadRents();
 });

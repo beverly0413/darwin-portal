@@ -2,130 +2,190 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · Jobs</title>
+  <title>Jobs · Darwin Life Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg:#f5f9f5; --bg-card:#ffffff; --primary:#16a34a;
-      --text-main:#111827; --text-muted:#6b7280; --border:#d1e5d4;
+      --bg:#f5f9f5;
+      --bg-card:#ffffff;
+      --primary:#16a34a;
+      --text-main:#111827;
+      --text-muted:#6b7280;
+      --border:#d1e5d4;
       --max-width:1040px;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:var(--bg);color:var(--text-main);}
+    body{
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text-main);
+    }
     a{color:inherit;text-decoration:none;}
-    .shell{max-width:var(--max-width);margin:0 auto;padding:16px 16px 40px;}
+
     header{
-      position:sticky;top:0;background:#ffffffcc;backdrop-filter:blur(12px);
-      border-bottom:1px solid var(--border);margin:-16px -16px 16px;
-      padding:10px 16px;display:flex;align-items:center;justify-content:space-between;
-      gap:10px;flex-wrap:wrap;
+      background:#ffffff;
+      border-bottom:1px solid var(--border);
     }
-    .brand{display:flex;align-items:center;gap:10px;}
-    .brand-logo{width:32px;height:32px;border-radius:999px;
-      background:radial-gradient(circle at 30% 0,#bbf7d0 0,#16a34a 40%,#166534 100%);
-      display:flex;align-items:center;justify-content:center;font-weight:800;color:#0f172a;font-size:14px;}
-    .brand-main{font-size:18px;font-weight:650;}
-    .brand-sub{font-size:12px;color:var(--text-muted);}
-    nav{display:flex;flex-wrap:wrap;gap:6px;font-size:14px;}
-    nav a{padding:5px 10px;border-radius:999px;border:1px solid transparent;}
-    nav a:hover{background:#eafaf0;}
-    nav a.active{background:#dcfce7;border-color:var(--primary);}
-    main{margin-top:4px;}
+    .shell{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:10px 16px 24px;
+    }
+    .brand{
+      font-size:20px;
+      font-weight:700;
+    }
+    nav{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    nav a{
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:14px;
+      color:var(--text-muted);
+      border:1px solid transparent;
+    }
+    nav a.active{
+      border-color:var(--primary);
+      color:var(--primary);
+      background:rgba(22,163,74,0.06);
+    }
 
-    .page-header{text-align:center;margin-bottom:20px;}
-    .page-header h1{font-size:24px;letter-spacing:0.12em;margin-bottom:4px;}
-    .page-header p{font-size:13px;color:var(--text-muted);}
-
-    .layout{display:grid;grid-template-columns:minmax(0,1.4fr);gap:20px;}
+    main{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:16px;
+    }
     .card{
-      background:var(--bg-card);border-radius:16px;padding:16px 18px;
-      border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,0.08);
+      background:var(--bg-card);
+      border-radius:14px;
+      border:1px solid var(--border);
+      padding:18px 16px 20px;
+      box-shadow:0 10px 28px rgba(15,23,42,0.04);
     }
-    .card h2{font-size:18px;margin-bottom:10px;}
-    .card p{font-size:14px;color:var(--text-muted);}
+    h2{
+      font-size:20px;
+      margin-bottom:4px;
+    }
+    .muted{
+      font-size:13px;
+      color:var(--text-muted);
+      margin-bottom:14px;
+    }
 
-    #jobList{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
     .post{
-      padding:12px 14px;border-radius:12px;border:1px solid var(--border);
-      background:#ffffff;box-shadow:0 6px 20px rgba(15,23,42,0.06);
+      border-top:1px dashed #e5e7eb;
+      padding-top:10px;
+      margin-top:10px;
+      font-size:14px;
     }
-    .post h3{margin-bottom:4px;font-size:16px;}
-    .post p{margin:0;font-size:14px;color:var(--text-muted);}
-    .post small{display:block;margin-top:4px;font-size:12px;color:var(--text-muted);}
+    .post h3{
+      font-size:15px;
+      margin-bottom:4px;
+    }
 
-    .form-section{margin-top:26px;padding-top:14px;border-top:1px dashed var(--border);}
-    form{display:flex;flex-direction:column;gap:8px;}
+    .form-section{
+      margin-top:18px;
+      border-top:1px solid #e5e7eb;
+      padding-top:14px;
+    }
+    .form-section h3{
+      font-size:16px;
+      margin-bottom:10px;
+    }
+    label{
+      display:block;
+      font-size:13px;
+      margin-bottom:4px;
+      color:#374151;
+    }
     input,textarea{
-      width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
-      font-size:14px;font-family:inherit;
+      width:100%;
+      padding:9px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      font-size:14px;
+      margin-bottom:9px;
+      font-family:inherit;
     }
-    textarea{min-height:70px;resize:vertical;}
-    button[type=submit]{
-      align-self:flex-start;padding:8px 18px;border-radius:999px;border:none;
-      background:var(--primary);color:#f9fafb;font-size:14px;cursor:pointer;
+    textarea{
+      min-height:80px;
+      resize:vertical;
     }
-    button[type=submit]:hover{background:#15803d;}
-    #jobStatus{font-size:13px;margin-top:4px;}
-
-    .fab{
-      position:fixed;right:18px;bottom:18px;width:44px;height:44px;
-      border-radius:50%;border:none;background:var(--primary);color:#f9fafb;
-      font-size:26px;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;box-shadow:0 10px 24px rgba(15,23,42,0.6);z-index:50;
+    button[type="submit"]{
+      margin-top:4px;
+      width:110px;
+      padding:9px 0;
+      border:none;
+      border-radius:999px;
+      background:var(--primary);
+      color:#ffffff;
+      font-size:14px;
+      cursor:pointer;
     }
-    .fab:hover{background:#15803d;}
+    button[type="submit"]:hover{
+      background:#15803d;
+    }
+    #jobStatus{
+      margin-top:8px;
+      font-size:13px;
+      min-height:18px;
+    }
   </style>
 </head>
+
 <body>
+<header>
   <div class="shell">
-    <header>
-      <div class="brand">
-        <div class="brand-logo">DL</div>
-        <div>
-          <div class="brand-main">Darwin Life Hub</div>
-          <div class="brand-sub">达尔文华人生活门户</div>
-        </div>
-      </div>
-      <nav>
-        <a href="index.html">Home</a>
-        <a href="news.html">News</a>
-        <a href="jobs.html" class="active">Jobs</a>
-        <a href="cv.html">CV</a>
-        <a href="rent.html">Rent</a>
-        <a href="forum.html">Forum</a>
-        <a href="about.html">About</a>
-      </nav>
-    </header>
-
-    <main class="layout">
-      <section class="card">
-        <h2>招聘信息 · Jobs</h2>
-        <p>发布达尔文本地招聘信息（职位名称、联系方式、工作内容）。</p>
-
-        <div id="jobList"></div>
-
-        <div class="form-section" id="jobFormSection">
-          <h3>发布招聘</h3>
-          <form id="jobForm">
-            <input id="jobTitle" placeholder="职位名称（必填）" required />
-            <input id="jobContact" placeholder="联系方式（必填）" required />
-            <textarea id="jobContent" placeholder="工作内容介绍"></textarea>
-            <button type="submit">发布</button>
-            <div id="jobStatus"></div>
-          </form>
-        </div>
-      </section>
-    </main>
+    <div class="brand">Darwin Life Hub</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="news.html">News</a>
+      <a href="cv.html">CV</a>
+      <a href="jobs.html" class="active">Jobs</a>
+      <a href="rent.html">Rent</a>
+      <a href="forum.html">Forum</a>
+      <a href="about.html">About</a>
+      <a href="login.html">Login</a>
+    </nav>
   </div>
+</header>
 
-  <button class="fab" id="fabJob">+</button>
+<main>
+  <section class="card">
+    <h2>招聘信息 · Jobs</h2>
+    <p class="muted">发布达尔文本地招聘信息（职位名称、联系方式、工作内容）。</p>
 
-  <script type="module" src="./jobs.js"></script>
-  <script>
-    document.getElementById('fabJob').addEventListener('click', () => {
-      document.getElementById('jobFormSection').scrollIntoView({ behavior: 'smooth' });
-    });
-  </script>
+    <!-- 列表：jobs.js 会把数据渲染到这里 -->
+    <div id="jobList"></div>
+
+    <!-- 发布表单 -->
+    <div class="form-section">
+      <h3>发布招聘</h3>
+      <form id="jobForm">
+        <label for="jobTitle">职位名称（必填）</label>
+        <input id="jobTitle" placeholder="例如：兼职除草 / 搬运工" required />
+
+        <label for="jobContact">联系方式（必填）</label>
+        <input id="jobContact" placeholder="微信 / 电话 / 邮箱" required />
+
+        <label for="jobContent">工作内容介绍</label>
+        <textarea id="jobContent"
+          placeholder="工作时间、薪资范围、地点、其他要求等"></textarea>
+
+        <button type="submit">发布</button>
+        <div id="jobStatus"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- Supabase & 业务脚本 -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="jobs.js"></script>
 </body>
 </html>
