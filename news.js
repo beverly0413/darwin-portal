@@ -1,9 +1,7 @@
 // news.js
-
-// 只从 firebase.js 拿到 db
+// 从你自己的 firebase.js 拿到 db（这个文件你之前已经配置好了）
 import { db } from "./firebase.js";
 
-// 其他 Firestore 方法，直接从官方 CDN 引入
 import {
   collection,
   getDocs,
@@ -30,7 +28,13 @@ async function loadNews() {
       const data = doc.data();
 
       const createdText = data.createdAt
-        ? data.createdAt.toDate().toLocaleDateString("zh-CN")
+        ? data.createdAt.toDate().toLocaleString("zh-CN", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         : "";
 
       const item = document.createElement("div");
@@ -39,11 +43,14 @@ async function loadNews() {
         <div class="news-text">
           <h3 class="news-title">${data.title || "未命名新闻"}</h3>
           <p class="news-summary">${data.summary || ""}</p>
-          <div class="news-meta">${createdText}</div>
         </div>
         <div class="news-image">
-          <img src="${data.imageUrl || "https://via.placeholder.com/400x260?text=News"}" alt="news image">
+          <img src="${
+            data.imageUrl ||
+            "https://via.placeholder.com/400x260?text=Darwin+News"
+          }" alt="news image">
         </div>
+        <div class="news-meta">${createdText}</div>
       `;
       listEl.appendChild(item);
     });

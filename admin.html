@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Darwin Life Hub · Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg:#f5f9f5;
+      --card-bg:#ffffff;
+      --primary:#16a34a;
+      --danger:#dc2626;
+      --text-main:#0f172a;
+      --text-muted:#6b7280;
+      --border:#d1e5d4;
+    }
+    *{box-sizing:border-box;}
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at top left,#bbf7d0,#f5f9f5);
+      color:var(--text-main);
+    }
+
+    /* 顶部导航 */
+    .top-nav{
+      width:100%;
+      background:#e8f5ec;
+      padding:10px 0;
+      border-bottom:1px solid #cfe8d8;
+      position:sticky;
+      top:0;
+      z-index:30;
+      box-shadow:0 2px 4px rgba(15,23,42,0.06);
+    }
+    .nav-inner{
+      max-width:1100px;
+      margin:0 auto;
+      padding:0 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .brand-logo{
+      width:42px;height:42px;
+      border-radius:10px;
+      background:linear-gradient(135deg,#16a34a,#166534);
+      display:flex;align-items:center;justify-content:center;
+      color:#f0fdf4;
+      font-size:18px;font-weight:700;
+      box-shadow:0 4px 10px rgba(22,101,52,0.4);
+    }
+    .brand-text-main{font-size:18px;font-weight:600;color:#022c22;}
+    .brand-text-sub{font-size:13px;color:var(--text-muted);margin-top:-2px;}
+
+    nav.nav-links{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:15px;
+    }
+    nav.nav-links a{
+      padding:6px 12px;
+      border-radius:6px;
+      color:#0f172a;
+      text-decoration:none;
+      transition:0.15s ease;
+    }
+    nav.nav-links a:hover{background:#d9fbe5;}
+    nav.nav-links a.active{
+      background:var(--primary);
+      color:#f0fdf4;
+    }
+
+    .page{
+      max-width:1100px;
+      margin:0 auto;
+      padding:24px 16px 60px;
+    }
+    h1{
+      margin-top:0;
+      font-size:26px;
+      color:#064e3b;
+      letter-spacing:0.06em;
+    }
+    .lead{
+      font-size:14px;
+      color:var(--text-muted);
+      margin-bottom:18px;
+    }
+
+    .card{
+      background:var(--card-bg);
+      border-radius:12px;
+      border:1px solid var(--border);
+      box-shadow:0 8px 24px rgba(15,23,42,0.08);
+      padding:16px 18px;
+      margin-bottom:18px;
+    }
+
+    .card-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+    .card-title{
+      font-size:18px;
+      font-weight:600;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .badge{
+      font-size:11px;
+      padding:2px 6px;
+      border-radius:999px;
+      background:#dcfce7;
+      color:#15803d;
+    }
+
+    label{
+      font-size:14px;
+      display:block;
+      margin-top:8px;
+      margin-bottom:4px;
+    }
+    input, textarea, select{
+      width:100%;
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      font-size:14px;
+      font-family:inherit;
+    }
+    textarea{min-height:80px;resize:vertical;}
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 14px;
+      border-radius:999px;
+      border:none;
+      font-size:14px;
+      cursor:pointer;
+      gap:6px;
+      margin-top:10px;
+    }
+    .btn-primary{
+      background:var(--primary);
+      color:#f0fdf4;
+    }
+    .btn-outline{
+      background:transparent;
+      color:var(--primary);
+      border:1px solid var(--primary);
+    }
+    .btn-danger{
+      background:var(--danger);
+      color:#fee2e2;
+    }
+    .btn-sm{
+      padding:4px 10px;
+      font-size:12px;
+      border-radius:999px;
+    }
+
+    .flex-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .flex-1{flex:1 1 0;}
+
+    .login-box{
+      max-width:360px;
+      margin:40px auto 0;
+    }
+    .muted{color:var(--text-muted);font-size:13px;}
+
+    .list-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:6px;
+      font-size:13px;
+    }
+    .list-table th,
+    .list-table td{
+      padding:6px 4px;
+      border-bottom:1px solid #e2e8f0;
+      vertical-align:top;
+    }
+    .list-table th{font-weight:600;text-align:left;color:#475569;}
+    .pill-id{
+      font-family:monospace;
+      font-size:11px;
+      background:#e2e8f0;
+      padding:1px 4px;
+      border-radius:4px;
+    }
+
+    .status{
+      font-size:13px;
+      margin-top:6px;
+    }
+    .status.ok{color:#16a34a;}
+    .status.err{color:#dc2626;}
+  </style>
+</head>
+<body>
+<header class="top-nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo">DL</div>
+      <div>
+        <div class="brand-text-main">Darwin Life Hub</div>
+        <div class="brand-text-sub">后台管理 · Admin</div>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="news.html">News</a>
+      <a href="jobs.html">Jobs</a>
+      <a href="rent.html">Rent</a>
+      <a href="forum.html">Forum</a>
+      <a href="admin.html" class="active">Admin</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- 未登录：登录卡片 -->
+  <section id="loginSection" class="login-box card">
+    <div class="card-header">
+      <div class="card-title">
+        管理员登录
+        <span class="badge">Email / Password</span>
+      </div>
+    </div>
+    <label for="loginEmail">邮箱</label>
+    <input id="loginEmail" type="email" placeholder="admin@darwinlifehub.com" />
+
+    <label for="loginPassword">密码</label>
+    <input id="loginPassword" type="password" placeholder="至少 6 位密码" />
+
+    <button id="loginBtn" class="btn btn-primary" type="button">登录后台</button>
+    <p id="loginStatus" class="status"></p>
+    <p class="muted">
+      登录账号需要在 Firebase 控制台 → Authentication 中提前创建。
+    </p>
+  </section>
+
+  <!-- 已登录：后台内容 -->
+  <section id="adminSection" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          后台总览
+          <span class="badge" id="adminEmailBadge"></span>
+        </div>
+        <button id="logoutBtn" class="btn btn-outline btn-sm" type="button">
+          退出登录
+        </button>
+      </div>
+      <p class="lead">
+        在这里可以发布新闻、管理并删除帖子（posts / jobs / rents / cvs），仅供你自己使用。
+      </p>
+    </div>
+
+    <!-- 发布新闻 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">发布新闻</div>
+      </div>
+      <div class="flex-row">
+        <div class="flex-1">
+          <label for="newsTitle">标题</label>
+          <input id="newsTitle" placeholder="例如：达尔文今日油价更新" />
+
+          <label for="newsSummary">内容摘要</label>
+          <textarea id="newsSummary"
+                    placeholder="简要写一下新闻内容，可控制在 2–5 行内。"></textarea>
+        </div>
+        <div class="flex-1">
+          <label for="newsImageUrl">封面图片 URL（可选）</label>
+          <input id="newsImageUrl" placeholder="https://example.com/image.jpg" />
+          <p class="muted">可以先用占位图，比如：https://via.placeholder.com/600x350?text=Darwin+News</p>
+        </div>
+      </div>
+      <button id="publishNewsBtn" class="btn btn-primary" type="button">
+        发布新闻
+      </button>
+      <p id="newsStatus" class="status"></p>
+    </div>
+
+    <!-- 管理 / 删除：news + posts + jobs + rents + cvs -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">管理与删除内容</div>
+        <button id="reloadAllBtn" class="btn btn-outline btn-sm" type="button">
+          刷新列表
+        </button>
+      </div>
+
+      <div class="flex-row">
+        <div class="flex-1">
+          <h3 style="margin:6px 0;">News（新闻）</h3>
+          <div id="newsListBox" class="muted">加载中...</div>
+        </div>
+        <div class="flex-1">
+          <h3 style="margin:6px 0;">Posts（论坛）</h3>
+          <div id="postsListBox" class="muted">加载中...</div>
+        </div>
+      </div>
+
+      <div class="flex-row">
+        <div class="flex-1">
+          <h3 style="margin:6px 0;">Jobs（工作）</h3>
+          <div id="jobsListBox" class="muted">加载中...</div>
+        </div>
+        <div class="flex-1">
+          <h3 style="margin:6px 0;">Rents（租房）</h3>
+          <div id="rentsListBox" class="muted">加载中...</div>
+        </div>
+      </div>
+
+      <div class="flex-row">
+        <div class="flex-1">
+          <h3 style="margin:6px 0;">CVs（简历）</h3>
+          <div id="cvsListBox" class="muted">加载中...</div>
+        </div>
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        每个模块最多显示最近 30 条记录，仅供快速查看 / 删除。如果要看全部数据，可以在 Firebase 控制台中查看。
+      </p>
+    </div>
+  </section>
+</main>
+
+<!-- 管理脚本 -->
+<script type="module" src="./admin.js"></script>
+</body>
+</html>
