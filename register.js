@@ -10,8 +10,8 @@ const captchaInputEl = document.getElementById("captchaInput");
 const refreshCaptchaBtn = document.getElementById("refreshCaptchaBtn");
 const msgEl = document.getElementById("msg");
 
-// 验证邮件跳转到的网站页面（邮箱里点击验证后会打开这个页面）
-const EMAIL_REDIRECT_URL = window.location.origin + "/verify.html";
+// ★★ 这里用你的 Vercel 网址 ★★
+const EMAIL_REDIRECT_URL = "https://darwin-portal.vercel.app/verify.html";
 
 let currentCaptcha = "";
 
@@ -100,5 +100,5 @@ form.addEventListener("submit", async (e) => {
     "#15803d"
   );
 
-  // 这里我们不立刻跳转，让用户自己去邮箱点击链接
+  // 不立刻跳转，让用户自己去邮箱点击链接
 });
