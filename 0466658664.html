@@ -49,7 +49,7 @@
       width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border);
       font-size:14px;background:#f9fafb;outline:none;
     }
-    textarea{resize:vertical;min-height:70px;}
+    textarea{resize:vertical;}
     input:focus,textarea:focus{
       border-color:var(--primary);
       box-shadow:0 0 0 1px var(--primary-soft);background:#fff;
@@ -82,7 +82,6 @@
     .item-title{font-weight:600;font-size:13px;}
     .item-meta{font-size:11px;color:var(--text-muted);}
     .mt-8{margin-top:8px;}
-    .mt-16{margin-top:16px;}
   </style>
 </head>
 <body>
@@ -92,18 +91,17 @@
       <div class="nav-logo">DL</div>
       <div>
         <div class="nav-title-main">Darwin Life Hub</div>
-        <div class="nav-title-sub">达尔文华人生活门户 · 新闻发布页</div>
+        <div class="nav-title-sub">达尔文华人生活门户 · 隐藏新闻后台</div>
       </div>
     </div>
-    <span class="tag">仅自己知道网址</span>
+    <span class="tag">0466658664.html · 仅自己知道</span>
   </div>
 </header>
 
 <main class="shell">
   <h1 class="section-title">发布 / 管理 本地新闻</h1>
   <p class="section-desc">
-    这个页面不会出现在导航里，也没有登录验证。只要别人不知道
-    <code>0466658664.html</code>，基本就只有你能访问。
+    通过这个页面可以发布新闻、上传一张封面图，以及删除新闻。
   </p>
 
   <div class="grid">
@@ -112,7 +110,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">发布新闻</div>
-          <div class="card-sub">写入 Firestore 集合 <code>news</code>，前端 News 页面只读展示。</div>
+          <div class="card-sub">图片会上传到 Firebase Storage，文本写入 Firestore 集合 <code>news</code>。</div>
         </div>
       </div>
 
@@ -122,13 +120,21 @@
       </div>
 
       <div class="field">
-        <label for="newsSummary">摘要 / 简介</label>
-        <textarea id="newsSummary" placeholder="简要描述新闻内容，用于列表展示"></textarea>
+        <label for="newsSummary">摘要 / 导语</label>
+        <textarea id="newsSummary" rows="3" placeholder="用于列表展示的简短介绍"></textarea>
       </div>
 
       <div class="field">
-        <label for="newsImage">图片地址（可选）</label>
-        <input id="newsImage" type="text" placeholder="https://...">
+        <label for="newsBody">正文内容</label>
+        <textarea id="newsBody" rows="10" placeholder="在这里写完整新闻正文，可以很多行，也可以复制粘贴。"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="newsImageFile">封面图片（可选，本地上传）</label>
+        <input id="newsImageFile" type="file" accept="image/*">
+        <div class="card-sub" style="margin-top:4px;">
+          不选图片就发纯文字；选了图片会自动上传并生成访问地址。
+        </div>
       </div>
 
       <button id="publishBtn" class="btn mt-8" type="button">发布新闻</button>
@@ -140,7 +146,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">最新新闻列表</div>
-          <div class="card-sub">从 <code>news</code> 集合读取最近 30 条，可一键删除。</div>
+          <div class="card-sub">从 <code>news</code> 集合中按时间倒序读取最近 30 条，可一键删除。</div>
         </div>
         <button id="refreshBtn" class="btn btn-sm" type="button">刷新</button>
       </div>
