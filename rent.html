@@ -100,6 +100,32 @@
     button[type=submit]:hover{background:#15803d;}
     #rentStatus{font-size:13px;margin-top:4px;}
 
+    /* 新增：上传图片 + 展示图片样式 */
+    .image-group{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--text-muted);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .image-group input[type="file"]{
+      font-size:13px;
+    }
+    .rent-photos{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .rent-photos img{
+      width:90px;
+      height:90px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
     .fab{
       position:fixed;right:18px;bottom:18px;width:44px;height:44px;
       border-radius:50%;border:none;background:var(--primary);color:#f9fafb;
@@ -147,6 +173,21 @@
             <input id="rentTitle" placeholder="房源标题（必填）" required />
             <input id="rentContact" placeholder="联系方式（必填）" required />
             <textarea id="rentContent" placeholder="房源详情：位置、价格、包不包水电网等"></textarea>
+
+            <!-- 新增：本地上传图片，最多 5 张 -->
+            <div class="image-group">
+              <label for="rentImages">
+                房源照片（可选，最多 5 张）：
+              </label>
+              <input
+                id="rentImages"
+                type="file"
+                accept="image/*"
+                multiple
+              />
+              <small>提示：一次最多选择 5 张图片。</small>
+            </div>
+
             <button type="submit">发布</button>
             <div id="rentStatus"></div>
           </form>
