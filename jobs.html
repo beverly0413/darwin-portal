@@ -6,23 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg:#f5f9f5;
-      --bg-card:#ffffff;
-      --primary:#16a34a;
-      --text-main:#111827;
-      --text-muted:#6b7280;
-      --border:#d1e5d4;
+      --bg:#f5f9f5; --bg-card:#ffffff; --primary:#16a34a;
+      --text-main:#111827; --text-muted:#6b7280; --border:#d1e5d4;
       --max-width:1040px;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:var(--bg);
-      color:var(--text-main);
+      background:var(--bg);color:var(--text-main);
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 顶部导航 */
+    /* 顶部导航（统一模板） */
     .top-nav {
       width:100%;
       background:#e8f5ec;
@@ -45,15 +40,29 @@
     .brand{
       display:flex;align-items:center;gap:10px;
     }
+    /* 圆形 Logo */
     .brand-logo{
-      width:42px;height:42px;border-radius:10px;
-      background:linear-gradient(135deg,#16a34a,#166534);
-      display:flex;align-items:center;justify-content:center;
-      color:#f0fdf4;font-size:18px;font-weight:700;
-      box-shadow:0 4px 10px rgba(22,101,52,0.4);
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
-    .brand-text-main{font-size:18px;font-weight:600;color:#022c22;}
-    .brand-text-sub{font-size:13px;color:var(--text-muted);margin-top:-2px;}
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+    .brand-text-main{
+      font-size:18px;font-weight:600;color:#022c22;
+    }
+    .brand-text-sub{
+      font-size:13px;color:var(--text-muted);margin-top:-2px;
+    }
 
     nav.nav-links{
       display:flex;flex-wrap:wrap;gap:10px;font-size:15px;
@@ -67,88 +76,96 @@
       background:#16a34a;color:#f0fdf4;
     }
 
-    main{
+    /* 页面布局（沿用 CV 的 shell/card/fab） */
+    .shell{
       max-width:var(--max-width);
       margin:0 auto;
-      padding:24px 16px 60px;
+      padding:16px 16px 40px;
+    }
+
+    main{margin-top:8px;}
+
+    .page-header{text-align:center;margin-bottom:20px;}
+    .page-header h1{font-size:24px;letter-spacing:0.12em;margin-bottom:4px;}
+    .page-header p{font-size:13px;color:var(--text-muted);}
+
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.4fr);
+      gap:20px;
     }
     .card{
       background:var(--bg-card);
-      border-radius:14px;
+      border-radius:16px;
+      padding:16px 18px;
       border:1px solid var(--border);
-      padding:18px 16px 20px;
-      box-shadow:0 10px 28px rgba(15,23,42,0.04);
+      box-shadow:0 10px 30px rgba(15,23,42,0.08);
     }
-    h2{
-      font-size:20px;
-      margin-bottom:4px;
-    }
-    .muted{
-      font-size:13px;
-      color:var(--text-muted);
-      margin-bottom:14px;
-    }
+    .card h2{font-size:18px;margin-bottom:10px;}
+    .card p{font-size:14px;color:var(--text-muted);}
 
-    .post{
-      border-top:1px dashed #e5e7eb;
-      padding-top:10px;
+    #jobList{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
       margin-top:10px;
-      font-size:14px;
     }
-    .post h3{
-      font-size:15px;
-      margin-bottom:4px;
+    .job{
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      box-shadow:0 6px 20px rgba(15,23,42,0.06);
+    }
+    .job h3{margin-bottom:4px;font-size:16px;}
+    .job p{margin:0;font-size:14px;color:var(--text-muted);}
+    .job small{
+      display:block;
+      margin-top:4px;
+      font-size:12px;
+      color:var(--text-muted);
     }
 
     .form-section{
-      margin-top:18px;
-      border-top:1px solid #e5e7eb;
+      margin-top:26px;
       padding-top:14px;
+      border-top:1px dashed var(--border);
     }
-    .form-section h3{
-      font-size:16px;
-      margin-bottom:10px;
-    }
-    label{
-      display:block;
-      font-size:13px;
-      margin-bottom:4px;
-      color:#374151;
+    form{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
     }
     input,textarea{
       width:100%;
-      padding:9px 10px;
+      padding:8px 10px;
       border-radius:8px;
       border:1px solid var(--border);
       font-size:14px;
-      margin-bottom:9px;
       font-family:inherit;
     }
     textarea{
-      min-height:80px;
+      min-height:70px;
       resize:vertical;
     }
-    button[type="submit"]{
-      margin-top:4px;
-      width:110px;
-      padding:9px 0;
-      border:none;
+    button[type=submit]{
+      align-self:flex-start;
+      padding:8px 18px;
       border-radius:999px;
+      border:none;
       background:var(--primary);
-      color:#ffffff;
+      color:#f9fafb;
       font-size:14px;
       cursor:pointer;
     }
-    button[type="submit"]:hover{
+    button[type=submit]:hover{
       background:#15803d;
     }
     #jobStatus{
-      margin-top:8px;
       font-size:13px;
-      min-height:18px;
+      margin-top:4px;
     }
 
-    /* 右下角 + 按钮（FAB） */
     .fab{
       position:fixed;
       right:18px;
@@ -158,7 +175,7 @@
       border-radius:50%;
       border:none;
       background:var(--primary);
-      color:#ffffff;
+      color:#f9fafb;
       font-size:26px;
       display:flex;
       align-items:center;
@@ -167,15 +184,19 @@
       box-shadow:0 10px 24px rgba(15,23,42,0.6);
       z-index:50;
     }
-    .fab:hover{background:#15803d;}
+    .fab:hover{
+      background:#15803d;
+    }
   </style>
 </head>
-
 <body>
+  <!-- 顶部导航（Jobs 高亮） -->
   <header class="top-nav">
     <div class="nav-inner">
       <div class="brand">
-        <div class="brand-logo">DL</div>
+        <div class="brand-logo">
+          <img src="darwin-logo.png" alt="logo" />
+        </div>
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户</div>
@@ -193,50 +214,44 @@
     </div>
   </header>
 
-  <main>
-    <section class="card">
-      <h2>招聘信息 · Jobs</h2>
-      <p class="muted">发布达尔文本地招聘信息（职位名称、联系方式、工作内容）。</p>
+  <div class="shell">
+    <main class="layout">
+      <section class="card">
+        <div class="page-header" style="text-align:left;margin-bottom:12px;">
+          <h1>招聘信息 · Jobs</h1>
+          <p>给在达尔文找员工的小店、小公司用的一个简易招聘栏。</p>
+        </div>
 
-      <!-- 列表：jobs.js 会把数据渲染到这里 -->
-      <div id="jobList"></div>
+        <p>下面展示所有已发布的招聘信息（保存在本地浏览器）。后面如果你接上 Supabase，我们可以改成从云端加载。</p>
 
-      <!-- 发布表单 -->
-      <div class="form-section" id="jobFormSection">
-        <h3>发布招聘</h3>
-        <form id="jobForm">
-          <label for="jobTitle">职位名称（必填）</label>
-          <input id="jobTitle" placeholder="例如：兼职除草 / 搬运工" required />
+        <!-- 招聘列表 -->
+        <div id="jobList"></div>
 
-          <label for="jobContact">联系方式（必填）</label>
-          <input id="jobContact" placeholder="微信 / 电话 / 邮箱" required />
+        <!-- 发布招聘表单 -->
+        <div class="form-section" id="jobFormSection">
+          <h3>发布一条招聘</h3>
+          <form id="jobForm">
+            <input id="jobTitle" placeholder="职位名称（必填，如：厨房帮工 / 店员）" required />
+            <input id="jobCompany" placeholder="公司 / 店名（选填）" />
+            <input id="jobContact" placeholder="联系方式（必填，如：微信 / 电话）" required />
+            <textarea id="jobContent" placeholder="工作内容、时间、工资范围、要求等（可选）"></textarea>
+            <button type="submit">发布</button>
+            <div id="jobStatus"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
 
-          <label for="jobContent">工作内容介绍</label>
-          <textarea id="jobContent"
-            placeholder="工作时间、薪资范围、地点、其他要求等"></textarea>
+  <!-- 右下角 + 按钮：回到底部表单 -->
+  <button class="fab" id="fabJob">+</button>
 
-          <button type="submit">发布</button>
-          <div id="jobStatus"></div>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <!-- 右下角 + 按钮 -->
-  <button class="fab" id="fabJobs">+</button>
-
-  <!-- Supabase & 业务脚本 -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-  <script src="jobs.js"></script>
-
+  <!-- JS：模块化写法，和 CV 一样 -->
+  <script type="module" src="./jobs.js"></script>
   <script>
-    // 点击右下角 + ，滚动到发招聘表单
-    document.getElementById("fabJobs").addEventListener("click", () => {
-      const section = document.getElementById("jobFormSection");
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
-      }
+    // 悬浮按钮：滚动到发布区域
+    document.getElementById('fabJob').addEventListener('click', () => {
+      document.getElementById('jobFormSection').scrollIntoView({ behavior: 'smooth' });
     });
   </script>
 </body>

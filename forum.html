@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Darwin Life Hub · Forum</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
+<style>
     :root {
       --bg:#f5f9f5;
       --bg-card:#ffffff;
@@ -46,19 +46,6 @@
       display:flex;
       align-items:center;
       gap:10px;
-    }
-    .brand-logo{
-      width:42px;
-      height:42px;
-      border-radius:10px;
-      background:linear-gradient(135deg,#16a34a,#166534);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#f0fdf4;
-      font-size:18px;
-      font-weight:700;
-      box-shadow:0 4px 10px rgba(22,101,52,0.4);
     }
     .brand-text-main{
       font-size:18px;
@@ -194,14 +181,34 @@
       z-index:50;
     }
     .fab:hover{background:#15803d;}
-  </style>
+
+    /* —— 圆形 Logo 样式 —— */
+    .brand-logo{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+</style>
 </head>
 <body>
   <!-- 顶部导航 -->
   <header class="top-nav">
     <div class="nav-inner">
       <div class="brand">
-        <div class="brand-logo">DL</div>
+        <div class="brand-logo">
+          <img src="darwin-logo.png" alt="Darwin Life Hub logo">
+        </div>
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户 · Forum</div>

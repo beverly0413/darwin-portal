@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Darwin Life Hub · CV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
+<style>
     :root {
       --bg:#f5f9f5; --bg-card:#ffffff; --primary:#16a34a;
       --text-main:#111827; --text-muted:#6b7280; --border:#d1e5d4;
@@ -37,16 +37,15 @@
       justify-content:space-between;
       gap:12px;
     }
-    .brand{display:flex;align-items:center;gap:10px;}
-    .brand-logo{
-      width:42px;height:42px;border-radius:10px;
-      background:linear-gradient(135deg,#16a34a,#166534);
-      display:flex;align-items:center;justify-content:center;
-      color:#f0fdf4;font-size:18px;font-weight:700;
-      box-shadow:0 4px 10px rgba(22,101,52,0.4);
+    .brand{
+      display:flex;align-items:center;gap:10px;
     }
-    .brand-text-main{font-size:18px;font-weight:600;color:#022c22;}
-    .brand-text-sub{font-size:13px;color:var(--text-muted);margin-top:-2px;}
+    .brand-text-main{
+      font-size:18px;font-weight:600;color:#022c22;
+    }
+    .brand-text-sub{
+      font-size:13px;color:var(--text-muted);margin-top:-2px;
+    }
 
     nav.nav-links{
       display:flex;flex-wrap:wrap;gap:10px;font-size:15px;
@@ -73,52 +72,133 @@
     .page-header h1{font-size:24px;letter-spacing:0.12em;margin-bottom:4px;}
     .page-header p{font-size:13px;color:var(--text-muted);}
 
-    .layout{display:grid;grid-template-columns:minmax(0,1.4fr);gap:20px;}
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.4fr);
+      gap:20px;
+    }
     .card{
-      background:var(--bg-card);border-radius:16px;padding:16px 18px;
-      border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,0.08);
+      background:var(--bg-card);
+      border-radius:16px;
+      padding:16px 18px;
+      border:1px solid var(--border);
+      box-shadow:0 10px 30px rgba(15,23,42,0.08);
     }
     .card h2{font-size:18px;margin-bottom:10px;}
     .card p{font-size:14px;color:var(--text-muted);}
 
-    #cvList{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
+    #cvList{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-top:10px;
+    }
     .post{
-      padding:12px 14px;border-radius:12px;border:1px solid var(--border);
-      background:#ffffff;box-shadow:0 6px 20px rgba(15,23,42,0.06);
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      box-shadow:0 6px 20px rgba(15,23,42,0.06);
     }
     .post h3{margin-bottom:4px;font-size:16px;}
     .post p{margin:0;font-size:14px;color:var(--text-muted);}
-    .post small{display:block;margin-top:4px;font-size:12px;color:var(--text-muted);}
+    .post small{
+      display:block;
+      margin-top:4px;
+      font-size:12px;
+      color:var(--text-muted);
+    }
 
-    .form-section{margin-top:26px;padding-top:14px;border-top:1px dashed var(--border);}
-    form{display:flex;flex-direction:column;gap:8px;}
+    .form-section{
+      margin-top:26px;
+      padding-top:14px;
+      border-top:1px dashed var(--border);
+    }
+    form{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
     input,textarea{
-      width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
-      font-size:14px;font-family:inherit;
+      width:100%;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      font-size:14px;
+      font-family:inherit;
     }
-    textarea{min-height:70px;resize:vertical;}
+    textarea{
+      min-height:70px;
+      resize:vertical;
+    }
     button[type=submit]{
-      align-self:flex-start;padding:8px 18px;border-radius:999px;border:none;
-      background:var(--primary);color:#f9fafb;font-size:14px;cursor:pointer;
+      align-self:flex-start;
+      padding:8px 18px;
+      border-radius:999px;
+      border:none;
+      background:var(--primary);
+      color:#f9fafb;
+      font-size:14px;
+      cursor:pointer;
     }
-    button[type=submit]:hover{background:#15803d;}
-    #cvStatus{font-size:13px;margin-top:4px;}
+    button[type=submit]:hover{
+      background:#15803d;
+    }
+    #cvStatus{
+      font-size:13px;
+      margin-top:4px;
+    }
 
     .fab{
-      position:fixed;right:18px;bottom:18px;width:44px;height:44px;
-      border-radius:50%;border:none;background:var(--primary);color:#f9fafb;
-      font-size:26px;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;box-shadow:0 10px 24px rgba(15,23,42,0.6);z-index:50;
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:var(--primary);
+      color:#f9fafb;
+      font-size:26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(15,23,42,0.6);
+      z-index:50;
     }
-    .fab:hover{background:#15803d;}
-  </style>
+    .fab:hover{
+      background:#15803d;
+    }
+
+    /* —— 圆形 Logo 样式 —— */
+    .brand-logo{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+</style>
 </head>
 <body>
   <!-- 统一顶部导航 -->
   <header class="top-nav">
     <div class="nav-inner">
       <div class="brand">
-        <div class="brand-logo">DL</div>
+        <div class="brand-logo">
+           <img src="darwin-logo.png" alt="logo" />
+        </div>
+
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户</div>
