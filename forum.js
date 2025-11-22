@@ -1,10 +1,10 @@
 // forum.js
 const supabase = window.supabaseClient;
 
-const listEl = document.getElementById("posts");      // 帖子列表容器
-const form = document.getElementById("forumForm");    // 发帖表单
+const listEl  = document.getElementById("posts");      // 帖子列表容器
+const form    = document.getElementById("forumForm");  // 发帖表单
 
-// 状态提示元素：如果页面里没有，就自动加一个
+// 状态提示，没有就自动创建一个
 let statusEl = document.getElementById("forumStatus");
 if (form && !statusEl) {
   statusEl = document.createElement("div");
@@ -14,7 +14,7 @@ if (form && !statusEl) {
   form.appendChild(statusEl);
 }
 
-// 加载帖子列表
+// 加载论坛帖子
 async function loadForum() {
   if (!listEl) return;
 
@@ -33,7 +33,8 @@ async function loadForum() {
   listEl.innerHTML = "";
 
   if (!data || data.length === 0) {
-    listEl.innerHTML = '<div class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>';
+    listEl.innerHTML =
+      '<div class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>';
     return;
   }
 
@@ -50,7 +51,7 @@ async function loadForum() {
 
 loadForum();
 
-// 发帖
+// 发布帖子
 if (form) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -64,7 +65,7 @@ if (form) {
       return;
     }
 
-    const title = document.getElementById("title").value.trim();
+    const title   = document.getElementById("title").value.trim();
     const content = document.getElementById("content").value.trim();
 
     if (!title) {
