@@ -22,7 +22,7 @@
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 顶部导航（与 jobs 一致） */
+    /* 顶部导航（与 jobs / cv 一致） */
     .top-nav{
       width:100%;
       background:#e8f5ec;
@@ -227,7 +227,14 @@
       </div>
 
       <div class="layout">
-        <!-- 发帖卡片 -->
+
+        <!-- ① 帖子列表（放在上面，效果跟 CV 一样：先看内容，再往下发布） -->
+        <section class="card">
+          <div class="section-title">所有帖子</div>
+          <div id="posts" class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>
+        </section>
+
+        <!-- ② 发布表单（放在下面） -->
         <section class="card" id="forumFormSection">
           <div class="section-title">发布帖子</div>
           <form id="forumForm">
@@ -242,16 +249,11 @@
           </form>
         </section>
 
-        <!-- 帖子列表卡片 -->
-        <section class="card">
-          <div class="section-title">所有帖子</div>
-          <div id="posts" class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>
-        </section>
       </div>
     </main>
   </div>
 
-  <!-- 右下角 + 按钮：滚动到发帖区域 -->
+  <!-- 右下角 + 按钮：滚动到发布区域（还是指向 forumFormSection） -->
   <button class="fab" id="fabForum">+</button>
 
   <script>
@@ -263,7 +265,7 @@
     });
   </script>
 
-  <!-- Supabase（顺序与 jobs.html 一致） -->
+  <!-- Supabase（顺序与 jobs / cv / rent 一致） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="forum.js"></script>
