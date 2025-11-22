@@ -70,7 +70,7 @@
     main{
       max-width:var(--max-width);
       margin:0 auto;
-      padding:24px 16px 40px;
+      padding:24px 16px 60px;
     }
     .card{
       background:var(--bg-card);
@@ -147,6 +147,27 @@
       font-size:13px;
       min-height:18px;
     }
+
+    /* 右下角 + 按钮（FAB） */
+    .fab{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:var(--primary);
+      color:#ffffff;
+      font-size:26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(15,23,42,0.6);
+      z-index:50;
+    }
+    .fab:hover{background:#15803d;}
   </style>
 </head>
 
@@ -181,7 +202,7 @@
       <div id="jobList"></div>
 
       <!-- 发布表单 -->
-      <div class="form-section">
+      <div class="form-section" id="jobFormSection">
         <h3>发布招聘</h3>
         <form id="jobForm">
           <label for="jobTitle">职位名称（必填）</label>
@@ -201,9 +222,22 @@
     </section>
   </main>
 
+  <!-- 右下角 + 按钮 -->
+  <button class="fab" id="fabJobs">+</button>
+
   <!-- Supabase & 业务脚本 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="jobs.js"></script>
+
+  <script>
+    // 点击右下角 + ，滚动到发招聘表单
+    document.getElementById("fabJobs").addEventListener("click", () => {
+      const section = document.getElementById("jobFormSection");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  </script>
 </body>
 </html>
