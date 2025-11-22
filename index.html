@@ -23,7 +23,7 @@
       color:var(--text-main);
     }
 
-    /* 顶部导航 */
+    /* 顶部导航（统一模板） */
     .top-nav {
       width:100%;
       background:#e8f5ec;
@@ -214,10 +214,8 @@
     </div>
   </main>
 
-  <!-- ✅ 在 body 底部统一加载 Supabase（供其它页面/后续功能使用） -->
+  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
-  <!-- 如果以后首页也需要登录状态、欢迎语之类，再加 index.js -->
-
 </body>
 </html>
