@@ -6,35 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg: #f5f9f5;
-      --bg-card: #ffffff;
-      --primary: #16a34a;
-      --text-main: #0f172a;
-      --text-muted: #6b7280;
-      --border: #d1e5d4;
-      --max-width: 1040px;
+      --bg:#f5f9f5;
+      --bg-card:#ffffff;
+      --primary:#16a34a;
+      --text-main:#0f172a;
+      --text-muted:#6b7280;
+      --border:#d1e5d4;
+      --max-width:1040px;
     }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text-main);
     }
+    a{color:inherit;text-decoration:none;}
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: var(--bg);
-      color: var(--text-main);
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    /* 统一顶部导航 */
-    .top-nav {
+    /* 顶部导航（与 jobs 一致） */
+    .top-nav{
       width:100%;
       background:#e8f5ec;
       padding:10px 0;
@@ -44,7 +33,7 @@
       z-index:30;
       box-shadow:0 2px 4px rgba(15,23,42,0.06);
     }
-    .nav-inner {
+    .nav-inner{
       max-width:1100px;
       margin:0 auto;
       padding:0 16px;
@@ -53,12 +42,12 @@
       justify-content:space-between;
       gap:12px;
     }
-    .brand {
+    .brand{
       display:flex;
       align-items:center;
       gap:10px;
     }
-    .brand-logo {
+    .brand-logo{
       width:42px;
       height:42px;
       border-radius:10px;
@@ -71,119 +60,118 @@
       font-weight:700;
       box-shadow:0 4px 10px rgba(22,101,52,0.4);
     }
-    .brand-text-main {
+    .brand-text-main{
       font-size:18px;
       font-weight:600;
       color:#022c22;
     }
-    .brand-text-sub {
+    .brand-text-sub{
       font-size:13px;
       color:var(--text-muted);
       margin-top:-2px;
     }
-
-    nav.nav-links {
+    nav.nav-links{
       display:flex;
-      gap:10px;
       flex-wrap:wrap;
+      gap:10px;
       font-size:15px;
     }
-    nav.nav-links a {
+    nav.nav-links a{
       padding:6px 12px;
       border-radius:6px;
       color:#0f172a;
       text-decoration:none;
       transition:0.15s ease;
     }
-    nav.nav-links a:hover {
-      background:#d9fbe5;
-    }
-    nav.nav-links a.active {
-      background:var(--primary);
+    nav.nav-links a:hover{background:#d9fbe5;}
+    nav.nav-links a.active{
+      background:#16a34a;
       color:#f0fdf4;
     }
 
-    /* 页面主卡片布局 */
-    .shell {
-      max-width: var(--max-width);
-      margin: 0 auto;
-      padding: 24px 16px 60px;
+    /* 主体布局 */
+    .shell{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:24px 16px 60px;
+    }
+    .page-title{
+      font-size:22px;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+    .page-subtitle{
+      font-size:13px;
+      color:var(--text-muted);
+      margin-bottom:18px;
+    }
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.4fr);
+      justify-content:center;
+      gap:18px;
+    }
+    .card{
+      background:var(--bg-card);
+      border-radius:18px;
+      border:1px solid var(--border);
+      padding:18px 18px 20px;
+      box-shadow:0 18px 40px rgba(15,23,42,0.06);
+    }
+    .section-title{
+      font-size:16px;
+      font-weight:600;
+      margin-bottom:12px;
     }
 
-    .page-title {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 8px;
+    label{
+      display:block;
+      font-size:13px;
+      margin-bottom:4px;
+      color:var(--text-muted);
+    }
+    input,textarea{
+      width:100%;
+      font-family:inherit;
+      font-size:14px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      margin-bottom:10px;
+      resize:vertical;
+    }
+    textarea{min-height:120px;}
+
+    button{
+      border:none;
+      border-radius:999px;
+      padding:8px 20px;
+      font-size:14px;
+      font-family:inherit;
+      cursor:pointer;
+      background:var(--primary);
+      color:#ffffff;
+    }
+    button:hover{background:#15803d;}
+
+    .posts-empty{
+      font-size:13px;
+      color:var(--text-muted);
     }
 
-    .page-subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 18px;
+    /* 帖子卡片（列表里用） */
+    .post-card{
+      margin-bottom:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      box-shadow:0 6px 16px rgba(15,23,42,0.06);
+      font-size:14px;
     }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr);
-      justify-content: center;
-      gap: 18px;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      padding: 18px 18px 20px;
-      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
-    }
-
-    .section-title {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: var(--text-muted);
-    }
-
-    input,
-    textarea {
-      width: 100%;
-      font-family: inherit;
-      font-size: 14px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      margin-bottom: 10px;
-      resize: vertical;
-    }
-
-    textarea {
-      min-height: 120px;
-    }
-
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 20px;
-      font-size: 14px;
-      font-family: inherit;
-      cursor: pointer;
-      background: var(--primary);
-      color: white;
-    }
-
-    button:hover {
-      background: #15803d;
-    }
-
-    .posts-empty {
-      font-size: 13px;
-      color: var(--text-muted);
+    .post-card h3{
+      font-size:15px;
+      margin-bottom:4px;
     }
 
     /* 右下角 + 按钮 */
@@ -208,7 +196,6 @@
     .fab:hover{background:#15803d;}
   </style>
 </head>
-
 <body>
   <!-- 顶部导航 -->
   <header class="top-nav">
@@ -234,9 +221,9 @@
 
   <div class="shell">
     <main>
-      <div class="page-title">论坛发布 · Forum</div>
+      <div class="page-title">论坛 · Forum</div>
       <div class="page-subtitle">
-        随便聊、问问题、分享经验都可以发在这里。后面可以加上登录验证、分类等功能。
+        问问题、分享经验、闲聊都可以发在这里。后面可以加登录验证、分类功能。
       </div>
 
       <div class="layout">
@@ -248,11 +235,10 @@
             <input id="title" type="text" placeholder="比如：Palmerston 哪里剪草比较便宜？" />
 
             <label for="content">内容</label>
-            <textarea
-              id="content"
-              placeholder="简单描述一下你的问题 / 分享 / 经验..."></textarea>
+            <textarea id="content" placeholder="简单描述一下你的问题 / 分享 / 经验..."></textarea>
 
             <button type="submit">发布</button>
+            <div id="forumStatus" style="font-size:13px;margin-top:6px;"></div>
           </form>
         </section>
 
@@ -265,17 +251,10 @@
     </main>
   </div>
 
-  <!-- 右下角 + 按钮 -->
+  <!-- 右下角 + 按钮：滚动到发帖区域 -->
   <button class="fab" id="fabForum">+</button>
 
   <script>
-    // 以后你接 Supabase 真正发帖，这里保留
-    document.getElementById("forumForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      alert("以后接上 Supabase 后，这里会真正发帖。");
-    });
-
-    // 点击右下角 + ，滚动到发帖表单
     document.getElementById("fabForum").addEventListener("click", () => {
       const section = document.getElementById("forumFormSection");
       if (section) {
@@ -283,5 +262,10 @@
       }
     });
   </script>
+
+  <!-- Supabase（顺序与 jobs.html 一致） -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="forum.js"></script>
 </body>
 </html>
