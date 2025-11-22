@@ -107,7 +107,7 @@
     .shell {
       max-width: var(--max-width);
       margin: 0 auto;
-      padding: 24px 16px 40px;
+      padding: 24px 16px 60px;
     }
 
     .page-title {
@@ -185,6 +185,27 @@
       font-size: 13px;
       color: var(--text-muted);
     }
+
+    /* 右下角 + 按钮 */
+    .fab{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:var(--primary);
+      color:#ffffff;
+      font-size:26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(15,23,42,0.6);
+      z-index:50;
+    }
+    .fab:hover{background:#15803d;}
   </style>
 </head>
 
@@ -220,7 +241,7 @@
 
       <div class="layout">
         <!-- 发帖卡片 -->
-        <section class="card">
+        <section class="card" id="forumFormSection">
           <div class="section-title">发布帖子</div>
           <form id="forumForm">
             <label for="title">标题</label>
@@ -244,11 +265,22 @@
     </main>
   </div>
 
+  <!-- 右下角 + 按钮 -->
+  <button class="fab" id="fabForum">+</button>
+
   <script>
-    // 这里只是示例，后面你可以接 Supabase 真正发帖
+    // 以后你接 Supabase 真正发帖，这里保留
     document.getElementById("forumForm").addEventListener("submit", function (e) {
       e.preventDefault();
       alert("以后接上 Supabase 后，这里会真正发帖。");
+    });
+
+    // 点击右下角 + ，滚动到发帖表单
+    document.getElementById("fabForum").addEventListener("click", () => {
+      const section = document.getElementById("forumFormSection");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth" });
+      }
     });
   </script>
 </body>

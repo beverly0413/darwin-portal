@@ -1,12 +1,23 @@
 // forum.js
 const supabase = window.supabaseClient;
 
-const form = document.getElementById("postForm");
-const statusEl = document.getElementById("status");
-const listEl = document.getElementById("postList");
+const listEl = document.getElementById("posts");      // 帖子列表容器
+const form = document.getElementById("forumForm");    // 发帖表单
 
-// 加载帖子
+// 状态提示元素：如果页面里没有，就自动加一个
+let statusEl = document.getElementById("forumStatus");
+if (form && !statusEl) {
+  statusEl = document.createElement("div");
+  statusEl.id = "forumStatus";
+  statusEl.style.fontSize = "13px";
+  statusEl.style.marginTop = "6px";
+  form.appendChild(statusEl);
+}
+
+// 加载帖子列表
 async function loadForum() {
+  if (!listEl) return;
+
   const { data, error } = await supabase
     .from("posts")
     .select("*")
@@ -20,6 +31,11 @@ async function loadForum() {
   }
 
   listEl.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    listEl.innerHTML = '<div class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>';
+    return;
+  }
 
   data.forEach((p) => {
     const div = document.createElement("div");
@@ -35,43 +51,45 @@ async function loadForum() {
 loadForum();
 
 // 发帖
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData?.user;
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
 
-  if (!user) {
-    alert("请先登录！");
-    window.location.href = "login.html";
-    return;
-  }
+    if (!user) {
+      alert("请先登录！");
+      window.location.href = "login.html";
+      return;
+    }
 
-  const title = document.getElementById("title").value.trim();
-  const content = document.getElementById("content").value.trim();
+    const title = document.getElementById("title").value.trim();
+    const content = document.getElementById("content").value.trim();
 
-  if (!title) {
-    statusEl.textContent = "标题是必填的。";
-    statusEl.style.color = "red";
-    return;
-  }
+    if (!title) {
+      statusEl.textContent = "标题是必填的。";
+      statusEl.style.color = "red";
+      return;
+    }
 
-  const { error } = await supabase.from("posts").insert({
-    user_id: user.id,
-    category: "forum",
-    title,
-    content,
+    const { error } = await supabase.from("posts").insert({
+      user_id: user.id,
+      category: "forum",
+      title,
+      content,
+    });
+
+    if (error) {
+      console.error(error);
+      statusEl.textContent = "发布失败：" + error.message;
+      statusEl.style.color = "red";
+      return;
+    }
+
+    statusEl.textContent = "已发布！";
+    statusEl.style.color = "green";
+    form.reset();
+    loadForum();
   });
-
-  if (error) {
-    console.error(error);
-    statusEl.textContent = "发布失败：" + error.message;
-    statusEl.style.color = "red";
-    return;
-  }
-
-  statusEl.textContent = "发布成功！";
-  statusEl.style.color = "green";
-  form.reset();
-  loadForum();
-});
+}
