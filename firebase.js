@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAGLdakGGRZIS_S9zjSlERgLMjp5a0OeI",
   authDomain: "darwin-life-hub.firebaseapp.com",
   projectId: "darwin-life-hub",
-  storageBucket: "darwin-life-hub.appspot.com",
+  storageBucket: "darwin-life-hub.firebasestorage.app",
   messagingSenderId: "198696032332",
   appId: "1:198696032332:web:0f6b83515066549b9fbce9",
   measurementId: "G-RHRRP1LH4T"
