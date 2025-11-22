@@ -1,24 +1,6 @@
-await uploadBytes(storageRef, file);
-imageUrl = await getDownloadURL(storageRef);
-``` :contentReference[oaicite:0]{index=0}  
+// 0466658664.js  （先恢复成最稳定版本：直接上传到 Firebase Storage）
 
-所以浏览器去访问：
-
-`https://firebasestorage.googleapis.com/...` → 被 CORS 拦截 → 报错。
-
-我们要做的是：  
-> **前端不再直接访问 Firebase，只给 `/api/upload` 发请求。**
-
----
-
-### 2. 你只需要做一件事：**用下面这份代码，完全替换 0466658664.js**
-
-把你项目里的 `0466658664.js` 内容删掉，换成下面这一整份：
-
-```js
-// 0466658664.js  （前端改为调用 /api/upload，彻底不再直接访问 Firebase Storage）
-
-import { db } from "./firebase.js";
+import { db, storage } from "./firebase.js";
 import {
   collection,
   addDoc,
@@ -30,8 +12,12 @@ import {
   deleteDoc,
   doc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// --- 工具函数：设置状态文本 ---
 const titleEl = document.getElementById("newsTitle");
 const summaryEl = document.getElementById("newsSummary");
 const bodyEl = document.getElementById("newsBody");
@@ -50,35 +36,7 @@ function setStatus(el, msg, ok = false) {
   el.classList.add(ok ? "status-ok" : "status-error");
 }
 
-// --- 新：通过后端 /api/upload 上传图片 ---
-async function uploadImageViaApi(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    let errMsg = "图片上传失败";
-    try {
-      const data = await res.json();
-      if (data && data.error) errMsg = data.error;
-    } catch (e) {
-      // ignore
-    }
-    throw new Error(errMsg);
-  }
-
-  const data = await res.json();
-  if (!data.url) {
-    throw new Error("上传成功但未返回图片地址");
-  }
-  return data.url;
-}
-
-// --- 发布新闻（正文 + 可选图片） ---
+// 发布新闻（带正文 + 可选图片）
 publishBtn.addEventListener("click", async () => {
   const title = titleEl.value.trim();
   const summary = summaryEl.value.trim();
@@ -90,19 +48,19 @@ publishBtn.addEventListener("click", async () => {
     return;
   }
 
-  publishBtn.disabled = true;
   setStatus(publishStatus, "正在发布…", true);
 
   try {
     let imageUrl = null;
 
-    // 如果选择了图片：交给后端 /api/upload 处理
+    // 如果选择了图片，就先上传到 Storage
     if (file) {
-      setStatus(publishStatus, "正在上传图片…", true);
-      imageUrl = await uploadImageViaApi(file);
+      const safeName = file.name.replace(/[^\w.\-]/g, "_");
+      const path = `newsImages/${Date.now()}_${safeName}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      imageUrl = await getDownloadURL(storageRef);
     }
-
-    setStatus(publishStatus, "正在保存新闻内容…", true);
 
     await addDoc(collection(db, "news"), {
       title,
@@ -122,12 +80,10 @@ publishBtn.addEventListener("click", async () => {
   } catch (err) {
     console.error(err);
     setStatus(publishStatus, "发布失败：" + err.message);
-  } finally {
-    publishBtn.disabled = false;
   }
 });
 
-// --- 加载列表 ---
+// 加载列表
 async function loadNews() {
   listEl.innerHTML = "";
   emptyHint.style.display = "none";
