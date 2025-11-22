@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <title>Darwin Life Hub · News</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <style>
+<style>
     :root {
       --bg:#f5f9f5;
       --card-bg:#ffffff;
@@ -16,8 +15,10 @@
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
+      margin:0;
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:var(--bg);
+      /* 和其他页面统一的背景 */
+      background:radial-gradient(circle at top left,#bbf7d0,#f5f9f5);
       color:var(--text-main);
     }
 
@@ -45,16 +46,28 @@
       display:flex;
       align-items:center;
       gap:10px;
+      text-decoration:none;
     }
-    .brand-logo {
-      width:42px;height:42px;
-      border-radius:10px;
-      background:linear-gradient(135deg,#16a34a,#166534);
-      display:flex;align-items:center;justify-content:center;
-      color:#f0fdf4;
-      font-size:18px;font-weight:700;
-      box-shadow:0 4px 10px rgba(22,101,52,0.4);
+
+    /* —— 圆形 LOGO（新版） —— */
+    .brand-logo{
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 10px rgba(15,23,42,0.25);
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
     .brand-text-main {
       font-size:18px;
       font-weight:600;
@@ -220,19 +233,22 @@
       line-height:1.7;
       white-space:normal;
     }
-  </style>
+</style>
 </head>
 
 <body>
   <header class="top-nav">
     <div class="nav-inner">
-      <div class="brand">
-        <div class="brand-logo">DL</div>
+      <!-- 左上角 logo 改成和其他页面一样，可点击回首页 -->
+      <a href="index.html" class="brand" aria-label="返回 Darwin Life Hub 首页">
+        <div class="brand-logo">
+          <img src="darwin-logo.png">
+        </div>
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户</div>
         </div>
-      </div>
+      </a>
 
       <nav class="nav-links">
         <a href="index.html">Home</a>
