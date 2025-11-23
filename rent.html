@@ -197,6 +197,9 @@
               <small>提示：一次最多选择 5 张图片。</small>
             </div>
 
+            <!-- 本地预览区域，用来显示已经累加的图片 -->
+            <div id="rentPreview" class="rent-photos"></div>
+
             <button type="submit">发布</button>
             <div id="rentStatus"></div>
           </form>
@@ -213,7 +216,8 @@
     });
   </script>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- 正确的 Supabase v2 UMD CDN（唯一修改点） -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
   <script src="supabase.js"></script>
   <script src="rent.js"></script>
 </body>

@@ -4,7 +4,51 @@ const rentList = document.getElementById("rentList");
 const form = document.getElementById("rentForm");
 const statusEl = document.getElementById("rentStatus");
 
-// ========= 新增：把非通用格式自动转成 JPEG =========
+// 文件 input + 预览 + 自己维护的文件数组
+const filesInput = document.getElementById("rentImages");
+const rentPreview = document.getElementById("rentPreview");
+let rentImagesList = [];   // 用数组来保存已选文件
+const MAX_IMAGES = 5;
+
+// 刷新本地预览
+function updateRentPreview() {
+  if (!rentPreview) return;
+
+  rentPreview.innerHTML = "";
+
+  rentImagesList.forEach((file) => {
+    const img = document.createElement("img");
+    img.alt = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    rentPreview.appendChild(img);
+  });
+}
+
+// 选择文件时，累加到数组，而不是覆盖
+if (filesInput) {
+  filesInput.addEventListener("change", (e) => {
+    const newFiles = Array.from(e.target.files || []);
+
+    for (const file of newFiles) {
+      if (rentImagesList.length >= MAX_IMAGES) break;
+      rentImagesList.push(file);
+    }
+
+    // 清空当前这次的 value，避免同一文件无法再次选择
+    filesInput.value = "";
+
+    // 刷新预览
+    updateRentPreview();
+  });
+}
+
+// ========= 把非通用格式自动转成 JPEG =========
 async function convertImageToJpeg(file) {
   // 浏览器能直接用而且最稳的格式
   const safeTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -181,8 +225,12 @@ form.addEventListener("submit", async (e) => {
   const title = document.getElementById("rentTitle").value.trim();
   const contact = document.getElementById("rentContact").value.trim();
   const content = document.getElementById("rentContent").value.trim();
-  const filesInput = document.getElementById("rentImages");
-  const files = filesInput?.files || [];
+
+  // 使用我们累积的文件，没有的话再退回到 input.files
+  const files =
+    rentImagesList.length > 0
+      ? rentImagesList
+      : (filesInput?.files || []);
 
   if (!title || !contact) {
     statusEl.textContent = "房源标题和联系方式是必填的。";
@@ -190,7 +238,7 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (files.length > 5) {
+  if (files.length > MAX_IMAGES) {
     statusEl.textContent = "最多只能上传 5 张照片。";
     statusEl.style.color = "red";
     return;
@@ -237,5 +285,13 @@ form.addEventListener("submit", async (e) => {
   statusEl.textContent = "已发布！";
   statusEl.style.color = "green";
   form.reset();
+
+  // 发布成功后清空已选图片和预览
+  rentImagesList = [];
+  if (filesInput) {
+    filesInput.value = "";
+  }
+  updateRentPreview();
+
   loadRents();
 });
