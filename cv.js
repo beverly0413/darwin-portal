@@ -37,14 +37,17 @@ function saveCvsToStorageTextOnly() {
   }
 }
 
-// 刷新图片预览
+// 刷新图片预览（支持单张删除）
 function updateCvPreview() {
   const previewEl = document.getElementById('cvPreview');
   if (!previewEl) return;
 
   previewEl.innerHTML = '';
 
-  cvImagesList.forEach((file) => {
+  cvImagesList.forEach((file, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-item';
+
     const img = document.createElement('img');
     img.alt = file.name;
 
@@ -54,7 +57,18 @@ function updateCvPreview() {
     };
     reader.readAsDataURL(file);
 
-    previewEl.appendChild(img);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.className = 'preview-remove';
+    removeBtn.addEventListener('click', () => {
+      cvImagesList.splice(index, 1);
+      updateCvPreview();
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(removeBtn);
+    previewEl.appendChild(wrapper);
   });
 }
 
@@ -129,6 +143,7 @@ function setupCvForm() {
   const form = document.getElementById('cvForm');
   const statusEl = document.getElementById('cvStatus');
   const imagesInput = document.getElementById('cvImages');
+  const clearBtn = document.getElementById('cvClearImages');
 
   if (!form) return;
 
@@ -143,6 +158,14 @@ function setupCvForm() {
       }
 
       imagesInput.value = ''; // 清空，避免同一文件不能再次选择
+      updateCvPreview();
+    });
+  }
+
+  // 清空所有图片
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      cvImagesList = [];
       updateCvPreview();
     });
   }

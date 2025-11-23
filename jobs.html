@@ -190,6 +190,45 @@
       border:1px solid var(--border);
     }
 
+    /* 新增：可删除图片 + 清空按钮样式（与 forum 一致） */
+    .preview-item{
+      position:relative;
+      display:inline-block;
+    }
+    .preview-remove{
+      position:absolute;
+      top:2px;
+      right:2px;
+      width:18px;
+      height:18px;
+      border:none;
+      border-radius:50%;
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      font-size:12px;
+      line-height:18px;
+      cursor:pointer;
+    }
+    .preview-remove:hover{
+      background:rgba(0,0,0,0.8);
+    }
+    .clear-images-btn{
+      margin-top:4px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #d1e5d4;
+      background:#f9fafb;
+      font-size:12px;
+      cursor:pointer;
+      align-self:flex-start;
+      color:red; /* 和 forum 一样：红色字体 */
+    }
+    .clear-images-btn:hover{
+      background:#ffe5e5;
+      color:#c40000;
+      border-color:#ffb3b3;
+    }
+
     .fab{
       position:fixed;
       right:18px;
@@ -266,6 +305,8 @@
             </div>
             <!-- 本地预览区域 -->
             <div id="jobPreview" class="job-photos"></div>
+            <!-- 新增：清空图片按钮 -->
+            <button type="button" id="jobClearImages" class="clear-images-btn">清空图片</button>
 
             <button type="submit">发布</button>
             <div id="jobStatus"></div>

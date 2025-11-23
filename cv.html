@@ -212,6 +212,45 @@
       border-radius:8px;
       border:1px solid var(--border);
     }
+
+    /* 新增：可删除图片 + 清空按钮（和 jobs/forum 一样） */
+    .preview-item{
+      position:relative;
+      display:inline-block;
+    }
+    .preview-remove{
+      position:absolute;
+      top:2px;
+      right:2px;
+      width:18px;
+      height:18px;
+      border:none;
+      border-radius:50%;
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      font-size:12px;
+      line-height:18px;
+      cursor:pointer;
+    }
+    .preview-remove:hover{
+      background:rgba(0,0,0,0.8);
+    }
+    .clear-images-btn{
+      margin-top:4px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #d1e5d4;
+      background:#f9fafb;
+      font-size:12px;
+      cursor:pointer;
+      align-self:flex-start;
+      color:red;
+    }
+    .clear-images-btn:hover{
+      background:#ffe5e5;
+      color:#c40000;
+      border-color:#ffb3b3;
+    }
 </style>
 </head>
 <body>
@@ -253,13 +292,15 @@
             <input id="cvContact" placeholder="联系方式（必填）" required />
             <textarea id="cvContent" placeholder="个人简介 / 技能 / 求职意向"></textarea>
 
-            <!-- 新增：求职相关照片 -->
+            <!-- 求职相关照片 -->
             <div class="image-group">
               <label for="cvImages">求职相关照片（可选，最多 5 张）：</label>
               <input id="cvImages" type="file" accept="image/*" multiple />
               <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
             </div>
             <div id="cvPreview" class="cv-photos"></div>
+            <!-- 新增：清空图片按钮 -->
+            <button type="button" id="cvClearImages" class="clear-images-btn">清空图片</button>
 
             <button type="submit">发布</button>
             <div id="cvStatus"></div>
@@ -271,7 +312,6 @@
 
   <button class="fab" id="fabCV">+</button>
 
-  <!-- 注意：这里是普通 script，不是 module -->
   <script src="cv.js"></script>
   <script>
     document.getElementById('fabCV').addEventListener('click', () => {

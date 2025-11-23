@@ -14,8 +14,7 @@ function loadJobsFromStorage() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // 这些记录里本来就没有 images 字段
-    return parsed;
+    return parsed; // 这里本来就没有 images 字段
   } catch (e) {
     console.error('解析本地招聘数据失败：', e);
     return [];
@@ -32,7 +31,6 @@ function saveJobsToStorageTextOnly() {
       contact: job.contact,
       content: job.content,
       createdAt: job.createdAt,
-      // 不存 images
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
   } catch (e) {
@@ -40,14 +38,17 @@ function saveJobsToStorageTextOnly() {
   }
 }
 
-// 刷新图片预览
+// ===== 刷新图片预览：支持单张删除 =====
 function updateJobPreview() {
   const previewEl = document.getElementById('jobPreview');
   if (!previewEl) return;
 
   previewEl.innerHTML = '';
 
-  jobImagesList.forEach((file) => {
+  jobImagesList.forEach((file, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-item';
+
     const img = document.createElement('img');
     img.alt = file.name;
 
@@ -57,7 +58,19 @@ function updateJobPreview() {
     };
     reader.readAsDataURL(file);
 
-    previewEl.appendChild(img);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.className = 'preview-remove';
+    removeBtn.addEventListener('click', () => {
+      // 删除当前这张，再刷新预览
+      jobImagesList.splice(index, 1);
+      updateJobPreview();
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(removeBtn);
+    previewEl.appendChild(wrapper);
   });
 }
 
@@ -104,7 +117,6 @@ function renderJobs() {
       createdAt.getMonth() + 1
     ).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`;
 
-    // 如果有图片（当前会话里发布的），渲染出来；老数据没有 images，就只显示文字
     let imagesHtml = '';
     if (Array.isArray(job.images) && job.images.length > 0) {
       imagesHtml = `
@@ -136,6 +148,7 @@ function setupForm() {
   const form = document.getElementById('jobForm');
   const statusEl = document.getElementById('jobStatus');
   const imagesInput = document.getElementById('jobImages');
+  const clearBtn = document.getElementById('jobClearImages');
 
   if (!form) return;
 
@@ -150,6 +163,14 @@ function setupForm() {
       }
 
       imagesInput.value = ''; // 清空，避免同一文件不能再次选择
+      updateJobPreview();
+    });
+  }
+
+  // 清空所有图片
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      jobImagesList = [];
       updateJobPreview();
     });
   }
@@ -186,7 +207,6 @@ function setupForm() {
     statusEl.textContent = '正在保存...';
     statusEl.style.color = '#6b7280';
 
-    // 把当前选择的图片转成 DataURL（只放在内存，用于展示）
     let imageDataUrls = [];
     try {
       if (jobImagesList.length > 0) {
@@ -209,20 +229,14 @@ function setupForm() {
       images: imageDataUrls, // 只在 jobsMemory 里存在
     };
 
-    // 最新在最上面
     jobsMemory.unshift(newJob);
-
-    // 只把文字部分写入 localStorage，避免配额问题
     saveJobsToStorageTextOnly();
-
-    // 重新渲染
     renderJobs();
 
     form.reset();
     statusEl.textContent = '发布成功（文字已保存在本浏览器）。';
     statusEl.style.color = 'green';
 
-    // 清空本次已选图片和预览
     jobImagesList = [];
     updateJobPreview();
   });
@@ -230,9 +244,7 @@ function setupForm() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-  // 先从 localStorage 读出“文字版本”的历史记录
   jobsMemory = loadJobsFromStorage();
-  // 老记录没有 images 字段，所以只会显示文字，这是正常的
   renderJobs();
   setupForm();
 });
