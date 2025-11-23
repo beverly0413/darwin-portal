@@ -40,7 +40,6 @@
     .brand{
       display:flex;align-items:center;gap:10px;
     }
-    /* 圆形 Logo */
     .brand-logo{
       width:48px;
       height:48px;
@@ -76,7 +75,6 @@
       background:#16a34a;color:#f0fdf4;
     }
 
-    /* 页面布局（沿用 CV 的 shell/card/fab） */
     .shell{
       max-width:var(--max-width);
       margin:0 auto;
@@ -166,6 +164,32 @@
       margin-top:4px;
     }
 
+    /* 图片上传 + 预览样式 */
+    .image-group{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--text-muted);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .image-group input[type="file"]{
+      font-size:13px;
+    }
+    .job-photos{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .job-photos img{
+      width:90px;
+      height:90px;
+      object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+
     .fab{
       position:fixed;
       right:18px;
@@ -233,6 +257,16 @@
             <input id="jobCompany" placeholder="公司 / 店名（选填）" />
             <input id="jobContact" placeholder="联系方式（必填，如：微信 / 电话）" required />
             <textarea id="jobContent" placeholder="工作内容、时间、工资范围、要求等（可选）"></textarea>
+
+            <!-- 最多 5 张图片上传 -->
+            <div class="image-group">
+              <label for="jobImages">职位相关照片（可选，最多 5 张）：</label>
+              <input id="jobImages" type="file" accept="image/*" multiple />
+              <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
+            </div>
+            <!-- 本地预览区域 -->
+            <div id="jobPreview" class="job-photos"></div>
+
             <button type="submit">发布</button>
             <div id="jobStatus"></div>
           </form>
@@ -244,10 +278,8 @@
   <!-- 右下角 + 按钮：回到底部表单 -->
   <button class="fab" id="fabJob">+</button>
 
-  <!-- JS：模块化写法，和 CV 一样 -->
-  <script type="module" src="./jobs.js"></script>
+  <script src="jobs.js"></script>
   <script>
-    // 悬浮按钮：滚动到发布区域
     document.getElementById('fabJob').addEventListener('click', () => {
       document.getElementById('jobFormSection').scrollIntoView({ behavior: 'smooth' });
     });

@@ -1,15 +1,20 @@
 // jobs.js
-// 一个简单的前端招聘列表管理：用 localStorage 存在浏览器本地
+// 前端招聘列表：文字持久化到 localStorage，图片只在本次打开期间保存在内存里
 
-const STORAGE_KEY = 'darwin_life_hub_jobs';
+const STORAGE_KEY = 'darwin_life_hub_jobs_v2';
 
-// 读取本地存储的招聘数据
+const MAX_IMAGES = 5;
+let jobImagesList = [];   // 当前这条招聘选中的图片（File 对象）
+let jobsMemory = [];      // 本次会话中的招聘列表（包含 images）
+
+// 只从 localStorage 读取“文字部分”的招聘数据
 function loadJobsFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
+    // 这些记录里本来就没有 images 字段
     return parsed;
   } catch (e) {
     console.error('解析本地招聘数据失败：', e);
@@ -17,31 +22,75 @@ function loadJobsFromStorage() {
   }
 }
 
-// 保存招聘数据到本地
-function saveJobsToStorage(jobs) {
+// 只把“文字部分”写回 localStorage（不保存图片，避免超出配额）
+function saveJobsToStorageTextOnly() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    const textOnly = jobsMemory.map((job) => ({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      contact: job.contact,
+      content: job.content,
+      createdAt: job.createdAt,
+      // 不存 images
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
   } catch (e) {
     console.error('保存本地招聘数据失败：', e);
   }
 }
 
-// 渲染列表
+// 刷新图片预览
+function updateJobPreview() {
+  const previewEl = document.getElementById('jobPreview');
+  if (!previewEl) return;
+
+  previewEl.innerHTML = '';
+
+  jobImagesList.forEach((file) => {
+    const img = document.createElement('img');
+    img.alt = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    previewEl.appendChild(img);
+  });
+}
+
+// 把 File 列表转换成 DataURL 数组（只存内存，用于展示）
+function readFilesAsDataUrls(files) {
+  const list = Array.from(files);
+  return Promise.all(
+    list.map(
+      (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })
+    )
+  );
+}
+
+// 渲染列表：使用 jobsMemory（包含 images）
 function renderJobs() {
   const listEl = document.getElementById('jobList');
   if (!listEl) return;
 
-  const jobs = loadJobsFromStorage();
-
   listEl.innerHTML = '';
 
-  if (jobs.length === 0) {
-    listEl.innerHTML = '<p style="font-size:13px;color:#6b7280;">目前还没有招聘信息，欢迎发布第一条。</p>';
+  if (jobsMemory.length === 0) {
+    listEl.innerHTML =
+      '<p style="font-size:13px;color:#6b7280;">目前还没有招聘信息，欢迎发布第一条。</p>';
     return;
   }
 
-  // 最新发布的显示在最上面
-  jobs.forEach((job) => {
+  jobsMemory.forEach((job) => {
     const div = document.createElement('div');
     div.className = 'job';
 
@@ -49,30 +98,32 @@ function renderJobs() {
     const company = job.company || '';
     const contact = job.contact || '';
     const content = job.content || '';
-    const createdAt = job.createdAt
-      ? new Date(job.createdAt)
-      : new Date();
+    const createdAt = job.createdAt ? new Date(job.createdAt) : new Date();
 
-    // 简单格式化时间
-    const dateStr = `${createdAt.getFullYear()}-${String(createdAt.getMonth()+1).padStart(2,'0')}-${String(createdAt.getDate()).padStart(2,'0')}`;
+    const dateStr = `${createdAt.getFullYear()}-${String(
+      createdAt.getMonth() + 1
+    ).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`;
+
+    // 如果有图片（当前会话里发布的），渲染出来；老数据没有 images，就只显示文字
+    let imagesHtml = '';
+    if (Array.isArray(job.images) && job.images.length > 0) {
+      imagesHtml = `
+        <div class="job-photos">
+          ${job.images
+            .map(
+              (url) => `<img src="${url}" alt="职位相关图片" loading="lazy" />`
+            )
+            .join('')}
+        </div>
+      `;
+    }
 
     div.innerHTML = `
       <h3>${title}</h3>
-      ${
-        company
-          ? `<p><strong>店铺 / 公司：</strong>${company}</p>`
-          : ''
-      }
-      ${
-        contact
-          ? `<p><strong>联系方式：</strong>${contact}</p>`
-          : ''
-      }
-      ${
-        content
-          ? `<p style="white-space:pre-wrap;">${content}</p>`
-          : ''
-      }
+      ${company ? `<p><strong>店铺 / 公司：</strong>${company}</p>` : ''}
+      ${contact ? `<p><strong>联系方式：</strong>${contact}</p>` : ''}
+      ${content ? `<p style="white-space:pre-wrap;">${content}</p>` : ''}
+      ${imagesHtml}
       <small>发布于：${dateStr}</small>
     `;
 
@@ -80,14 +131,30 @@ function renderJobs() {
   });
 }
 
-// 处理表单提交
+// 表单逻辑
 function setupForm() {
   const form = document.getElementById('jobForm');
   const statusEl = document.getElementById('jobStatus');
+  const imagesInput = document.getElementById('jobImages');
 
   if (!form) return;
 
-  form.addEventListener('submit', (e) => {
+  // 监听图片选择：多次选择累加，最多 5 张
+  if (imagesInput) {
+    imagesInput.addEventListener('change', (e) => {
+      const newFiles = Array.from(e.target.files || []);
+
+      for (const file of newFiles) {
+        if (jobImagesList.length >= MAX_IMAGES) break;
+        jobImagesList.push(file);
+      }
+
+      imagesInput.value = ''; // 清空，避免同一文件不能再次选择
+      updateJobPreview();
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const titleEl = document.getElementById('jobTitle');
@@ -110,30 +177,62 @@ function setupForm() {
       statusEl.style.color = 'red';
       return;
     }
+    if (jobImagesList.length > MAX_IMAGES) {
+      statusEl.textContent = '最多只能上传 5 张照片。';
+      statusEl.style.color = 'red';
+      return;
+    }
 
-    const jobs = loadJobsFromStorage();
+    statusEl.textContent = '正在保存...';
+    statusEl.style.color = '#6b7280';
 
-    // 新招聘放在数组最前面
-    jobs.unshift({
+    // 把当前选择的图片转成 DataURL（只放在内存，用于展示）
+    let imageDataUrls = [];
+    try {
+      if (jobImagesList.length > 0) {
+        imageDataUrls = await readFilesAsDataUrls(jobImagesList);
+      }
+    } catch (err) {
+      console.error('读取图片失败：', err);
+      statusEl.textContent = '读取图片失败，请重试。';
+      statusEl.style.color = 'red';
+      return;
+    }
+
+    const newJob = {
       id: Date.now(),
       title,
       company,
       contact,
       content,
       createdAt: new Date().toISOString(),
-    });
+      images: imageDataUrls, // 只在 jobsMemory 里存在
+    };
 
-    saveJobsToStorage(jobs);
+    // 最新在最上面
+    jobsMemory.unshift(newJob);
+
+    // 只把文字部分写入 localStorage，避免配额问题
+    saveJobsToStorageTextOnly();
+
+    // 重新渲染
     renderJobs();
 
     form.reset();
-    statusEl.textContent = '发布成功（仅保存在当前浏览器中）。';
+    statusEl.textContent = '发布成功（文字已保存在本浏览器）。';
     statusEl.style.color = 'green';
+
+    // 清空本次已选图片和预览
+    jobImagesList = [];
+    updateJobPreview();
   });
 }
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  // 先从 localStorage 读出“文字版本”的历史记录
+  jobsMemory = loadJobsFromStorage();
+  // 老记录没有 images 字段，所以只会显示文字，这是正常的
   renderJobs();
   setupForm();
 });
