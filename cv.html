@@ -40,6 +40,22 @@
     .brand{
       display:flex;align-items:center;gap:10px;
     }
+    .brand-logo{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
     .brand-text-main{
       font-size:18px;font-weight:600;color:#022c22;
     }
@@ -59,7 +75,7 @@
       background:#16a34a;color:#f0fdf4;
     }
 
-    /* 页面布局（沿用原来的 shell/card/fab） */
+    /* 页面布局 */
     .shell{
       max-width:var(--max-width);
       margin:0 auto;
@@ -171,34 +187,40 @@
       background:#15803d;
     }
 
-    /* —— 圆形 Logo 样式 —— */
-    .brand-logo{
-      width:48px;
-      height:48px;
-      border-radius:50%;
-      overflow:hidden;
-      background:#ffffff;
-      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+    /* 求职照片上传 + 预览 */
+    .image-group{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--text-muted);
       display:flex;
-      align-items:center;
-      justify-content:center;
+      flex-direction:column;
+      gap:4px;
     }
-    .brand-logo img{
-      width:100%;
-      height:100%;
+    .image-group input[type="file"]{
+      font-size:13px;
+    }
+    .cv-photos{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .cv-photos img{
+      width:90px;
+      height:90px;
       object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
     }
 </style>
 </head>
 <body>
-  <!-- 统一顶部导航 -->
   <header class="top-nav">
     <div class="nav-inner">
       <div class="brand">
         <div class="brand-logo">
-           <img src="darwin-logo.png" alt="logo" />
+          <img src="darwin-logo.png" alt="logo" />
         </div>
-
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户</div>
@@ -230,6 +252,15 @@
             <input id="cvTitle" placeholder="职位方向 / 标题（必填）" required />
             <input id="cvContact" placeholder="联系方式（必填）" required />
             <textarea id="cvContent" placeholder="个人简介 / 技能 / 求职意向"></textarea>
+
+            <!-- 新增：求职相关照片 -->
+            <div class="image-group">
+              <label for="cvImages">求职相关照片（可选，最多 5 张）：</label>
+              <input id="cvImages" type="file" accept="image/*" multiple />
+              <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
+            </div>
+            <div id="cvPreview" class="cv-photos"></div>
+
             <button type="submit">发布</button>
             <div id="cvStatus"></div>
           </form>
@@ -240,7 +271,8 @@
 
   <button class="fab" id="fabCV">+</button>
 
-  <script type="module" src="./cv.js"></script>
+  <!-- 注意：这里是普通 script，不是 module -->
+  <script src="cv.js"></script>
   <script>
     document.getElementById('fabCV').addEventListener('click', () => {
       document.getElementById('cvFormSection').scrollIntoView({ behavior: 'smooth' });

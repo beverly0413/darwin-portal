@@ -22,7 +22,7 @@
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 顶部导航（与 jobs / cv 一致） */
+    /* 顶部导航 */
     .top-nav{
       width:100%;
       background:#e8f5ec;
@@ -47,16 +47,21 @@
       align-items:center;
       gap:10px;
     }
-    .brand-text-main{
-      font-size:18px;
-      font-weight:600;
-      color:#022c22;
+    .brand-logo{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      overflow:hidden;
+      background:#ffffff;
+      box-shadow:0 4px 14px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
-    .brand-text-sub{
-      font-size:13px;
-      color:var(--text-muted);
-      margin-top:-2px;
-    }
+    .brand-logo img{ width:100%; height:100%; object-fit:cover; }
+    .brand-text-main{ font-size:18px; font-weight:600; color:#022c22; }
+    .brand-text-sub{ font-size:13px; color:var(--text-muted); margin-top:-2px; }
+
     nav.nav-links{
       display:flex;
       flex-wrap:wrap;
@@ -71,31 +76,15 @@
       transition:0.15s ease;
     }
     nav.nav-links a:hover{background:#d9fbe5;}
-    nav.nav-links a.active{
-      background:#16a34a;
-      color:#f0fdf4;
-    }
+    nav.nav-links a.active{background:#16a34a;color:#f0fdf4;}
 
-    /* 主体布局 */
-    .shell{
-      max-width:var(--max-width);
-      margin:0 auto;
-      padding:24px 16px 60px;
-    }
-    .page-title{
-      font-size:22px;
-      font-weight:700;
-      margin-bottom:8px;
-    }
-    .page-subtitle{
-      font-size:13px;
-      color:var(--text-muted);
-      margin-bottom:18px;
-    }
+    .shell{max-width:var(--max-width);margin:0 auto;padding:24px 16px 60px;}
+    .page-title{font-size:22px;font-weight:700;margin-bottom:8px;}
+    .page-subtitle{font-size:13px;color:var(--text-muted);margin-bottom:18px;}
+
     .layout{
       display:grid;
       grid-template-columns:minmax(0,1.4fr);
-      justify-content:center;
       gap:18px;
     }
     .card{
@@ -105,18 +94,9 @@
       padding:18px 18px 20px;
       box-shadow:0 18px 40px rgba(15,23,42,0.06);
     }
-    .section-title{
-      font-size:16px;
-      font-weight:600;
-      margin-bottom:12px;
-    }
+    .section-title{font-size:16px;font-weight:600;margin-bottom:12px;}
 
-    label{
-      display:block;
-      font-size:13px;
-      margin-bottom:4px;
-      color:var(--text-muted);
-    }
+    label{display:block;font-size:13px;margin-bottom:4px;color:var(--text-muted);}
     input,textarea{
       width:100%;
       font-family:inherit;
@@ -125,28 +105,21 @@
       border-radius:10px;
       border:1px solid var(--border);
       margin-bottom:10px;
-      resize:vertical;
     }
-    textarea{min-height:120px;}
+    textarea{min-height:120px;resize:vertical;}
 
     button{
       border:none;
       border-radius:999px;
       padding:8px 20px;
       font-size:14px;
-      font-family:inherit;
       cursor:pointer;
       background:var(--primary);
       color:#ffffff;
     }
     button:hover{background:#15803d;}
 
-    .posts-empty{
-      font-size:13px;
-      color:var(--text-muted);
-    }
-
-    /* 帖子卡片（列表里用） */
+    .posts-empty{font-size:13px;color:var(--text-muted);}
     .post-card{
       margin-bottom:10px;
       padding:10px 12px;
@@ -156,125 +129,144 @@
       box-shadow:0 6px 16px rgba(15,23,42,0.06);
       font-size:14px;
     }
-    .post-card h3{
-      font-size:15px;
-      margin-bottom:4px;
-    }
+    .post-card h3{font-size:15px;margin-bottom:4px;}
 
-    /* 右下角 + 按钮 */
     .fab{
-      position:fixed;
-      right:18px;
-      bottom:18px;
-      width:44px;
-      height:44px;
+      position:fixed; right:18px; bottom:18px;
+      width:44px; height:44px;
       border-radius:50%;
-      border:none;
       background:var(--primary);
       color:#ffffff;
       font-size:26px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex; align-items:center; justify-content:center;
       cursor:pointer;
       box-shadow:0 10px 24px rgba(15,23,42,0.6);
-      z-index:50;
     }
-    .fab:hover{background:#15803d;}
 
-    /* —— 圆形 Logo 样式 —— */
-    .brand-logo{
-      width:48px;
-      height:48px;
-      border-radius:50%;
-      overflow:hidden;
-      background:#ffffff;
-      box-shadow:0 4px 14px rgba(0,0,0,0.15);
-      display:flex;
-      align-items:center;
-      justify-content:center;
+    /* === 新增：可删除图片预览样式 === */
+    .preview-item{
+      position:relative;
+      display:inline-block;
     }
-    .brand-logo img{
-      width:100%;
-      height:100%;
+    .preview-remove{
+      position:absolute;
+      top:2px;
+      right:2px;
+      width:18px;
+      height:18px;
+      border:none;
+      border-radius:50%;
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      font-size:12px;
+      line-height:18px;
+      cursor:pointer;
+    }
+    .preview-remove:hover{background:rgba(0,0,0,0.8);}
+    .clear-images-btn{
+      margin-top:4px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #d1e5d4;
+      background:#f9fafb;
+      font-size:12px;
+      cursor:pointer;
+      align-self:flex-start;
+      color:red;
+    }
+    .clear-images-btn:hover{background:#e5f3ea;}
+
+    .forum-photos{
+      margin-top:8px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .forum-photos img{
+      width:90px;
+      height:90px;
       object-fit:cover;
+      border-radius:8px;
+      border:1px solid var(--border);
     }
 </style>
 </head>
 <body>
-  <!-- 顶部导航 -->
-  <header class="top-nav">
-    <div class="nav-inner">
-      <div class="brand">
-        <div class="brand-logo">
-          <img src="darwin-logo.png" alt="Darwin Life Hub logo">
-        </div>
-        <div>
-          <div class="brand-text-main">Darwin Life Hub</div>
-          <div class="brand-text-sub">达尔文华人生活门户 · Forum</div>
-        </div>
+
+<header class="top-nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <img src="darwin-logo.png" />
       </div>
-      <nav class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="news.html">News</a>
-        <a href="jobs.html">Jobs</a>
-        <a href="cv.html">CV</a>
-        <a href="rent.html">Rent</a>
-        <a href="forum.html" class="active">Forum</a>
-        <a href="about.html">About</a>
-      </nav>
+      <div>
+        <div class="brand-text-main">Darwin Life Hub</div>
+        <div class="brand-text-sub">达尔文华人生活门户 · Forum</div>
+      </div>
     </div>
-  </header>
 
-  <div class="shell">
-    <main>
-      <div class="page-title">论坛 · Forum</div>
-      <div class="page-subtitle">
-        问问题、分享经验、闲聊都可以发在这里。后面可以加登录验证、分类功能。
-      </div>
-
-      <div class="layout">
-
-        <!-- ① 帖子列表（放在上面，效果跟 CV 一样：先看内容，再往下发布） -->
-        <section class="card">
-          <div class="section-title">所有帖子</div>
-          <div id="posts" class="posts-empty">暂时还没有帖子，欢迎先发一条 🙂</div>
-        </section>
-
-        <!-- ② 发布表单（放在下面） -->
-        <section class="card" id="forumFormSection">
-          <div class="section-title">发布帖子</div>
-          <form id="forumForm">
-            <label for="title">标题</label>
-            <input id="title" type="text" placeholder="比如：Palmerston 哪里剪草比较便宜？" />
-
-            <label for="content">内容</label>
-            <textarea id="content" placeholder="简单描述一下你的问题 / 分享 / 经验..."></textarea>
-
-            <button type="submit">发布</button>
-            <div id="forumStatus" style="font-size:13px;margin-top:6px;"></div>
-          </form>
-        </section>
-
-      </div>
-    </main>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="news.html">News</a>
+      <a href="jobs.html">Jobs</a>
+      <a href="cv.html">CV</a>
+      <a href="rent.html">Rent</a>
+      <a href="forum.html" class="active">Forum</a>
+      <a href="about.html">About</a>
+    </nav>
   </div>
+</header>
 
-  <!-- 右下角 + 按钮：滚动到发布区域（还是指向 forumFormSection） -->
-  <button class="fab" id="fabForum">+</button>
+<div class="shell">
+  <main>
 
-  <script>
-    document.getElementById("fabForum").addEventListener("click", () => {
-      const section = document.getElementById("forumFormSection");
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
-      }
-    });
-  </script>
+    <div class="page-title">论坛·Forum</div>
+    <div class="page-subtitle">提出问题、分享经验、闲聊都可以</div>
 
-  <!-- Supabase（顺序与 jobs / cv / rent 一致） -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-  <script src="forum.js"></script>
+    <div class="layout">
+
+      <section class="card">
+        <div class="section-title">所有帖子</div>
+        <div id="posts" class="posts-empty">暂时还没有帖子</div>
+      </section>
+
+      <section class="card" id="forumFormSection">
+        <div class="section-title">发布帖子</div>
+
+        <form id="forumForm">
+          <label for="title">标题</label>
+          <input id="title" type="text" />
+
+          <label for="content">内容</label>
+          <textarea id="content"></textarea>
+
+          <div class="image-group">
+            <label for="forumImages">配图（最多 5 张）</label>
+            <input id="forumImages" type="file" multiple />
+          </div>
+
+          <div id="forumPreview" class="forum-photos"></div>
+          <button type="button" id="forumClearImages" class="clear-images-btn">清空图片</button>
+
+          <button type="submit">发布</button>
+          <div id="forumStatus" style="font-size:13px;margin-top:6px;"></div>
+        </form>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<button class="fab" id="fabForum">+</button>
+
+<script>
+document.getElementById("fabForum").addEventListener("click", () => {
+  document.getElementById("forumFormSection")
+    .scrollIntoView({ behavior: "smooth" });
+});
+</script>
+
+<script src="forum.js"></script>
+
 </body>
 </html>
