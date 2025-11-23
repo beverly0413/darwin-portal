@@ -1,9 +1,77 @@
-// rent.js
 const supabase = window.supabaseClient;
 
 const rentList = document.getElementById("rentList");
 const form = document.getElementById("rentForm");
 const statusEl = document.getElementById("rentStatus");
+
+// ========= 新增：把非通用格式自动转成 JPEG =========
+async function convertImageToJpeg(file) {
+  // 浏览器能直接用而且最稳的格式
+  const safeTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  // 如果本来就是常见格式，就不用转换，直接上传
+  if (safeTypes.includes(file.type)) {
+    return file;
+  }
+
+  // 万一 type 为空，但扩展名是 jpg/png/webp，也当作安全格式
+  const nameLower = file.name.toLowerCase();
+  if (
+    nameLower.endsWith(".jpg") ||
+    nameLower.endsWith(".jpeg") ||
+    nameLower.endsWith(".png") ||
+    nameLower.endsWith(".webp")
+  ) {
+    return file;
+  }
+
+  // 其他格式（比如 avif、heic 等），统一转成 jpg 再上传
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          // 质量 0.9 的 JPEG
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error("图片转换失败：canvas.toBlob 返回空值"));
+                return;
+              }
+              const newName = file.name.replace(/\.\w+$/i, "") + ".jpg";
+              const jpegFile = new File([blob], newName, {
+                type: "image/jpeg",
+              });
+              resolve(jpegFile);
+            },
+            "image/jpeg",
+            0.9
+          );
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = (err) => {
+        reject(err);
+      };
+      img.src = e.target.result;
+    };
+
+    reader.onerror = (err) => {
+      reject(err);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
 
 // ================== 加载房源列表 ==================
 async function loadRents() {
@@ -57,8 +125,11 @@ loadRents();
 
 // ================== 工具函数：上传单个文件到 Storage ==================
 async function uploadImageToStorage(file, userId, index) {
-  // 简单取扩展名
-  const parts = file.name.split(".");
+  // 先把不稳定格式（avif/heic 等）转换成 jpeg
+  const fileToUpload = await convertImageToJpeg(file);
+
+  // 根据 “转换后的文件名” 来决定扩展名
+  const parts = fileToUpload.name.split(".");
   const ext = parts.length > 1 ? parts.pop() : "jpg";
 
   // 路径：userId/时间戳_序号.扩展名
@@ -66,7 +137,7 @@ async function uploadImageToStorage(file, userId, index) {
 
   const { data, error } = await supabase.storage
     .from("rent-images") // 你指定的 bucket 名
-    .upload(path, file, {
+    .upload(path, fileToUpload, {
       cacheControl: "3600",
       upsert: false,
     });
