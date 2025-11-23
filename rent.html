@@ -17,8 +17,8 @@
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 统一顶部导航（与 jobs.html 完全一致） */
-    .top-nav {
+    /* 顶部导航 */
+    .top-nav{
       width:100%;
       background:#e8f5ec;
       padding:10px 0;
@@ -28,7 +28,7 @@
       z-index:30;
       box-shadow:0 2px 4px rgba(15,23,42,0.06);
     }
-    .nav-inner {
+    .nav-inner{
       max-width:1100px;
       margin:0 auto;
       padding:0 16px;
@@ -47,21 +47,13 @@
       overflow:hidden;
       background:#ffffff;
       box-shadow:0 4px 14px rgba(0,0,0,0.15);
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex;align-items:center;justify-content:center;
     }
     .brand-logo img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
+      width:100%;height:100%;object-fit:cover;
     }
-    .brand-text-main{
-      font-size:18px;font-weight:600;color:#022c22;
-    }
-    .brand-text-sub{
-      font-size:13px;color:var(--text-muted);margin-top:-2px;
-    }
+    .brand-text-main{font-size:18px;font-weight:600;color:#022c22;}
+    .brand-text-sub{font-size:13px;color:var(--text-muted);margin-top:-2px;}
 
     nav.nav-links{
       display:flex;flex-wrap:wrap;gap:10px;font-size:15px;
@@ -75,45 +67,63 @@
       background:#16a34a;color:#f0fdf4;
     }
 
-    /* 原来的页面布局 */
-    .shell{max-width:var(--max-width);margin:0 auto;padding:16px 16px 40px;}
-
-    main{margin-top:8px;}
-
-    .page-header{text-align:center;margin-bottom:20px;}
-    .page-header h1{font-size:24px;letter-spacing:0.12em;margin-bottom:4px;}
-    .page-header p{font-size:13px;color:var(--text-muted);}
-
-    .layout{display:grid;grid-template-columns:minmax(0,1.4fr);gap:20px;}
-    .card{
-      background:var(--bg-card);border-radius:16px;padding:16px 18px;
-      border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,0.08);
+    .shell{
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:16px 16px 40px;
     }
-    .card h2{font-size:18px;margin-bottom:10px;}
+
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.4fr);
+      gap:20px;
+    }
+    .card{
+      background:var(--bg-card);
+      border-radius:16px;
+      padding:16px 18px 20px;
+      border:1px solid var(--border);
+      box-shadow:0 10px 30px rgba(15,23,42,0.08);
+    }
+    .card h2{font-size:20px;margin-bottom:8px;}
     .card p{font-size:14px;color:var(--text-muted);}
 
-    #rentList{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
-    .post{
-      padding:12px 14px;border-radius:12px;border:1px solid var(--border);
-      background:#ffffff;box-shadow:0 6px 20px rgba(15,23,42,0.06);
+    form{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-top:6px;
     }
-    .post h3{margin-bottom:4px;font-size:16px;}
-    .post p{margin:0;font-size:14px;color:var(--text-muted);}
-    .post small{display:block;margin-top:4px;font-size:12px;color:var(--text-muted);}
-
-    .form-section{margin-top:26px;padding-top:14px;border-top:1px dashed var(--border);}
-    form{display:flex;flex-direction:column;gap:8px;}
     input,textarea{
-      width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
-      font-size:14px;font-family:inherit;
+      width:100%;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      font-size:14px;
+      font-family:inherit;
     }
-    textarea{min-height:70px;resize:vertical;}
-    button[type=submit]{
-      align-self:flex-start;padding:8px 18px;border-radius:999px;border:none;
-      background:var(--primary);color:#f9fafb;font-size:14px;cursor:pointer;
+    textarea{
+      min-height:80px;
+      resize:vertical;
     }
-    button[type=submit]:hover{background:#15803d;}
-    #rentStatus{font-size:13px;margin-top:4px;}
+    button[type="submit"]{
+      align-self:flex-start;
+      padding:8px 18px;
+      border-radius:999px;
+      border:none;
+      background:var(--primary);
+      color:#f9fafb;
+      font-size:14px;
+      cursor:pointer;
+      margin-top:4px;
+    }
+    button[type="submit"]:hover{
+      background:#15803d;
+    }
+    #rentStatus{
+      font-size:13px;
+      margin-top:4px;
+    }
 
     .image-group{
       margin-top:4px;
@@ -126,6 +136,7 @@
     .image-group input[type="file"]{
       font-size:13px;
     }
+
     .rent-photos{
       margin-top:8px;
       display:flex;
@@ -140,85 +151,151 @@
       border:1px solid var(--border);
     }
 
+    /* 单张预览外层，用于放删除按钮 */
+    .preview-item{
+      position:relative;
+      display:inline-block;
+    }
+
+    /* 每张图片右上角的删除按钮 */
+    .preview-remove{
+      position:absolute;
+      top:2px;
+      right:2px;
+      width:18px;
+      height:18px;
+      border:none;
+      border-radius:50%;
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      font-size:12px;
+      line-height:18px;
+      cursor:pointer;
+    }
+    .preview-remove:hover{
+      background:rgba(0,0,0,0.85);
+    }
+
+    /* 清空图片按钮 */
+    .clear-images-btn{
+      margin-top:4px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #d1e5d4;
+      background:#f9fafb;
+      font-size:12px;
+      cursor:pointer;
+      align-self:flex-start;
+      color:red;
+    }
+    .clear-images-btn:hover{
+      background:#ffe5e5;
+      color:#c40000;
+      border-color:#ffb3b3;
+    }
+
     .fab{
-      position:fixed;right:18px;bottom:18px;width:44px;height:44px;
-      border-radius:50%;border:none;background:var(--primary);color:#f9fafb;
-      font-size:26px;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;box-shadow:0 10px 24px rgba(15,23,42,0.6);z-index:50;
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:none;
+      background:var(--primary);
+      color:#f9fafb;
+      font-size:26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(15,23,42,0.6);
+      z-index:50;
     }
     .fab:hover{background:#15803d;}
   </style>
 </head>
-
 <body>
-  <!-- 顶部导航（新版圆形 logo） -->
-  <header class="top-nav">
-    <div class="nav-inner">
-      <div class="brand">
-        <div class="brand-logo">
-          <img src="darwin-logo.png" alt="logo" />
-        </div>
-        <div>
-          <div class="brand-text-main">Darwin Life Hub</div>
-          <div class="brand-text-sub">达尔文华人生活门户</div>
-        </div>
+<header class="top-nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <img src="darwin-logo.png" alt="logo" />
       </div>
-
-      <nav class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="news.html">News</a>
-        <a href="jobs.html">Jobs</a>
-        <a href="cv.html">CV</a>
-        <a href="rent.html" class="active">Rent</a>
-        <a href="forum.html">Forum</a>
-        <a href="about.html">About</a>
-      </nav>
+      <div>
+        <div class="brand-text-main">Darwin Life Hub</div>
+        <div class="brand-text-sub">达尔文华人生活门户</div>
+      </div>
     </div>
-  </header>
-
-  <div class="shell">
-    <main class="layout">
-      <section class="card">
-        <h2>租房信息 · Rent</h2>
-        <p>发布达尔文本地合租 / 整租 / 短租房源信息。</p>
-
-        <div id="rentList"></div>
-
-        <div class="form-section" id="rentFormSection">
-          <h3>发布房源</h3>
-          <form id="rentForm">
-            <input id="rentTitle" placeholder="房源标题（必填）" required />
-            <input id="rentContact" placeholder="联系方式（必填）" required />
-            <textarea id="rentContent" placeholder="房源详情：位置、价格、包不包水电网等"></textarea>
-
-            <div class="image-group">
-              <label for="rentImages">房源照片（可选，最多 5 张）：</label>
-              <input id="rentImages" type="file" accept="image/*" multiple />
-              <small>提示：一次最多选择 5 张图片。</small>
-            </div>
-
-            <!-- 本地预览区域，用来显示已经累加的图片 -->
-            <div id="rentPreview" class="rent-photos"></div>
-
-            <button type="submit">发布</button>
-            <div id="rentStatus"></div>
-          </form>
-        </div>
-      </section>
-    </main>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="news.html">News</a>
+      <a href="jobs.html">Jobs</a>
+      <a href="cv.html">CV</a>
+      <a href="rent.html" class="active">Rent</a>
+      <a href="forum.html">Forum</a>
+      <a href="about.html">About</a>
+    </nav>
   </div>
+</header>
 
-  <button class="fab" id="fabRent">+</button>
+<div class="shell">
+  <main class="layout">
+    <section class="card">
+      <h2>租房信息 · Rent</h2>
+      <p>发布达尔文本地合租 / 整租 / 短租房源信息。</p>
 
-  <script>
-    document.getElementById("fabRent").addEventListener("click", () => {
-      document.getElementById("rentFormSection").scrollIntoView({ behavior: "smooth" });
-    });
-  </script>
+      <div id="rentList" style="margin-top:14px;"></div>
 
-  <!-- 正确的 Supabase v2 UMD CDN（唯一修改点） -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
-  <script src="supabase.js"></script>
-  <script src="rent.js"></script>
+      <div class="form-section" id="rentFormSection" style="margin-top:26px;padding-top:14px;border-top:1px dashed var(--border);">
+        <h3 style="font-size:16px;margin-bottom:6px;">发布房源</h3>
+        <form id="rentForm">
+          <input id="rentTitle" placeholder="房源标题（必填）" required />
+          <input id="rentContact" placeholder="联系方式（必填）" required />
+          <textarea id="rentContent" placeholder="房源详情：位置、价格、包不包水电网等"></textarea>
+
+          <div class="image-group">
+            <label for="rentImages">
+              房源照片（可选，最多 5 张）：
+            </label>
+            <input
+              id="rentImages"
+              type="file"
+              accept="image/*"
+              multiple
+            />
+            <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
+          </div>
+
+          <!-- 本地预览区域，用来显示已经累加的图片 -->
+          <div id="rentPreview" class="rent-photos"></div>
+
+          <!-- 清空图片按钮 -->
+          <button type="button" id="rentClearImages" class="clear-images-btn">
+            清空图片
+          </button>
+
+          <button type="submit">发布</button>
+          <div id="rentStatus"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<button class="fab" id="fabRent">+</button>
+
+<script>
+  document.getElementById("fabRent").addEventListener("click", () => {
+    document
+      .getElementById("rentFormSection")
+      .scrollIntoView({ behavior: "smooth" });
+  });
+</script>
+
+<!-- Supabase UMD 和你的客户端配置 -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="rent.js"></script>
 </body>
 </html>

@@ -4,21 +4,28 @@ const rentList = document.getElementById("rentList");
 const form = document.getElementById("rentForm");
 const statusEl = document.getElementById("rentStatus");
 
-// 文件 input + 预览 + 自己维护的文件数组
 const filesInput = document.getElementById("rentImages");
 const rentPreview = document.getElementById("rentPreview");
-let rentImagesList = [];   // 用数组来保存已选文件
+const clearBtn = document.getElementById("rentClearImages");
+let rentImagesList = [];
 const MAX_IMAGES = 5;
 
-// 刷新本地预览
+// 刷新本地预览（支持单张删除）
 function updateRentPreview() {
   if (!rentPreview) return;
-
   rentPreview.innerHTML = "";
 
-  rentImagesList.forEach((file) => {
+  rentImagesList.forEach((file, index) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "preview-item";
+
     const img = document.createElement("img");
     img.alt = file.name;
+    img.style.width = "90px";
+    img.style.height = "90px";
+    img.style.objectFit = "cover";
+    img.style.borderRadius = "8px";
+    img.style.border = "1px solid #d1e5d4";
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -26,50 +33,53 @@ function updateRentPreview() {
     };
     reader.readAsDataURL(file);
 
-    rentPreview.appendChild(img);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "×";
+    removeBtn.className = "preview-remove";
+    removeBtn.addEventListener("click", () => {
+      rentImagesList.splice(index, 1);
+      updateRentPreview();
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(removeBtn);
+    rentPreview.appendChild(wrapper);
   });
 }
 
-// 选择文件时，累加到数组，而不是覆盖
+// 监听选择文件（累加到数组）
 if (filesInput) {
   filesInput.addEventListener("change", (e) => {
     const newFiles = Array.from(e.target.files || []);
-
     for (const file of newFiles) {
       if (rentImagesList.length >= MAX_IMAGES) break;
       rentImagesList.push(file);
     }
-
-    // 清空当前这次的 value，避免同一文件无法再次选择
     filesInput.value = "";
+    updateRentPreview();
+  });
+}
 
-    // 刷新预览
+// 清空所有图片
+if (clearBtn) {
+  clearBtn.addEventListener("click", () => {
+    rentImagesList = [];
+    if (filesInput) {
+      filesInput.value = "";
+    }
     updateRentPreview();
   });
 }
 
 // ========= 把非通用格式自动转成 JPEG =========
 async function convertImageToJpeg(file) {
-  // 浏览器能直接用而且最稳的格式
   const safeTypes = ["image/jpeg", "image/png", "image/webp"];
 
-  // 如果本来就是常见格式，就不用转换，直接上传
   if (safeTypes.includes(file.type)) {
     return file;
   }
 
-  // 万一 type 为空，但扩展名是 jpg/png/webp，也当作安全格式
-  const nameLower = file.name.toLowerCase();
-  if (
-    nameLower.endsWith(".jpg") ||
-    nameLower.endsWith(".jpeg") ||
-    nameLower.endsWith(".png") ||
-    nameLower.endsWith(".webp")
-  ) {
-    return file;
-  }
-
-  // 其他格式（比如 avif、heic 等），统一转成 jpg 再上传
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -83,7 +93,6 @@ async function convertImageToJpeg(file) {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0);
 
-          // 质量 0.9 的 JPEG
           canvas.toBlob(
             (blob) => {
               if (!blob) {
@@ -103,9 +112,11 @@ async function convertImageToJpeg(file) {
           reject(err);
         }
       };
+
       img.onerror = (err) => {
         reject(err);
       };
+
       img.src = e.target.result;
     };
 
@@ -115,6 +126,31 @@ async function convertImageToJpeg(file) {
 
     reader.readAsDataURL(file);
   });
+}
+
+// 上传到 Supabase Storage
+async function uploadImageToStorage(file, userId, index) {
+  const fileToUpload = await convertImageToJpeg(file);
+  const ext = "jpg";
+  const path = `${userId}/${Date.now()}_${index}.${ext}`;
+
+  const { data, error } = await supabase.storage
+    .from("rent-images")
+    .upload(path, fileToUpload, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) {
+    console.error("上传图片失败：", error);
+    throw error;
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from("rent-images")
+    .getPublicUrl(data.path);
+
+  return publicUrlData.publicUrl;
 }
 
 // ================== 加载房源列表 ==================
@@ -136,8 +172,8 @@ async function loadRents() {
   data.forEach((r) => {
     const div = document.createElement("div");
     div.className = "post";
+    div.style.marginBottom = "16px";
 
-    // 解析图片链接（image_urls 用 "||" 拼接）
     const images = (r.image_urls || "")
       .split("||")
       .map((s) => s.trim())
@@ -148,7 +184,8 @@ async function loadRents() {
         <div class="rent-photos">
           ${images
             .map(
-              (url) => `<img src="${url}" alt="房源图片" loading="lazy" />`
+              (url) =>
+                `<img src="${url}" alt="房源图片" loading="lazy" />`
             )
             .join("")}
         </div>
@@ -158,54 +195,23 @@ async function loadRents() {
     div.innerHTML = `
       <h3>${r.title || "未命名房源"}</h3>
       <p><strong>联系方式：</strong>${r.contact || "未填写"}</p>
-      <p>${(r.content || "").replace(/\n/g, "<br>")}</p>
+      <p style="white-space:pre-wrap;">${r.content || ""}</p>
       ${imagesHtml}
     `;
+
     rentList.appendChild(div);
   });
 }
 
 loadRents();
 
-// ================== 工具函数：上传单个文件到 Storage ==================
-async function uploadImageToStorage(file, userId, index) {
-  // 先把不稳定格式（avif/heic 等）转换成 jpeg
-  const fileToUpload = await convertImageToJpeg(file);
-
-  // 根据 “转换后的文件名” 来决定扩展名
-  const parts = fileToUpload.name.split(".");
-  const ext = parts.length > 1 ? parts.pop() : "jpg";
-
-  // 路径：userId/时间戳_序号.扩展名
-  const path = `${userId}/${Date.now()}_${index}.${ext}`;
-
-  const { data, error } = await supabase.storage
-    .from("rent-images") // 你指定的 bucket 名
-    .upload(path, fileToUpload, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (error) {
-    console.error("图片上传失败：", error);
-    throw error;
-  }
-
-  const { data: urlData } = supabase.storage
-    .from("rent-images")
-    .getPublicUrl(data.path);
-
-  return urlData.publicUrl;
-}
-
-// ================== 发布房源 ==================
+// ================== 提交表单（发布房源） ==================
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   statusEl.textContent = "";
   statusEl.style.color = "#6b7280";
 
-  // 获取登录用户
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr) {
     console.error(userErr);
@@ -213,9 +219,7 @@ form.addEventListener("submit", async (e) => {
     window.location.href = "login.html";
     return;
   }
-
   const user = userData?.user;
-
   if (!user) {
     alert("请先登录！");
     window.location.href = "login.html";
@@ -226,7 +230,6 @@ form.addEventListener("submit", async (e) => {
   const contact = document.getElementById("rentContact").value.trim();
   const content = document.getElementById("rentContent").value.trim();
 
-  // 使用我们累积的文件，没有的话再退回到 input.files
   const files =
     rentImagesList.length > 0
       ? rentImagesList
@@ -272,7 +275,7 @@ form.addEventListener("submit", async (e) => {
     title,
     contact,
     content,
-    image_urls, // 新增字段
+    image_urls,
   });
 
   if (error) {
@@ -286,7 +289,7 @@ form.addEventListener("submit", async (e) => {
   statusEl.style.color = "green";
   form.reset();
 
-  // 发布成功后清空已选图片和预览
+  // 发布成功后清空图片和预览
   rentImagesList = [];
   if (filesInput) {
     filesInput.value = "";
