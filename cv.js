@@ -197,6 +197,21 @@ function setupCvForm() {
       return;
     }
 
+    // ✨ 关键新增：发布前检查是否登录（和 jobs / rent / forum 一样）
+    try {
+      const { data, error } = await supabaseClient.auth.getUser();
+      if (error || !data?.user) {
+        alert('请先登录后再发布求职信息。');
+        window.location.href = 'login.html';
+        return;
+      }
+    } catch (err) {
+      console.error('检查登录状态失败：', err);
+      alert('登录状态异常，请重新登录。');
+      window.location.href = 'login.html';
+      return;
+    }
+
     statusEl.textContent = '正在保存...';
     statusEl.style.color = '#6b7280';
 

@@ -266,7 +266,10 @@ document.getElementById("fabForum").addEventListener("click", () => {
     .scrollIntoView({ behavior: "smooth" });
 });
 </script>
-
+<!-- Supabase UMD 和你的客户端配置 -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="auth-guard.js"></script>
 <script src="forum.js"></script>
 
 </body>
