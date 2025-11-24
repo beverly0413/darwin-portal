@@ -1,6 +1,9 @@
 // jobs.js
 // 前端招聘列表：文字持久化到 localStorage，图片只在本次打开期间保存在内存里
 
+// 新增：拿到 Supabase 客户端（用于检查是否登录）
+const supabase = window.supabaseClient || null;
+
 const STORAGE_KEY = 'darwin_life_hub_jobs_v2';
 
 const MAX_IMAGES = 5;
@@ -242,9 +245,38 @@ function setupForm() {
   });
 }
 
+// 新增：封装一个“检查登录”的初始化函数
+async function initJobsWithAuth() {
+  // 如果 Supabase 没有加载成功，就退回原来的本地模式（不强制登录）
+  if (!supabase) {
+    console.warn('Supabase 未初始化，Jobs 页面暂时不做登录限制。');
+    jobsMemory = loadJobsFromStorage();
+    renderJobs();
+    setupForm();
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data || !data.user) {
+      alert('请先登录后再发布招聘信息。');
+      window.location.href = 'login.html';
+      return;
+    }
+
+    // 已登录：才初始化原来的页面逻辑
+    jobsMemory = loadJobsFromStorage();
+    renderJobs();
+    setupForm();
+  } catch (err) {
+    console.error('检查登录状态出错：', err);
+    alert('检查登录状态失败，请先登录。');
+    window.location.href = 'login.html';
+  }
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-  jobsMemory = loadJobsFromStorage();
-  renderJobs();
-  setupForm();
+  initJobsWithAuth();
 });
