@@ -1,112 +1,90 @@
 // jobs.js
-// 前端招聘列表：文字持久化到 localStorage，图片只在本次打开期间保存在内存里
-
-// 必须拿到 Supabase 客户端（用于检查是否登录）
-const supabase = window.supabaseClient || null;
+// 所有人都能看列表；只有发布时才检查是否登录
 
 const STORAGE_KEY = "darwin_life_hub_jobs_v2";
 
 const MAX_IMAGES = 5;
-let jobImagesList = [];   // 当前这条招聘选中的图片（File 对象）
-let jobsMemory = [];      // 本次会话中的招聘列表（包含 images）
-let currentUser = null;   // 当前登录用户（从 Supabase 读取）
+let jobImagesList = [];
+let jobsMemory = [];
 
-// 只从 localStorage 读取“文字部分”的招聘数据
+// 读取本地帖子（不含图片）
 function loadJobsFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch (e) {
-    console.error("解析本地招聘数据失败：", e);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
     return [];
   }
 }
 
-// 只把“文字部分”写回 localStorage（不保存图片，避免超出配额）
+// 保存文字部分
 function saveJobsToStorageTextOnly() {
-  try {
-    const textOnly = jobsMemory.map((job) => ({
-      id: job.id,
-      title: job.title,
-      company: job.company,
-      contact: job.contact,
-      content: job.content,
-      createdAt: job.createdAt,
-      // 关键：把用户信息也存起来，给“我的”页面用
-      userId: job.userId || null,
-      userEmail: job.userEmail || null,
-    }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
-  } catch (e) {
-    console.error("保存本地招聘数据失败：", e);
-  }
+  const textOnly = jobsMemory.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company,
+    contact: job.contact,
+    content: job.content,
+    createdAt: job.createdAt,
+    userId: job.userId || null,
+    userEmail: job.userEmail || null,
+  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
 }
 
-// ===== 刷新图片预览：支持单张删除 =====
+// 预览图片
 function updateJobPreview() {
   const previewEl = document.getElementById("jobPreview");
-  if (!previewEl) return;
-
   previewEl.innerHTML = "";
 
   jobImagesList.forEach((file, index) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "preview-item";
+    const wrap = document.createElement("div");
+    wrap.className = "preview-item";
 
     const img = document.createElement("img");
-    img.alt = file.name;
-
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      img.src = ev.target.result;
-    };
+
+    reader.onload = (e) => (img.src = e.target.result);
     reader.readAsDataURL(file);
 
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.textContent = "×";
-    removeBtn.className = "preview-remove";
-    removeBtn.addEventListener("click", () => {
-      // 删除当前这张，再刷新预览
+    const btn = document.createElement("button");
+    btn.textContent = "×";
+    btn.className = "preview-remove";
+    btn.addEventListener("click", () => {
       jobImagesList.splice(index, 1);
       updateJobPreview();
     });
 
-    wrapper.appendChild(img);
-    wrapper.appendChild(removeBtn);
-    previewEl.appendChild(wrapper);
+    wrap.appendChild(img);
+    wrap.appendChild(btn);
+    previewEl.appendChild(wrap);
   });
 }
 
-// 把 File 列表转换成 DataURL 数组（只存内存，用于展示）
+// DataURL 转换
 function readFilesAsDataUrls(files) {
-  const list = Array.from(files);
   return Promise.all(
-    list.map(
+    Array.from(files).map(
       (file) =>
-        new Promise((resolve, reject) => {
+        new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onload = (ev) => resolve(ev.target.result);
-          reader.onerror = reject;
+          reader.onload = (e) => resolve(e.target.result);
           reader.readAsDataURL(file);
         })
     )
   );
 }
 
-// 渲染列表：使用 jobsMemory（包含 images）
+// 渲染招聘列表
 function renderJobs() {
   const listEl = document.getElementById("jobList");
-  if (!listEl) return;
-
   listEl.innerHTML = "";
 
   if (jobsMemory.length === 0) {
     listEl.innerHTML =
-      '<p style="font-size:13px;color:#6b7280;">目前还没有招聘信息，欢迎发布第一条。</p>';
+      '<p style="color:#6b7280;font-size:13px;">目前还没有招聘信息，欢迎发布第一条。</p>';
     return;
   }
 
@@ -114,34 +92,25 @@ function renderJobs() {
     const div = document.createElement("div");
     div.className = "job";
 
-    const title = job.title || "未命名职位";
-    const company = job.company || "";
-    const contact = job.contact || "";
-    const content = job.content || "";
-    const createdAt = job.createdAt ? new Date(job.createdAt) : new Date();
-
-    const dateStr = `${createdAt.getFullYear()}-${String(
-      createdAt.getMonth() + 1
-    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
+    const date = new Date(job.createdAt);
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(date.getDate()).padStart(2, "0")}`;
 
     let imagesHtml = "";
-    if (Array.isArray(job.images) && job.images.length > 0) {
+    if (job.images) {
       imagesHtml = `
         <div class="job-photos">
-          ${job.images
-            .map(
-              (url) => `<img src="${url}" alt="职位相关图片" loading="lazy" />`
-            )
-            .join("")}
-        </div>
-      `;
+          ${job.images.map((img) => `<img src="${img}" />`).join("")}
+        </div>`;
     }
 
     div.innerHTML = `
-      <h3>${title}</h3>
-      ${company ? `<p><strong>店铺 / 公司：</strong>${company}</p>` : ""}
-      ${contact ? `<p><strong>联系方式：</strong>${contact}</p>` : ""}
-      ${content ? `<p style="white-space:pre-wrap;">${content}</p>` : ""}
+      <h3>${job.title}</h3>
+      ${job.company ? `<p><strong>公司：</strong>${job.company}</p>` : ""}
+      ${job.contact ? `<p><strong>联系方式：</strong>${job.contact}</p>` : ""}
+      ${job.content ? `<p style="white-space:pre-wrap;">${job.content}</p>` : ""}
       ${imagesHtml}
       <small>发布于：${dateStr}</small>
     `;
@@ -154,84 +123,51 @@ function renderJobs() {
 function setupForm() {
   const form = document.getElementById("jobForm");
   const statusEl = document.getElementById("jobStatus");
-  const imagesInput = document.getElementById("jobImages");
-  const clearBtn = document.getElementById("jobClearImages");
+  const inputImg = document.getElementById("jobImages");
+  const btnClear = document.getElementById("jobClearImages");
 
-  if (!form) return;
+  inputImg.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files);
+    for (const f of files) {
+      if (jobImagesList.length < MAX_IMAGES) jobImagesList.push(f);
+    }
+    inputImg.value = "";
+    updateJobPreview();
+  });
 
-  // 监听图片选择：多次选择累加，最多 5 张
-  if (imagesInput) {
-    imagesInput.addEventListener("change", (e) => {
-      const newFiles = Array.from(e.target.files || []);
-
-      for (const file of newFiles) {
-        if (jobImagesList.length >= MAX_IMAGES) break;
-        jobImagesList.push(file);
-      }
-
-      imagesInput.value = ""; // 清空，避免同一文件不能再次选择
-      updateJobPreview();
-    });
-  }
-
-  // 清空所有图片
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      jobImagesList = [];
-      updateJobPreview();
-    });
-  }
+  btnClear.addEventListener("click", () => {
+    jobImagesList = [];
+    updateJobPreview();
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const titleEl = document.getElementById("jobTitle");
-    const companyEl = document.getElementById("jobCompany");
-    const contactEl = document.getElementById("jobContact");
-    const contentEl = document.getElementById("jobContent");
+    const title = document.getElementById("jobTitle").value.trim();
+    const company = document.getElementById("jobCompany").value.trim();
+    const contact = document.getElementById("jobContact").value.trim();
+    const content = document.getElementById("jobContent").value.trim();
 
-    const title = titleEl.value.trim();
-    const company = companyEl.value.trim();
-    const contact = contactEl.value.trim();
-    const content = contentEl.value.trim();
-
-    if (!title) {
-      statusEl.textContent = "职位名称是必填项。";
-      statusEl.style.color = "red";
-      return;
-    }
-    if (!contact) {
-      statusEl.textContent = "联系方式是必填项。";
-      statusEl.style.color = "red";
-      return;
-    }
-    if (jobImagesList.length > MAX_IMAGES) {
-      statusEl.textContent = "最多只能上传 5 张照片。";
+    if (!title || !contact) {
+      statusEl.textContent = "职位名称和联系方式是必填项";
       statusEl.style.color = "red";
       return;
     }
 
-    // 再保险：如果 currentUser 没有取到，就不允许发帖
-    if (!currentUser) {
-      statusEl.textContent = "当前未检测到登录信息，请先登录再发帖。";
-      statusEl.style.color = "red";
+    // ✨ 发帖前检查登录状态
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error || !data?.user) {
+      alert("请先登录后再发布招聘信息。");
+      window.location.href = "login.html";
       return;
     }
+
+    const user = data.user;
 
     statusEl.textContent = "正在保存...";
     statusEl.style.color = "#6b7280";
 
-    let imageDataUrls = [];
-    try {
-      if (jobImagesList.length > 0) {
-        imageDataUrls = await readFilesAsDataUrls(jobImagesList);
-      }
-    } catch (err) {
-      console.error("读取图片失败：", err);
-      statusEl.textContent = "读取图片失败，请重试。";
-      statusEl.style.color = "red";
-      return;
-    }
+    const images = await readFilesAsDataUrls(jobImagesList);
 
     const newJob = {
       id: Date.now(),
@@ -239,10 +175,10 @@ function setupForm() {
       company,
       contact,
       content,
+      images,
       createdAt: new Date().toISOString(),
-      images: imageDataUrls, // 只在 jobsMemory 里存在
-      userId: currentUser.id,
-      userEmail: currentUser.email,
+      userId: user.id,
+      userEmail: user.email,
     };
 
     jobsMemory.unshift(newJob);
@@ -250,45 +186,17 @@ function setupForm() {
     renderJobs();
 
     form.reset();
-    statusEl.textContent = "发布成功（文字已保存在本浏览器）。";
-    statusEl.style.color = "green";
-
     jobImagesList = [];
     updateJobPreview();
+
+    statusEl.textContent = "发布成功";
+    statusEl.style.color = "green";
   });
 }
 
-// 检查登录 + 初始化
-async function initJobsWithAuth() {
-  // Supabase 必须存在，否则直接报错，不再允许“匿名发帖”
-  if (!supabase) {
-    alert("登录模块加载失败，请稍后刷新重试。");
-    return;
-  }
-
-  try {
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error || !data || !data.user) {
-      alert("请先登录后再发布招聘信息。");
-      window.location.href = "login.html";
-      return;
-    }
-
-    // 已登录：记录当前用户，初始化原来的页面逻辑
-    currentUser = data.user;
-
-    jobsMemory = loadJobsFromStorage();
-    renderJobs();
-    setupForm();
-  } catch (err) {
-    console.error("检查登录状态出错：", err);
-    alert("检查登录状态失败，请先登录。");
-    window.location.href = "login.html";
-  }
-}
-
-// 初始化
+// 初始化：不要求登录
 document.addEventListener("DOMContentLoaded", () => {
-  initJobsWithAuth();
+  jobsMemory = loadJobsFromStorage();
+  renderJobs();
+  setupForm();
 });
