@@ -1,12 +1,10 @@
-// rent.js —— 使用 Supabase 云端数据库版本
+// rent.js —— 使用 Supabase 数据库存储租房信息
 // 表名：rent_posts
 
-const supabase = window.supabaseClient; 
 const MAX_IMAGES = 5;
+let rentImagesList = []; // 当前准备上传的图片 File 列表
 
-let rentImagesList = []; // File 对象数组
-
-// File[] -> base64[]
+// 工具：File[] -> base64[]
 function filesToBase64(files) {
   return Promise.all(
     files.map(
@@ -20,27 +18,43 @@ function filesToBase64(files) {
   );
 }
 
-// 渲染租房列表
+// 工具：检查 supabaseClient 是否存在
+function ensureSupabase() {
+  if (!window.supabaseClient) {
+    console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
+    alert("系统配置错误：未找到 supabaseClient。");
+    return false;
+  }
+  return true;
+}
+
+/* ===================== 列表加载 ===================== */
+
 async function loadRents() {
   const listEl = document.getElementById("rentList");
   if (!listEl) return;
 
   listEl.innerHTML = "加载中...";
 
-  const { data, error } = await supabase
+  if (!ensureSupabase()) {
+    listEl.textContent = "系统配置错误，无法加载数据。";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
     .from("rent_posts")
-    .select("*")
+    .select("id, title, contact, content, images, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("加载错误：", error);
-    listEl.innerHTML = "加载失败，请稍候再试。";
+    console.error("加载租房列表失败：", error);
+    listEl.textContent = "加载失败，请稍后重试。";
     return;
   }
 
   if (!data || data.length === 0) {
     listEl.innerHTML =
-      '<p style="color:#6b7280;font-size:13px;">目前还没有租房信息。</p>';
+      '<p style="color:#6b7280;font-size:13px;">目前还没有租房信息，欢迎成为第一位发布者。</p>';
     return;
   }
 
@@ -50,10 +64,10 @@ async function loadRents() {
     const div = document.createElement("div");
     div.className = "post";
 
-    const date = new Date(rent.created_at);
-    const dateStr = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const createdAt = rent.created_at ? new Date(rent.created_at) : new Date();
+    const dateStr = `${createdAt.getFullYear()}-${String(
+      createdAt.getMonth() + 1
+    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
     let imagesHtml = "";
     if (Array.isArray(rent.images) && rent.images.length > 0) {
@@ -62,13 +76,18 @@ async function loadRents() {
           ${rent.images
             .map((img) => `<img src="${img}" alt="房源图片" />`)
             .join("")}
-        </div>`;
+        </div>
+      `;
     }
 
     div.innerHTML = `
-      <h3>${rent.title}</h3>
-      <p><strong>联系方式：</strong>${rent.contact}</p>
-      <p style="white-space:pre-wrap;">${rent.content}</p>
+      <h3>${rent.title || "未命名房源"}</h3>
+      <p><strong>联系方式：</strong>${rent.contact || "未填写"}</p>
+      ${
+        rent.content
+          ? `<p style="white-space:pre-wrap;">${rent.content}</p>`
+          : ""
+      }
       ${imagesHtml}
       <small style="color:#6b7280;">发布于：${dateStr}</small>
     `;
@@ -77,14 +96,17 @@ async function loadRents() {
   });
 }
 
-// 图片预览
+/* ===================== 图片预览 ===================== */
+
 function updateRentPreview() {
   const previewEl = document.getElementById("rentPreview");
+  if (!previewEl) return;
+
   previewEl.innerHTML = "";
 
   rentImagesList.forEach((file, idx) => {
-    const wrap = document.createElement("div");
-    wrap.className = "preview-item";
+    const wrapper = document.createElement("div");
+    wrapper.className = "preview-item";
 
     const img = document.createElement("img");
     img.style.width = "90px";
@@ -101,44 +123,53 @@ function updateRentPreview() {
     btn.textContent = "×";
     btn.type = "button";
     btn.className = "preview-remove";
-    btn.onclick = () => {
+    btn.addEventListener("click", () => {
       rentImagesList.splice(idx, 1);
       updateRentPreview();
-    };
+    });
 
-    wrap.appendChild(img);
-    wrap.appendChild(btn);
-    previewEl.appendChild(wrap);
+    wrapper.appendChild(img);
+    wrapper.appendChild(btn);
+    previewEl.appendChild(wrapper);
   });
 }
 
-// 初始化表单
+/* ===================== 表单逻辑 ===================== */
+
 function setupRentForm() {
   const form = document.getElementById("rentForm");
   const statusEl = document.getElementById("rentStatus");
   const input = document.getElementById("rentImages");
   const clearBtn = document.getElementById("rentClearImages");
 
-  // 添加图片
-  input.addEventListener("change", (e) => {
-    const newFiles = Array.from(e.target.files || []);
-    for (const file of newFiles) {
-      if (rentImagesList.length >= MAX_IMAGES) break;
-      rentImagesList.push(file);
-    }
-    input.value = "";
-    updateRentPreview();
-  });
+  if (!form || !statusEl) return;
+
+  // 选择图片（多次选择累加，最多 5 张）
+  if (input) {
+    input.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        if (rentImagesList.length >= MAX_IMAGES) break;
+        rentImagesList.push(file);
+      }
+      input.value = "";
+      updateRentPreview();
+    });
+  }
 
   // 清空图片
-  clearBtn.addEventListener("click", () => {
-    rentImagesList = [];
-    updateRentPreview();
-  });
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      rentImagesList = [];
+      updateRentPreview();
+      if (input) input.value = "";
+    });
+  }
 
-  // 提交表单（发帖）
+  // 提交发布
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!ensureSupabase()) return;
 
     const title = document.getElementById("rentTitle").value.trim();
     const contact = document.getElementById("rentContact").value.trim();
@@ -153,33 +184,50 @@ function setupRentForm() {
     statusEl.textContent = "提交中...";
     statusEl.style.color = "#6b7280";
 
-    // 检查登录
-    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    // 1. 检查登录
+    const { data: userData, error: userErr } = await supabaseClient
+      .auth
+      .getUser();
+
     if (userErr || !userData?.user) {
-      alert("请先登录再发布。");
+      alert("请先登录后再发布房源信息。");
       window.location.href = "login.html";
       return;
     }
     const user = userData.user;
 
-    // 转换图片
-    const imagesBase64 = await filesToBase64(
-      rentImagesList.slice(0, MAX_IMAGES)
-    );
+    // 2. 处理图片为 base64 数组
+    let imagesBase64 = [];
+    try {
+      imagesBase64 = await filesToBase64(
+        rentImagesList.slice(0, MAX_IMAGES)
+      );
+    } catch (err) {
+      console.error("读取图片失败：", err);
+      statusEl.textContent = "读取图片失败，请稍后重试。";
+      statusEl.style.color = "red";
+      return;
+    }
 
-    // 写入 Supabase
-    const { error } = await supabase.from("rent_posts").insert({
+    // 3. 写入 Supabase
+    const payload = {
       title,
       contact,
-      content,
       images: imagesBase64,
       user_id: user.id,
       user_email: user.email,
-    });
+    };
+
+    // 如果你在表里加了 content 字段，就保留这一行；否则可以删掉
+    payload.content = content;
+
+    const { error } = await supabaseClient
+      .from("rent_posts")
+      .insert(payload);
 
     if (error) {
-      console.error("发帖失败：", error);
-      statusEl.textContent = "发布失败，请稍后再试。";
+      console.error("发布失败：", error);
+      statusEl.textContent = "发布失败，请稍后重试。";
       statusEl.style.color = "red";
       return;
     }
@@ -187,15 +235,16 @@ function setupRentForm() {
     statusEl.textContent = "发布成功！";
     statusEl.style.color = "green";
 
+    // 4. 重置表单 & 预览 & 列表
     form.reset();
     rentImagesList = [];
     updateRentPreview();
-
-    loadRents(); // 重新加载
+    loadRents();
   });
 }
 
-// 页面初始化
+/* ===================== 初始化 ===================== */
+
 document.addEventListener("DOMContentLoaded", () => {
   loadRents();
   setupRentForm();
