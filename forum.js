@@ -1,4 +1,4 @@
-// forum.js —— 使用 Supabase 存储论坛帖子
+// forum.js —— Supabase 论坛 + 点击帖子查看详情
 // 表名：forum_posts
 
 const FORUM_MAX_IMAGES = 5;
@@ -28,7 +28,115 @@ function forumFilesToBase64(files) {
   );
 }
 
-// 图片预览
+// 小工具：格式化时间
+function formatDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/* ============= 详情弹窗 ============= */
+
+function showForumDetail(post) {
+  // 先移除旧弹窗
+  const old = document.getElementById("forumDetailOverlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "forumDetailOverlay";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(15,23,42,0.45)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "1000";
+
+  const card = document.createElement("div");
+  card.style.maxWidth = "720px";
+  card.style.width = "90%";
+  card.style.maxHeight = "85vh";
+  card.style.overflowY = "auto";
+  card.style.background = "#ffffff";
+  card.style.borderRadius = "16px";
+  card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
+  card.style.padding = "20px 24px 24px";
+  card.style.position = "relative";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.style.border = "none";
+  closeBtn.style.background = "transparent";
+  closeBtn.style.fontSize = "22px";
+  closeBtn.style.cursor = "pointer";
+  closeBtn.style.position = "absolute";
+  closeBtn.style.top = "8px";
+  closeBtn.style.right = "14px";
+  closeBtn.onclick = () => overlay.remove();
+
+  const titleEl = document.createElement("h2");
+  titleEl.textContent = post.title || "未命名帖子";
+  titleEl.style.margin = "0 0 6px 0";
+  titleEl.style.fontSize = "18px";
+
+  const metaEl = document.createElement("div");
+  metaEl.style.fontSize = "13px";
+  metaEl.style.color = "#6b7280";
+  const dateStr = formatDate(post.created_at);
+  metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
+  metaEl.style.marginBottom = "10px";
+
+  const contentEl = document.createElement("div");
+  contentEl.style.fontSize = "14px";
+  contentEl.style.color = "#111827";
+  contentEl.style.lineHeight = "1.6";
+  contentEl.style.whiteSpace = "pre-wrap";
+  contentEl.textContent = post.content || "";
+
+  const imagesWrapper = document.createElement("div");
+  if (Array.isArray(post.images) && post.images.length > 0) {
+    imagesWrapper.style.display = "grid";
+    imagesWrapper.style.gridTemplateColumns =
+      "repeat(auto-fill,minmax(120px,1fr))";
+    imagesWrapper.style.gap = "10px";
+    imagesWrapper.style.marginTop = "12px";
+
+    post.images.forEach((src) => {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "帖子图片";
+      img.style.width = "100%";
+      img.style.borderRadius = "10px";
+      img.style.objectFit = "cover";
+      img.loading = "lazy";
+      imagesWrapper.appendChild(img);
+    });
+  }
+
+  card.appendChild(closeBtn);
+  card.appendChild(titleEl);
+  card.appendChild(metaEl);
+  card.appendChild(contentEl);
+  if (imagesWrapper.childElementCount > 0) {
+    card.appendChild(imagesWrapper);
+  }
+
+  overlay.appendChild(card);
+
+  // 点击遮罩关闭（点卡片不关闭）
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+}
+
+/* ============= 图片预览（发帖时） ============= */
+
 function updateForumPreview() {
   const preview = document.getElementById("forumPreview");
   if (!preview) return;
@@ -65,7 +173,8 @@ function updateForumPreview() {
   });
 }
 
-// 加载帖子
+/* ============= 加载帖子列表 ============= */
+
 async function loadForumPosts() {
   const list = document.getElementById("posts");
   if (!list) return;
@@ -99,32 +208,45 @@ async function loadForumPosts() {
   data.forEach((p) => {
     const div = document.createElement("div");
     div.className = "post-card";
+    div.style.cursor = "pointer"; // 整卡可点击
 
-    const date = p.created_at ? new Date(p.created_at) : new Date();
-    const dateStr = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const dateStr = formatDate(p.created_at);
 
     let imgHtml = "";
     if (Array.isArray(p.images) && p.images.length > 0) {
       imgHtml = `
         <div class="forum-photos">
-          ${p.images.map((url) => `<img src="${url}" alt="帖子图片">`).join("")}
+          ${p.images
+            .map((url) => `<img src="${url}" alt="帖子图片">`)
+            .join("")}
         </div>
       `;
     }
 
+    // 摘要内容，太长就截断
+    let summary = p.content || "";
+    if (summary.length > 60) {
+      summary = summary.slice(0, 60) + "…";
+    }
+
     div.innerHTML = `
       <h3>${p.title}</h3>
-      <p style="white-space:pre-wrap;">${p.content}</p>
+      <p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>
       ${imgHtml}
       <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
     `;
+
+    // 点击帖子卡片 → 打开详情弹窗
+    div.addEventListener("click", () => {
+      showForumDetail(p);
+    });
+
     list.appendChild(div);
   });
 }
 
-// 表单逻辑
+/* ============= 发帖表单逻辑 ============= */
+
 function setupForumForm() {
   const form = document.getElementById("forumForm");
   const statusEl = document.getElementById("forumStatus");
@@ -219,6 +341,8 @@ function setupForumForm() {
     loadForumPosts();
   };
 }
+
+/* ============= 初始化 ============= */
 
 document.addEventListener("DOMContentLoaded", () => {
   loadForumPosts();
