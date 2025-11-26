@@ -1,40 +1,38 @@
-// forum.js
-// Forum 页面：localStorage 保存帖子（文字 + 图片），发布时需要登录
+// forum.js —— 使用 Supabase 存储论坛帖子
+// 表名：forum_posts
 
-const STORAGE_KEY = "darwin_life_hub_forum_v3";
-const MAX_IMAGES = 5;
+const FORUM_MAX_IMAGES = 5;
+let forumImagesList = [];
 
-let forumImagesList = [];  // 当前准备发布的图片（File 数组）
-let postsMemory = [];      // 当前所有帖子（含图片 DataURL）
-
-/* ========= localStorage 读写 ========= */
-
-// 读帖子（含图片）
-function loadPostsFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.error("读取论坛数据失败:", e);
-    return [];
+// 检查 supabaseClient
+function ensureSupabase() {
+  if (!window.supabaseClient) {
+    console.error("supabaseClient 未初始化，请检查公共配置脚本。");
+    alert("系统配置错误：未找到 supabaseClient。");
+    return false;
   }
+  return true;
 }
 
-// 写帖子（含图片）
-function savePostsToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(postsMemory));
-  } catch (e) {
-    console.error("保存论坛数据失败:", e);
-  }
+// File[] -> base64[]
+function forumFilesToBase64(files) {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const r = new FileReader();
+          r.onload = (e) => resolve(e.target.result);
+          r.readAsDataURL(file);
+        })
+    )
+  );
 }
 
-/* ========= 图片预览（支持单张删除） ========= */
-
+// 图片预览
 function updateForumPreview() {
   const preview = document.getElementById("forumPreview");
+  if (!preview) return;
+
   preview.innerHTML = "";
 
   forumImagesList.forEach((file, idx) => {
@@ -67,45 +65,45 @@ function updateForumPreview() {
   });
 }
 
-// File[] → DataURL[]
-function readFilesAsDataURL(files) {
-  return Promise.all(
-    files.map(
-      (file) =>
-        new Promise((res) => {
-          const r = new FileReader();
-          r.onload = (e) => res(e.target.result);
-          r.readAsDataURL(file);
-        })
-    )
-  );
-}
-
-/* ========= 渲染帖子 ========= */
-
-function renderPosts() {
+// 加载帖子
+async function loadForumPosts() {
   const list = document.getElementById("posts");
-  list.innerHTML = "";
+  if (!list) return;
 
-  if (!postsMemory || postsMemory.length === 0) {
-    list.innerHTML = `<div class="posts-empty">暂时还没有帖子，欢迎发布第一条。</div>`;
+  list.innerHTML = "加载中...";
+
+  if (!ensureSupabase()) {
+    list.textContent = "系统配置错误，无法加载数据。";
     return;
   }
 
-  // 按时间倒序
-  const sorted = [...postsMemory].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
+  const { data, error } = await supabaseClient
+    .from("forum_posts")
+    .select("id, title, content, images, created_at")
+    .order("created_at", { ascending: false });
 
-  sorted.forEach((p) => {
+  if (error) {
+    console.error("加载帖子失败：", error);
+    list.textContent = "加载失败，请稍后再试。";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML =
+      `<div class="posts-empty">暂时还没有帖子，欢迎发布第一条。</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  data.forEach((p) => {
     const div = document.createElement("div");
     div.className = "post-card";
 
-    const date = new Date(p.createdAt);
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-${String(date.getDate()).padStart(2, "0")}`;
+    const date = p.created_at ? new Date(p.created_at) : new Date();
+    const dateStr = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
     let imgHtml = "";
     if (Array.isArray(p.images) && p.images.length > 0) {
@@ -126,20 +124,20 @@ function renderPosts() {
   });
 }
 
-/* ========= 表单逻辑（发布前检查登录） ========= */
-
-function setupForm() {
+// 表单逻辑
+function setupForumForm() {
   const form = document.getElementById("forumForm");
   const statusEl = document.getElementById("forumStatus");
   const input = document.getElementById("forumImages");
   const clearBtn = document.getElementById("forumClearImages");
 
-  // 选择图片（可多次选择，累加，最多 5 张）
+  if (!form || !statusEl) return;
+
   if (input) {
     input.onchange = (e) => {
       const newFiles = Array.from(e.target.files || []);
       for (let file of newFiles) {
-        if (forumImagesList.length >= MAX_IMAGES) break;
+        if (forumImagesList.length >= FORUM_MAX_IMAGES) break;
         forumImagesList.push(file);
       }
       input.value = "";
@@ -147,7 +145,6 @@ function setupForm() {
     };
   }
 
-  // 清空图片
   if (clearBtn) {
     clearBtn.onclick = () => {
       forumImagesList = [];
@@ -158,6 +155,7 @@ function setupForm() {
 
   form.onsubmit = async (e) => {
     e.preventDefault();
+    if (!ensureSupabase()) return;
 
     const title = document.getElementById("title").value.trim();
     const content = document.getElementById("content").value.trim();
@@ -171,55 +169,58 @@ function setupForm() {
     statusEl.textContent = "发布中...";
     statusEl.style.color = "#6b7280";
 
-    // 1. 发布前检查是否登录，并拿到 user
-    let user;
-    try {
-      const { data, error } = await supabaseClient.auth.getUser();
-      if (error || !data?.user) {
-        alert("请先登录后再发布帖子。");
-        window.location.href = "login.html";
-        return;
-      }
-      user = data.user;
-    } catch (err) {
-      console.error("检查登录状态失败:", err);
-      alert("登录状态异常，请重新登录。");
+    // 登录检查
+    const { data: userData, error: userErr } =
+      await supabaseClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      alert("请先登录后再发布帖子。");
       window.location.href = "login.html";
       return;
     }
+    const user = userData.user;
 
-    // 2. 把 File 转成 base64，存进 localStorage
-    const urls = await readFilesAsDataURL(forumImagesList);
+    // 转图片
+    let urls = [];
+    try {
+      urls = await forumFilesToBase64(
+        forumImagesList.slice(0, FORUM_MAX_IMAGES)
+      );
+    } catch (err) {
+      console.error("读取图片失败：", err);
+      statusEl.textContent = "读取图片失败，请重试。";
+      statusEl.style.color = "red";
+      return;
+    }
 
-    const newPost = {
-      id: Date.now(),
+    const payload = {
       title,
       content,
-      createdAt: new Date().toISOString(),
-      images: urls, // base64 数组
-      // ★ 新增：记录发帖人
-      userId: user.id,
-      userEmail: user.email,
+      images: urls,
+      user_id: user.id,
+      user_email: user.email,
     };
 
-    postsMemory.push(newPost);
-    savePostsToStorage();
-    renderPosts();
+    const { error } = await supabaseClient.from("forum_posts").insert(payload);
 
-    // 3. 清空状态
+    if (error) {
+      console.error("发布失败：", error);
+      statusEl.textContent = "发布失败，请稍后再试。";
+      statusEl.style.color = "red";
+      return;
+    }
+
     form.reset();
     forumImagesList = [];
     updateForumPreview();
 
     statusEl.textContent = "发布成功";
     statusEl.style.color = "green";
+
+    loadForumPosts();
   };
 }
 
-/* ========= 初始化：任何人都能看帖子 ========= */
-
 document.addEventListener("DOMContentLoaded", () => {
-  postsMemory = loadPostsFromStorage();
-  renderPosts();
-  setupForm();
+  loadForumPosts();
+  setupForumForm();
 });

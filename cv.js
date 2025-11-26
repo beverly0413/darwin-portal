@@ -1,70 +1,61 @@
-// cv.js
-// 求职页面：文字信息保存在 localStorage，图片只在本次浏览会话中保存在内存
+// cv.js —— 使用 Supabase 存储求职信息
+// 表名：cv_posts
 
-const STORAGE_KEY = 'darwin_life_hub_cvs_v2';
+const CV_MAX_IMAGES = 5;
+let cvImagesList = [];
 
-const MAX_IMAGES = 5;
-let cvImagesList = [];    // 当前要发布这条求职的图片（File 对象数组）
-let cvsMemory = [];       // 本次会话中的求职列表（包含 images）
-
-// 从 localStorage 读取文字信息
-function loadCvsFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch (e) {
-    console.error('解析本地求职数据失败：', e);
-    return [];
+// 检查 supabaseClient
+function ensureSupabase() {
+  if (!window.supabaseClient) {
+    console.error("supabaseClient 未初始化，请检查公共配置脚本。");
+    alert("系统配置错误：未找到 supabaseClient。");
+    return false;
   }
+  return true;
 }
 
-// 只把文字部分写回 localStorage，避免图片过大占满配额
-function saveCvsToStorageTextOnly() {
-  try {
-    const textOnly = cvsMemory.map((cv) => ({
-      id: cv.id,
-      title: cv.title,
-      contact: cv.contact,
-      content: cv.content,
-      createdAt: cv.createdAt,
-      // ★ 新增：把用户信息一并写回 localStorage
-      userId: cv.userId || null,
-      userEmail: cv.userEmail || null,
-    }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
-  } catch (e) {
-    console.error('保存本地求职数据失败：', e);
-  }
+// File[] -> base64[]
+function cvFilesToBase64(files) {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })
+    )
+  );
 }
 
-// 刷新图片预览（支持单张删除）
+// 图片预览
 function updateCvPreview() {
-  const previewEl = document.getElementById('cvPreview');
+  const previewEl = document.getElementById("cvPreview");
   if (!previewEl) return;
 
-  previewEl.innerHTML = '';
+  previewEl.innerHTML = "";
 
   cvImagesList.forEach((file, index) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'preview-item';
+    const wrapper = document.createElement("div");
+    wrapper.className = "preview-item";
 
-    const img = document.createElement('img');
-    img.alt = file.name;
+    const img = document.createElement("img");
+    img.style.width = "90px";
+    img.style.height = "90px";
+    img.style.objectFit = "cover";
+    img.style.borderRadius = "8px";
+    img.style.border = "1px solid #d1e5d4";
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      img.src = ev.target.result;
-    };
+    reader.onload = (e) => (img.src = e.target.result);
     reader.readAsDataURL(file);
 
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.textContent = '×';
-    removeBtn.className = 'preview-remove';
-    removeBtn.addEventListener('click', () => {
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "×";
+    removeBtn.className = "preview-remove";
+    removeBtn.addEventListener("click", () => {
       cvImagesList.splice(index, 1);
       updateCvPreview();
     });
@@ -75,192 +66,183 @@ function updateCvPreview() {
   });
 }
 
-// File 列表 -> DataURL 数组（只放在内存用于展示）
-function readFilesAsDataUrls(files) {
-  const list = Array.from(files);
-  return Promise.all(
-    list.map(
-      (file) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => resolve(ev.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        })
-    )
-  );
-}
-
-// 渲染求职列表（使用 cvsMemory）
-function renderCvs() {
-  const listEl = document.getElementById('cvList');
+// 加载求职列表
+async function loadCvs() {
+  const listEl = document.getElementById("cvList");
   if (!listEl) return;
 
-  listEl.innerHTML = '';
+  listEl.innerHTML = "加载中...";
 
-  if (cvsMemory.length === 0) {
+  if (!ensureSupabase()) {
+    listEl.textContent = "系统配置错误，无法加载数据。";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("cv_posts")
+    .select("id, title, contact, content, images, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("加载求职信息失败：", error);
+    listEl.textContent = "加载失败，请稍后重试。";
+    return;
+  }
+
+  if (!data || data.length === 0) {
     listEl.innerHTML =
       '<p style="font-size:13px;color:#6b7280;">目前还没有求职信息，欢迎发布第一条。</p>';
     return;
   }
 
-  cvsMemory.forEach((cv) => {
-    const div = document.createElement('div');
-    div.className = 'post';
+  listEl.innerHTML = "";
 
-    const title = cv.title || '匿名求职';
-    const contact = cv.contact || '';
-    const content = cv.content || '';
-    const createdAt = cv.createdAt ? new Date(cv.createdAt) : new Date();
+  data.forEach((cv) => {
+    const div = document.createElement("div");
+    div.className = "post";
 
+    const createdAt = cv.created_at ? new Date(cv.created_at) : new Date();
     const dateStr = `${createdAt.getFullYear()}-${String(
       createdAt.getMonth() + 1
-    ).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`;
+    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
-    let imagesHtml = '';
+    let imagesHtml = "";
     if (Array.isArray(cv.images) && cv.images.length > 0) {
       imagesHtml = `
         <div class="cv-photos">
           ${cv.images
-            .map(
-              (url) => `<img src="${url}" alt="求职相关图片" loading="lazy" />`
-            )
-            .join('')}
+            .map((url) => `<img src="${url}" alt="求职相关图片" loading="lazy" />`)
+            .join("")}
         </div>
       `;
     }
 
     div.innerHTML = `
-      <h3>${title}</h3>
-      ${contact ? `<p><strong>联系方式：</strong>${contact}</p>` : ''}
-      ${content ? `<p style="white-space:pre-wrap;">${content}</p>` : ''}
+      <h3>${cv.title || "匿名求职"}</h3>
+      ${cv.contact ? `<p><strong>联系方式：</strong>${cv.contact}</p>` : ""}
+      ${
+        cv.content
+          ? `<p style="white-space:pre-wrap;">${cv.content}</p>`
+          : ""
+      }
       ${imagesHtml}
       <small>发布于：${dateStr}</small>
     `;
+
     listEl.appendChild(div);
   });
 }
 
-// 设置表单逻辑
+// 表单逻辑
 function setupCvForm() {
-  const form = document.getElementById('cvForm');
-  const statusEl = document.getElementById('cvStatus');
-  const imagesInput = document.getElementById('cvImages');
-  const clearBtn = document.getElementById('cvClearImages');
+  const form = document.getElementById("cvForm");
+  const statusEl = document.getElementById("cvStatus");
+  const imagesInput = document.getElementById("cvImages");
+  const clearBtn = document.getElementById("cvClearImages");
 
-  if (!form) return;
+  if (!form || !statusEl) return;
 
-  // 图片选择：多次选择累加，最多 5 张
   if (imagesInput) {
-    imagesInput.addEventListener('change', (e) => {
+    imagesInput.addEventListener("change", (e) => {
       const newFiles = Array.from(e.target.files || []);
-
       for (const file of newFiles) {
-        if (cvImagesList.length >= MAX_IMAGES) break;
+        if (cvImagesList.length >= CV_MAX_IMAGES) break;
         cvImagesList.push(file);
       }
-
-      imagesInput.value = ''; // 清空，避免同一文件不能再次选择
+      imagesInput.value = "";
       updateCvPreview();
     });
   }
 
-  // 清空所有图片
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
+    clearBtn.addEventListener("click", () => {
       cvImagesList = [];
       updateCvPreview();
+      if (imagesInput) imagesInput.value = "";
     });
   }
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!ensureSupabase()) return;
 
-    const titleEl = document.getElementById('cvTitle');
-    const contactEl = document.getElementById('cvContact');
-    const contentEl = document.getElementById('cvContent');
+    const titleEl = document.getElementById("cvTitle");
+    const contactEl = document.getElementById("cvContact");
+    const contentEl = document.getElementById("cvContent");
 
     const title = titleEl.value.trim();
     const contact = contactEl.value.trim();
     const content = contentEl.value.trim();
 
     if (!title) {
-      statusEl.textContent = '职位方向 / 标题是必填项。';
-      statusEl.style.color = 'red';
+      statusEl.textContent = "职位方向 / 标题是必填项。";
+      statusEl.style.color = "red";
       return;
     }
     if (!contact) {
-      statusEl.textContent = '联系方式是必填项。';
-      statusEl.style.color = 'red';
-      return;
-    }
-    if (cvImagesList.length > MAX_IMAGES) {
-      statusEl.textContent = '最多只能上传 5 张照片。';
-      statusEl.style.color = 'red';
+      statusEl.textContent = "联系方式是必填项。";
+      statusEl.style.color = "red";
       return;
     }
 
-    // 发布前检查登录，并取得 user 对象
-    let user;
-    try {
-      const { data, error } = await supabaseClient.auth.getUser();
-      if (error || !data?.user) {
-        alert('请先登录后再发布求职信息。');
-        window.location.href = 'login.html';
-        return;
-      }
-      user = data.user;
-    } catch (err) {
-      console.error('检查登录状态失败：', err);
-      alert('登录状态异常，请重新登录。');
-      window.location.href = 'login.html';
+    statusEl.textContent = "正在保存...";
+    statusEl.style.color = "#6b7280";
+
+    // 登录检查
+    const { data: userData, error: userErr } =
+      await supabaseClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      alert("请先登录后再发布求职信息。");
+      window.location.href = "login.html";
       return;
     }
+    const user = userData.user;
 
-    statusEl.textContent = '正在保存...';
-    statusEl.style.color = '#6b7280';
-
-    // 把当前图片转成 DataURL（只放 cvsMemory，用于展示）
+    // 处理图片
     let imageDataUrls = [];
     try {
       if (cvImagesList.length > 0) {
-        imageDataUrls = await readFilesAsDataUrls(cvImagesList);
+        imageDataUrls = await cvFilesToBase64(
+          cvImagesList.slice(0, CV_MAX_IMAGES)
+        );
       }
     } catch (err) {
-      console.error('读取图片失败：', err);
-      statusEl.textContent = '读取图片失败，请重试。';
-      statusEl.style.color = 'red';
+      console.error("读取图片失败：", err);
+      statusEl.textContent = "读取图片失败，请重试。";
+      statusEl.style.color = "red";
       return;
     }
 
-    const newCv = {
-      id: Date.now(),
+    const payload = {
       title,
       contact,
       content,
-      createdAt: new Date().toISOString(),
       images: imageDataUrls,
-      // ★ 新增：记录发帖人
-      userId: user.id,
-      userEmail: user.email,
+      user_id: user.id,
+      user_email: user.email,
     };
 
-    cvsMemory.unshift(newCv);
-    saveCvsToStorageTextOnly();
-    renderCvs();
+    const { error } = await supabaseClient.from("cv_posts").insert(payload);
+
+    if (error) {
+      console.error("发布求职失败：", error);
+      statusEl.textContent = "发布失败，请稍后重试。";
+      statusEl.style.color = "red";
+      return;
+    }
 
     form.reset();
-    statusEl.textContent = '求职信息已保存（仅当前浏览器可见）。';
-    statusEl.style.color = 'green';
-
     cvImagesList = [];
     updateCvPreview();
+
+    statusEl.textContent = "求职信息已发布。";
+    statusEl.style.color = "green";
+
+    loadCvs();
   });
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  cvsMemory = loadCvsFromStorage();
-  renderCvs();
+document.addEventListener("DOMContentLoaded", () => {
+  loadCvs();
   setupCvForm();
 });
