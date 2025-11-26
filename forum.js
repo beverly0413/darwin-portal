@@ -1,5 +1,6 @@
-// forum.js —— Supabase 论坛 + 点击帖子查看详情
-// 表名：forum_posts
+// forum.js —— Supabase 论坛：列表 + 详情弹窗（大图/保存）+ 评论
+// 帖子表：forum_posts
+// 评论表：forum_comments
 
 const FORUM_MAX_IMAGES = 5;
 let forumImagesList = [];
@@ -14,21 +15,7 @@ function ensureSupabase() {
   return true;
 }
 
-// File[] -> base64[]
-function forumFilesToBase64(files) {
-  return Promise.all(
-    files.map(
-      (file) =>
-        new Promise((resolve) => {
-          const r = new FileReader();
-          r.onload = (e) => resolve(e.target.result);
-          r.readAsDataURL(file);
-        })
-    )
-  );
-}
-
-// 小工具：格式化时间
+// 小工具：格式化日期
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -36,13 +23,128 @@ function formatDate(iso) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-/* ============= 详情弹窗 ============= */
+// File[] -> base64[]
+function forumFilesToBase64(files) {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = (e) => resolve(e.target.result);
+          r.onerror = reject;
+          r.readAsDataURL(file);
+        })
+    )
+  );
+}
+
+/* ============= 评论相关 ============= */
+
+// 加载某个帖子的评论
+async function loadComments(postId, listEl, infoEl) {
+  if (!ensureSupabase()) return;
+
+  listEl.innerHTML = "评论加载中...";
+
+  const { data, error } = await supabaseClient
+    .from("forum_comments")
+    .select("id, content, user_email, created_at")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("加载评论失败：", error);
+    listEl.textContent = "评论加载失败。";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    listEl.innerHTML =
+      '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎抢沙发。</p>';
+    infoEl.textContent = "";
+    return;
+  }
+
+  listEl.innerHTML = "";
+  infoEl.textContent = `共 ${data.length} 条评论`;
+
+  data.forEach((c) => {
+    const item = document.createElement("div");
+    item.style.padding = "6px 0";
+    item.style.borderBottom = "1px dashed #e5e7eb";
+
+    const meta = document.createElement("div");
+    meta.style.fontSize = "12px";
+    meta.style.color = "#6b7280";
+    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
+      c.created_at
+    )}`;
+
+    const body = document.createElement("div");
+    body.style.fontSize = "14px";
+    body.style.color = "#111827";
+    body.style.whiteSpace = "pre-wrap";
+    body.textContent = c.content;
+
+    item.appendChild(meta);
+    item.appendChild(body);
+    listEl.appendChild(item);
+  });
+}
+
+// 提交评论
+async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
+  const content = textarea.value.trim();
+  if (!content) {
+    statusEl.textContent = "评论内容不能为空。";
+    statusEl.style.color = "red";
+    return;
+  }
+
+  statusEl.textContent = "正在提交评论...";
+  statusEl.style.color = "#6b7280";
+
+  if (!ensureSupabase()) return;
+
+  // 检查登录
+  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+  if (userErr || !userData?.user) {
+    alert("请先登录后再发表评论。");
+    window.location.href = "login.html";
+    return;
+  }
+  const user = userData.user;
+
+  const { error } = await supabaseClient.from("forum_comments").insert({
+    post_id: postId,
+    content,
+    user_id: user.id,
+    user_email: user.email,
+  });
+
+  if (error) {
+    console.error("发表评论失败：", error);
+    statusEl.textContent = "发表评论失败，请稍后再试。";
+    statusEl.style.color = "red";
+    return;
+  }
+
+  textarea.value = "";
+  statusEl.textContent = "评论已发表。";
+  statusEl.style.color = "green";
+
+  // 重新加载评论列表
+  await loadComments(postId, listEl, infoEl);
+}
+
+/* ============= 详情弹窗（带图片保存 + 评论） ============= */
 
 function showForumDetail(post) {
-  // 先移除旧弹窗
   const old = document.getElementById("forumDetailOverlay");
   if (old) old.remove();
 
@@ -57,9 +159,9 @@ function showForumDetail(post) {
   overlay.style.zIndex = "1000";
 
   const card = document.createElement("div");
-  card.style.maxWidth = "720px";
-  card.style.width = "90%";
-  card.style.maxHeight = "85vh";
+  card.style.maxWidth = "800px";
+  card.style.width = "92%";
+  card.style.maxHeight = "90vh";
   card.style.overflowY = "auto";
   card.style.background = "#ffffff";
   card.style.borderRadius = "16px";
@@ -86,9 +188,9 @@ function showForumDetail(post) {
   const metaEl = document.createElement("div");
   metaEl.style.fontSize = "13px";
   metaEl.style.color = "#6b7280";
+  metaEl.style.marginBottom = "10px";
   const dateStr = formatDate(post.created_at);
   metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
-  metaEl.style.marginBottom = "10px";
 
   const contentEl = document.createElement("div");
   contentEl.style.fontSize = "14px";
@@ -97,26 +199,144 @@ function showForumDetail(post) {
   contentEl.style.whiteSpace = "pre-wrap";
   contentEl.textContent = post.content || "";
 
+  // 图片区域：支持大图 + 保存
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(post.images) && post.images.length > 0) {
+    imagesWrapper.style.marginTop = "14px";
     imagesWrapper.style.display = "grid";
     imagesWrapper.style.gridTemplateColumns =
-      "repeat(auto-fill,minmax(120px,1fr))";
+      "repeat(auto-fill,minmax(160px,1fr))";
     imagesWrapper.style.gap = "10px";
-    imagesWrapper.style.marginTop = "12px";
 
-    post.images.forEach((src) => {
+    post.images.forEach((src, idx) => {
+      const box = document.createElement("div");
+      box.style.borderRadius = "12px";
+      box.style.border = "1px solid #e5e7eb";
+      box.style.padding = "6px";
+      box.style.background = "#f9fafb";
+      box.style.display = "flex";
+      box.style.flexDirection = "column";
+      box.style.gap = "6px";
+      box.style.alignItems = "stretch";
+
       const img = document.createElement("img");
       img.src = src;
       img.alt = "帖子图片";
       img.style.width = "100%";
-      img.style.borderRadius = "10px";
+      img.style.borderRadius = "8px";
       img.style.objectFit = "cover";
       img.loading = "lazy";
-      imagesWrapper.appendChild(img);
+
+      const btnRow = document.createElement("div");
+      btnRow.style.display = "flex";
+      btnRow.style.justifyContent = "space-between";
+      btnRow.style.gap = "4px";
+
+      // 查看大图：在新标签打开
+      const viewLink = document.createElement("a");
+      viewLink.textContent = "查看大图";
+      viewLink.href = src;
+      viewLink.target = "_blank";
+      viewLink.style.fontSize = "12px";
+      viewLink.style.color = "#2563eb";
+      viewLink.style.textDecoration = "none";
+
+      // 保存图片：使用 download 属性
+      const saveLink = document.createElement("a");
+      saveLink.textContent = "保存图片";
+      saveLink.href = src;
+      saveLink.download = `forum-image-${post.id || "p"}-${idx + 1}.png`;
+      saveLink.style.fontSize = "12px";
+      saveLink.style.color = "#16a34a";
+      saveLink.style.textDecoration = "none";
+
+      btnRow.appendChild(viewLink);
+      btnRow.appendChild(saveLink);
+
+      box.appendChild(img);
+      box.appendChild(btnRow);
+      imagesWrapper.appendChild(box);
     });
   }
 
+  /* ======= 评论区域 ======= */
+
+  const commentBlock = document.createElement("div");
+  commentBlock.style.marginTop = "18px";
+  commentBlock.style.paddingTop = "12px";
+  commentBlock.style.borderTop = "1px solid #e5e7eb";
+
+  const commentTitle = document.createElement("h3");
+  commentTitle.textContent = "评论";
+  commentTitle.style.fontSize = "15px";
+  commentTitle.style.margin = "0 0 6px 0";
+
+  const commentInfo = document.createElement("div");
+  commentInfo.style.fontSize = "12px";
+  commentInfo.style.color = "#6b7280";
+  commentInfo.style.marginBottom = "6px";
+
+  const commentList = document.createElement("div");
+  commentList.style.fontSize = "14px";
+
+  // 发表评论区域
+  const commentForm = document.createElement("div");
+  commentForm.style.marginTop = "8px";
+
+  const textarea = document.createElement("textarea");
+  textarea.rows = 3;
+  textarea.placeholder = "写下你的评论...";
+  textarea.style.width = "100%";
+  textarea.style.boxSizing = "border-box";
+  textarea.style.resize = "vertical";
+  textarea.style.borderRadius = "8px";
+  textarea.style.border = "1px solid #d1d5db";
+  textarea.style.padding = "6px 8px";
+  textarea.style.fontSize = "14px";
+
+  const actionRow = document.createElement("div");
+  actionRow.style.display = "flex";
+  actionRow.style.justifyContent = "space-between";
+  actionRow.style.alignItems = "center";
+  actionRow.style.marginTop = "6px";
+
+  const statusSpan = document.createElement("span");
+  statusSpan.style.fontSize = "12px";
+  statusSpan.style.color = "#6b7280";
+
+  const submitBtn = document.createElement("button");
+  submitBtn.textContent = "发表评论";
+  submitBtn.type = "button";
+  submitBtn.style.border = "none";
+  submitBtn.style.borderRadius = "999px";
+  submitBtn.style.padding = "6px 14px";
+  submitBtn.style.fontSize = "13px";
+  submitBtn.style.cursor = "pointer";
+  submitBtn.style.background = "#16a34a";
+  submitBtn.style.color = "#ffffff";
+
+  submitBtn.addEventListener("click", async () => {
+    await submitComment(
+      post.id,
+      textarea,
+      statusSpan,
+      commentList,
+      commentInfo
+    );
+  });
+
+  actionRow.appendChild(statusSpan);
+  actionRow.appendChild(submitBtn);
+
+  commentForm.appendChild(textarea);
+  commentForm.appendChild(actionRow);
+
+  commentBlock.appendChild(commentTitle);
+  commentBlock.appendChild(commentInfo);
+  commentBlock.appendChild(commentList);
+  commentBlock.appendChild(commentForm);
+
+  // 组装弹窗内容
   card.appendChild(closeBtn);
   card.appendChild(titleEl);
   card.appendChild(metaEl);
@@ -124,18 +344,94 @@ function showForumDetail(post) {
   if (imagesWrapper.childElementCount > 0) {
     card.appendChild(imagesWrapper);
   }
+  card.appendChild(commentBlock);
 
   overlay.appendChild(card);
 
-  // 点击遮罩关闭（点卡片不关闭）
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
 
   document.body.appendChild(overlay);
+
+  // 打开弹窗后，立即加载评论
+  loadComments(post.id, commentList, commentInfo);
 }
 
-/* ============= 图片预览（发帖时） ============= */
+/* ============= 列表展示 ============= */
+
+async function loadForumPosts() {
+  const list = document.getElementById("posts");
+  if (!list) return;
+
+  list.innerHTML = "加载中...";
+
+  if (!ensureSupabase()) {
+    list.textContent = "系统配置错误，无法加载数据。";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("forum_posts")
+    .select("id, title, content, images, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("加载帖子失败：", error);
+    list.textContent = "加载失败，请稍后再试。";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML =
+      `<div class="posts-empty">暂时还没有帖子，欢迎发布第一条。</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  data.forEach((p) => {
+    const div = document.createElement("div");
+    div.className = "post-card";
+    div.style.cursor = "pointer";
+
+    const dateStr = formatDate(p.created_at);
+
+    let imgHtml = "";
+    if (Array.isArray(p.images) && p.images.length > 0) {
+      imgHtml = `
+        <div class="forum-photos">
+          ${p.images
+            .slice(0, 3)
+            .map((url) => `<img src="${url}" alt="帖子图片">`)
+            .join("")}
+          ${
+            p.images.length > 3
+              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${p.images.length - 3} 张</span>`
+              : ""
+          }
+        </div>
+      `;
+    }
+
+    let summary = p.content || "";
+    if (summary.length > 60) summary = summary.slice(0, 60) + "…";
+
+    div.innerHTML = `
+      <h3>${p.title}</h3>
+      <p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>
+      ${imgHtml}
+      <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
+    `;
+
+    // 点击整条帖子 → 打开详情（带评论）
+    div.addEventListener("click", () => showForumDetail(p));
+
+    list.appendChild(div);
+  });
+}
+
+/* ============= 发帖表单 ============= */
 
 function updateForumPreview() {
   const preview = document.getElementById("forumPreview");
@@ -172,80 +468,6 @@ function updateForumPreview() {
     preview.appendChild(wrap);
   });
 }
-
-/* ============= 加载帖子列表 ============= */
-
-async function loadForumPosts() {
-  const list = document.getElementById("posts");
-  if (!list) return;
-
-  list.innerHTML = "加载中...";
-
-  if (!ensureSupabase()) {
-    list.textContent = "系统配置错误，无法加载数据。";
-    return;
-  }
-
-  const { data, error } = await supabaseClient
-    .from("forum_posts")
-    .select("id, title, content, images, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("加载帖子失败：", error);
-    list.textContent = "加载失败，请稍后再试。";
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    list.innerHTML =
-      `<div class="posts-empty">暂时还没有帖子，欢迎发布第一条。</div>`;
-    return;
-  }
-
-  list.innerHTML = "";
-
-  data.forEach((p) => {
-    const div = document.createElement("div");
-    div.className = "post-card";
-    div.style.cursor = "pointer"; // 整卡可点击
-
-    const dateStr = formatDate(p.created_at);
-
-    let imgHtml = "";
-    if (Array.isArray(p.images) && p.images.length > 0) {
-      imgHtml = `
-        <div class="forum-photos">
-          ${p.images
-            .map((url) => `<img src="${url}" alt="帖子图片">`)
-            .join("")}
-        </div>
-      `;
-    }
-
-    // 摘要内容，太长就截断
-    let summary = p.content || "";
-    if (summary.length > 60) {
-      summary = summary.slice(0, 60) + "…";
-    }
-
-    div.innerHTML = `
-      <h3>${p.title}</h3>
-      <p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>
-      ${imgHtml}
-      <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
-    `;
-
-    // 点击帖子卡片 → 打开详情弹窗
-    div.addEventListener("click", () => {
-      showForumDetail(p);
-    });
-
-    list.appendChild(div);
-  });
-}
-
-/* ============= 发帖表单逻辑 ============= */
 
 function setupForumForm() {
   const form = document.getElementById("forumForm");
@@ -291,7 +513,6 @@ function setupForumForm() {
     statusEl.textContent = "发布中...";
     statusEl.style.color = "#6b7280";
 
-    // 登录检查
     const { data: userData, error: userErr } =
       await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
@@ -301,7 +522,6 @@ function setupForumForm() {
     }
     const user = userData.user;
 
-    // 转图片
     let urls = [];
     try {
       urls = await forumFilesToBase64(
