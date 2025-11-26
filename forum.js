@@ -171,7 +171,8 @@ function setupForm() {
     statusEl.textContent = "发布中...";
     statusEl.style.color = "#6b7280";
 
-    // ✨ 1. 发布前检查是否登录（和 jobs / rent 一样）
+    // 1. 发布前检查是否登录，并拿到 user
+    let user;
     try {
       const { data, error } = await supabaseClient.auth.getUser();
       if (error || !data?.user) {
@@ -179,6 +180,7 @@ function setupForm() {
         window.location.href = "login.html";
         return;
       }
+      user = data.user;
     } catch (err) {
       console.error("检查登录状态失败:", err);
       alert("登录状态异常，请重新登录。");
@@ -186,7 +188,7 @@ function setupForm() {
       return;
     }
 
-    // ✨ 2. 把 File 转成 base64，存进 localStorage
+    // 2. 把 File 转成 base64，存进 localStorage
     const urls = await readFilesAsDataURL(forumImagesList);
 
     const newPost = {
@@ -195,13 +197,16 @@ function setupForm() {
       content,
       createdAt: new Date().toISOString(),
       images: urls, // base64 数组
+      // ★ 新增：记录发帖人
+      userId: user.id,
+      userEmail: user.email,
     };
 
     postsMemory.push(newPost);
     savePostsToStorage();
     renderPosts();
 
-    // ✨ 3. 清空状态
+    // 3. 清空状态
     form.reset();
     forumImagesList = [];
     updateForumPreview();

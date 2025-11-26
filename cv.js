@@ -30,6 +30,9 @@ function saveCvsToStorageTextOnly() {
       contact: cv.contact,
       content: cv.content,
       createdAt: cv.createdAt,
+      // ★ 新增：把用户信息一并写回 localStorage
+      userId: cv.userId || null,
+      userEmail: cv.userEmail || null,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(textOnly));
   } catch (e) {
@@ -197,7 +200,8 @@ function setupCvForm() {
       return;
     }
 
-    // ✨ 关键新增：发布前检查是否登录（和 jobs / rent / forum 一样）
+    // 发布前检查登录，并取得 user 对象
+    let user;
     try {
       const { data, error } = await supabaseClient.auth.getUser();
       if (error || !data?.user) {
@@ -205,6 +209,7 @@ function setupCvForm() {
         window.location.href = 'login.html';
         return;
       }
+      user = data.user;
     } catch (err) {
       console.error('检查登录状态失败：', err);
       alert('登录状态异常，请重新登录。');
@@ -235,6 +240,9 @@ function setupCvForm() {
       content,
       createdAt: new Date().toISOString(),
       images: imageDataUrls,
+      // ★ 新增：记录发帖人
+      userId: user.id,
+      userEmail: user.email,
     };
 
     cvsMemory.unshift(newCv);

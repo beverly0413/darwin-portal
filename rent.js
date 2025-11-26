@@ -171,7 +171,8 @@ function setupRentForm() {
       return;
     }
 
-    // ✨ 发帖前检查登录状态（和 jobs.js 一样）
+    // 发帖前检查登录状态，并获取 user
+    let user;
     try {
       const { data, error } = await supabaseClient.auth.getUser();
       if (error || !data?.user) {
@@ -179,6 +180,7 @@ function setupRentForm() {
         window.location.href = "login.html";
         return;
       }
+      user = data.user;
     } catch (err) {
       console.error("检查登录状态失败:", err);
       alert("登录状态异常，请重新登录。");
@@ -186,7 +188,7 @@ function setupRentForm() {
       return;
     }
 
-    // 处理图片为 base64 存在本地（和 jobs.js 相同思路）
+    // 处理图片为 base64 存在本地
     statusEl.textContent = "正在保存...";
     statusEl.style.color = "#6b7280";
 
@@ -210,6 +212,9 @@ function setupRentForm() {
       content,
       images: imagesBase64,
       createdAt: new Date().toISOString(),
+      // ★ 新增：记录发帖人
+      userId: user.id,
+      userEmail: user.email,
     };
 
     rentsMemory.push(newRent);
