@@ -1,123 +1,110 @@
-// rent.js
-// 所有人都能看列表；只有发布时才检查是否登录（逻辑和 jobs.js 一样）
+// rent.js —— 使用 Supabase 云端数据库版本
+// 表名：rent_posts
 
-const RENT_STORAGE_KEY = "darwin_life_hub_rent_v1";
-
+const supabase = window.supabaseClient; 
 const MAX_IMAGES = 5;
-let rentImagesList = [];
-let rentsMemory = [];
 
-/* ========== 本地存储 ========== */
+let rentImagesList = []; // File 对象数组
 
-// 从 localStorage 读出所有租房信息
-function loadRentsFromStorage() {
-  try {
-    const raw = localStorage.getItem(RENT_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.error("读取本地租房信息失败:", e);
-    return [];
-  }
+// File[] -> base64[]
+function filesToBase64(files) {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        })
+    )
+  );
 }
 
-// 保存到 localStorage
-function saveRentsToStorage() {
-  try {
-    localStorage.setItem(RENT_STORAGE_KEY, JSON.stringify(rentsMemory));
-  } catch (e) {
-    console.error("保存本地租房信息失败:", e);
-  }
-}
-
-/* ========== 渲染列表 ========== */
-
-function renderRents() {
+// 渲染租房列表
+async function loadRents() {
   const listEl = document.getElementById("rentList");
-  listEl.innerHTML = "";
+  if (!listEl) return;
 
-  if (!rentsMemory || rentsMemory.length === 0) {
-    listEl.innerHTML =
-      '<p style="color:#6b7280;font-size:13px;">目前还没有房源信息，欢迎发布第一条。</p>';
+  listEl.innerHTML = "加载中...";
+
+  const { data, error } = await supabase
+    .from("rent_posts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("加载错误：", error);
+    listEl.innerHTML = "加载失败，请稍候再试。";
     return;
   }
 
-  // 按时间倒序显示（最新在上）
-  const sorted = [...rentsMemory].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
+  if (!data || data.length === 0) {
+    listEl.innerHTML =
+      '<p style="color:#6b7280;font-size:13px;">目前还没有租房信息。</p>';
+    return;
+  }
 
-  sorted.forEach((rent) => {
+  listEl.innerHTML = "";
+
+  data.forEach((rent) => {
     const div = document.createElement("div");
     div.className = "post";
-    div.style.marginBottom = "16px";
 
-    const date = new Date(rent.createdAt);
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-${String(date.getDate()).padStart(2, "0")}`;
+    const date = new Date(rent.created_at);
+    const dateStr = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-    // 图片
     let imagesHtml = "";
-    if (rent.images && rent.images.length > 0) {
+    if (Array.isArray(rent.images) && rent.images.length > 0) {
       imagesHtml = `
         <div class="rent-photos">
           ${rent.images
-            .map(
-              (src) =>
-                `<img src="${src}" alt="房源图片" loading="lazy" />`
-            )
+            .map((img) => `<img src="${img}" alt="房源图片" />`)
             .join("")}
-        </div>
-      `;
+        </div>`;
     }
 
     div.innerHTML = `
-      <h3>${rent.title || "未命名房源"}</h3>
-      <p><strong>联系方式：</strong>${rent.contact || "未填写"}</p>
-      <p style="white-space:pre-wrap;">${rent.content || ""}</p>
+      <h3>${rent.title}</h3>
+      <p><strong>联系方式：</strong>${rent.contact}</p>
+      <p style="white-space:pre-wrap;">${rent.content}</p>
       ${imagesHtml}
-      <small style="display:block;margin-top:4px;color:#9ca3af;font-size:12px;">
-        发布于：${dateStr}
-      </small>
+      <small style="color:#6b7280;">发布于：${dateStr}</small>
     `;
 
     listEl.appendChild(div);
   });
 }
 
-/* ========== 图片预览（和 jobs 一样的思路） ========== */
-
+// 图片预览
 function updateRentPreview() {
   const previewEl = document.getElementById("rentPreview");
   previewEl.innerHTML = "";
 
-  rentImagesList.forEach((file, index) => {
+  rentImagesList.forEach((file, idx) => {
     const wrap = document.createElement("div");
     wrap.className = "preview-item";
 
     const img = document.createElement("img");
-    const reader = new FileReader();
-
-    reader.onload = (e) => (img.src = e.target.result);
-    reader.readAsDataURL(file);
-
     img.style.width = "90px";
     img.style.height = "90px";
     img.style.objectFit = "cover";
     img.style.borderRadius = "8px";
     img.style.border = "1px solid #d1e5d4";
 
+    const reader = new FileReader();
+    reader.onload = (e) => (img.src = e.target.result);
+    reader.readAsDataURL(file);
+
     const btn = document.createElement("button");
     btn.textContent = "×";
     btn.type = "button";
     btn.className = "preview-remove";
-    btn.addEventListener("click", () => {
-      rentImagesList.splice(index, 1);
+    btn.onclick = () => {
+      rentImagesList.splice(idx, 1);
       updateRentPreview();
-    });
+    };
 
     wrap.appendChild(img);
     wrap.appendChild(btn);
@@ -125,115 +112,91 @@ function updateRentPreview() {
   });
 }
 
-/* ========== 表单逻辑 ========== */
-
+// 初始化表单
 function setupRentForm() {
   const form = document.getElementById("rentForm");
   const statusEl = document.getElementById("rentStatus");
-  const filesInput = document.getElementById("rentImages");
+  const input = document.getElementById("rentImages");
   const clearBtn = document.getElementById("rentClearImages");
 
-  // 选择图片（累加，最多 5 张）
-  if (filesInput) {
-    filesInput.addEventListener("change", (e) => {
-      const newFiles = Array.from(e.target.files || []);
-      for (const file of newFiles) {
-        if (rentImagesList.length >= MAX_IMAGES) break;
-        rentImagesList.push(file);
-      }
-      filesInput.value = "";
-      updateRentPreview();
-    });
-  }
+  // 添加图片
+  input.addEventListener("change", (e) => {
+    const newFiles = Array.from(e.target.files || []);
+    for (const file of newFiles) {
+      if (rentImagesList.length >= MAX_IMAGES) break;
+      rentImagesList.push(file);
+    }
+    input.value = "";
+    updateRentPreview();
+  });
 
   // 清空图片
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      rentImagesList = [];
-      if (filesInput) filesInput.value = "";
-      updateRentPreview();
-    });
-  }
+  clearBtn.addEventListener("click", () => {
+    rentImagesList = [];
+    updateRentPreview();
+  });
 
+  // 提交表单（发帖）
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
-    statusEl.textContent = "";
-    statusEl.style.color = "#6b7280";
 
     const title = document.getElementById("rentTitle").value.trim();
     const contact = document.getElementById("rentContact").value.trim();
     const content = document.getElementById("rentContent").value.trim();
 
     if (!title || !contact) {
-      statusEl.textContent = "房源标题和联系方式是必填项";
+      statusEl.textContent = "标题和联系方式是必填项。";
       statusEl.style.color = "red";
       return;
     }
 
-    // 发帖前检查登录状态，并获取 user
-    let user;
-    try {
-      const { data, error } = await supabaseClient.auth.getUser();
-      if (error || !data?.user) {
-        alert("请先登录后再发布房源信息。");
-        window.location.href = "login.html";
-        return;
-      }
-      user = data.user;
-    } catch (err) {
-      console.error("检查登录状态失败:", err);
-      alert("登录状态异常，请重新登录。");
+    statusEl.textContent = "提交中...";
+    statusEl.style.color = "#6b7280";
+
+    // 检查登录
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      alert("请先登录再发布。");
       window.location.href = "login.html";
       return;
     }
+    const user = userData.user;
 
-    // 处理图片为 base64 存在本地
-    statusEl.textContent = "正在保存...";
-    statusEl.style.color = "#6b7280";
-
-    const files = rentImagesList.slice(0, MAX_IMAGES);
-
-    const imagesBase64 = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-          })
-      )
+    // 转换图片
+    const imagesBase64 = await filesToBase64(
+      rentImagesList.slice(0, MAX_IMAGES)
     );
 
-    const newRent = {
-      id: Date.now(),
+    // 写入 Supabase
+    const { error } = await supabase.from("rent_posts").insert({
       title,
       contact,
       content,
       images: imagesBase64,
-      createdAt: new Date().toISOString(),
-      // ★ 新增：记录发帖人
-      userId: user.id,
-      userEmail: user.email,
-    };
+      user_id: user.id,
+      user_email: user.email,
+    });
 
-    rentsMemory.push(newRent);
-    saveRentsToStorage();
-    renderRents();
+    if (error) {
+      console.error("发帖失败：", error);
+      statusEl.textContent = "发布失败，请稍后再试。";
+      statusEl.style.color = "red";
+      return;
+    }
+
+    statusEl.textContent = "发布成功！";
+    statusEl.style.color = "green";
 
     form.reset();
     rentImagesList = [];
     updateRentPreview();
 
-    statusEl.textContent = "发布成功";
-    statusEl.style.color = "green";
+    loadRents(); // 重新加载
   });
 }
 
-/* ========== 初始化：不要求登录，只读本地数据 ========== */
-
+// 页面初始化
 document.addEventListener("DOMContentLoaded", () => {
-  rentsMemory = loadRentsFromStorage();
-  renderRents();
+  loadRents();
   setupRentForm();
 });
