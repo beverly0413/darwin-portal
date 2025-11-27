@@ -187,7 +187,7 @@ function showJobDetail(job) {
   const metaEl = document.createElement("div");
   metaEl.style.fontSize = "13px";
   metaEl.style.color = "#6b7280";
-  metaEl.style.marginBottom = "10px";
+  metaEl.style.marginBottom = "6px";
   const dateStr = formatDate(job.created_at);
   metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
 
@@ -387,10 +387,20 @@ async function loadJobs() {
 
   data.forEach((job) => {
     const div = document.createElement("div");
+        div.className = "post";
+        div.style.marginBottom = "16px";
+      
+        const date = new Date(job.createdAt);
 
     // 绿色方框卡片样式
-    div.className = "job-card";
-    div.style.cursor = "pointer";
+      div.className = "job-card";
+      div.style.border = "1px solid #d1e5d4";
+      div.style.borderRadius = "12px";
+      div.style.background = "#ffffff";
+      div.style.padding = "12px 16px";
+      div.style.marginBottom = "10px";
+      div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
+      div.style.cursor = "pointer";
 
     const createdAt = job.created_at ? new Date(job.created_at) : new Date();
     const dateStr = `${createdAt.getFullYear()}-${String(
