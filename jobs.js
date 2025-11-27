@@ -389,10 +389,8 @@ async function loadJobs() {
 
   data.forEach((job) => {
     const div = document.createElement("div");
-    // 这里是关键修改：使用 job-item 这个类，让每条帖子外面有方框
-    div.className = "job-item";
+    div.className = "post-card";   // 使用 forum 一样的绿色边框卡片
     div.style.cursor = "pointer";
-
     const createdAt = job.created_at ? new Date(job.created_at) : new Date();
     const dateStr = `${createdAt.getFullYear()}-${String(
       createdAt.getMonth() + 1
