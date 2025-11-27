@@ -1,26 +1,21 @@
-// jobs.js
-// 招聘页面：使用 Supabase 存储帖子（文字 + 图片），任何人可看列表，登录用户可发布 / 评论
-
-// 复用全站统一的 supabaseClient（在公共 auth / config 文件里初始化）
-const supabase = window.supabaseClient || null;
+// jobs.js —— Supabase 招聘：列表 + 详情弹窗（图片查看/保存）+ 评论
+// 帖子表：jobs_posts
+// 评论表：jobs_comments
 
 const MAX_IMAGES = 5;
-let jobImagesList = []; // 待上传图片 File[]
-// 不再使用 localStorage，列表直接从 Supabase 读取
+let jobImagesList = [];
 
-/* ========== 小工具 ========== */
-
-// 检查 supabase 是否可用
+// 检查 supabaseClient 是否存在
 function ensureSupabase() {
-  if (!supabase) {
-    console.error("supabaseClient 未初始化，请检查公共配置脚本。");
-    alert("系统错误：未找到 supabaseClient。");
+  if (!window.supabaseClient) {
+    console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
+    alert("系统配置错误：未找到 supabaseClient。");
     return false;
   }
   return true;
 }
 
-// 格式化时间
+// 小工具：格式化时间
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -34,7 +29,7 @@ function formatDate(iso) {
 }
 
 // File[] -> base64[]
-function filesToBase64(files) {
+function jobFilesToBase64(files) {
   return Promise.all(
     files.map(
       (file) =>
@@ -48,24 +43,23 @@ function filesToBase64(files) {
   );
 }
 
-/* ========== 评论：读取 & 提交 ========== */
+/* ============= 评论相关：加载 + 提交 ============= */
 
-// 从 jobs_comments 读取评论并渲染
+// 加载某条 job 的评论
 async function loadJobComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
-  listEl.innerHTML = "评论加载中…";
+  listEl.innerHTML = "评论加载中...";
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("jobs_comments")
     .select("id, content, user_email, created_at")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("加载评论失败：", error);
-    listEl.textContent = "评论功能暂时不可用。";
-    infoEl.textContent = "";
+    console.error("加载招聘评论失败：", error);
+    listEl.textContent = "评论加载失败。";
     return;
   }
 
@@ -87,7 +81,9 @@ async function loadJobComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(c.created_at)}`;
+    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
+      c.created_at
+    )}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
@@ -101,7 +97,7 @@ async function loadJobComments(postId, listEl, infoEl) {
   });
 }
 
-// 提交一条评论
+// 提交评论
 async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   const content = textarea.value.trim();
   if (!content) {
@@ -110,12 +106,13 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
     return;
   }
 
-  statusEl.textContent = "正在提交评论…";
+  statusEl.textContent = "正在提交评论...";
   statusEl.style.color = "#6b7280";
 
   if (!ensureSupabase()) return;
 
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  // 检查登录
+  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
@@ -123,7 +120,7 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   }
   const user = userData.user;
 
-  const { error } = await supabase.from("jobs_comments").insert({
+  const { error } = await supabaseClient.from("jobs_comments").insert({
     post_id: postId,
     content,
     user_id: user.id,
@@ -144,7 +141,7 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   await loadJobComments(postId, listEl, infoEl);
 }
 
-/* ========== 详情弹窗（图片查看/保存 + 评论） ========== */
+/* ============= 详情弹窗（含图片查看/保存 + 评论区） ============= */
 
 function showJobDetail(job) {
   const old = document.getElementById("jobDetailOverlay");
@@ -268,7 +265,7 @@ function showJobDetail(job) {
     });
   }
 
-  /* ===== 评论区域 ===== */
+  /* ======= 评论区域 ======= */
 
   const commentBlock = document.createElement("div");
   commentBlock.style.marginTop = "18px";
@@ -354,24 +351,24 @@ function showJobDetail(job) {
 
   document.body.appendChild(overlay);
 
-  // 打开弹窗后，加载评论
+  // 打开弹窗后加载评论
   loadJobComments(job.id, commentList, commentInfo);
 }
 
-/* ========== 列表：从 Supabase 加载招聘信息 ========== */
+/* ============= 列表：加载所有招聘信息 ============= */
 
 async function loadJobs() {
   const listEl = document.getElementById("jobList");
   if (!listEl) return;
 
-  listEl.innerHTML = "加载中…";
+  listEl.innerHTML = "加载中...";
 
   if (!ensureSupabase()) {
-    listEl.textContent = "系统错误，无法加载数据。";
+    listEl.textContent = "系统配置错误，无法加载数据。";
     return;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("jobs_posts")
     .select("id, title, company, contact, content, images, created_at")
     .order("created_at", { ascending: false });
@@ -392,11 +389,13 @@ async function loadJobs() {
 
   data.forEach((job) => {
     const div = document.createElement("div");
-    // 使用 job-item，让外观和你原来的方框一致
-    div.className = "job-item";
+    div.className = "post";
     div.style.cursor = "pointer";
 
-    const dateStr = formatDate(job.created_at);
+    const createdAt = job.created_at ? new Date(job.created_at) : new Date();
+    const dateStr = `${createdAt.getFullYear()}-${String(
+      createdAt.getMonth() + 1
+    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
     let imagesHtml = "";
     if (Array.isArray(job.images) && job.images.length > 0) {
@@ -404,7 +403,7 @@ async function loadJobs() {
         <div class="job-photos">
           ${job.images
             .slice(0, 3)
-            .map((img) => `<img src="${img}" alt="职位图片" />`)
+            .map((img) => `<img src="${img}" />`)
             .join("")}
           ${
             job.images.length > 3
@@ -427,7 +426,7 @@ async function loadJobs() {
           : ""
       }
       ${imagesHtml}
-      <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
+      <small>发布于：${dateStr}</small>
     `;
 
     div.addEventListener("click", () => showJobDetail(job));
@@ -436,7 +435,7 @@ async function loadJobs() {
   });
 }
 
-/* ========== 图片预览（发帖时） ========== */
+/* ============= 发帖表单：发布招聘 ============= */
 
 function updateJobPreview() {
   const previewEl = document.getElementById("jobPreview");
@@ -474,8 +473,6 @@ function updateJobPreview() {
   });
 }
 
-/* ========== 发帖表单：发布招聘 ========== */
-
 function setupJobForm() {
   const form = document.getElementById("jobForm");
   const statusEl = document.getElementById("jobStatus");
@@ -484,7 +481,6 @@ function setupJobForm() {
 
   if (!form || !statusEl) return;
 
-  // 选择图片
   if (inputImg) {
     inputImg.addEventListener("change", (e) => {
       const files = Array.from(e.target.files || []);
@@ -498,18 +494,16 @@ function setupJobForm() {
     });
   }
 
-  // 清空图片
   if (btnClear) {
     btnClear.addEventListener("click", () => {
       jobImagesList = [];
       updateJobPreview();
-      if (inputImg) inputImg.value = "";
     });
   }
 
-  // 提交表单
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!ensureSupabase()) return;
 
     const title = document.getElementById("jobTitle").value.trim();
     const company = document.getElementById("jobCompany").value.trim();
@@ -527,13 +521,11 @@ function setupJobForm() {
       return;
     }
 
-    statusEl.textContent = "正在发布…";
+    statusEl.textContent = "正在保存...";
     statusEl.style.color = "#6b7280";
 
-    if (!ensureSupabase()) return;
-
-    // 检查登录
-    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    const { data: userData, error: userErr } =
+      await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
       alert("请先登录后再发布招聘信息。");
       window.location.href = "login.html";
@@ -541,10 +533,9 @@ function setupJobForm() {
     }
     const user = userData.user;
 
-    // 处理图片
     let images = [];
     try {
-      images = await filesToBase64(jobImagesList.slice(0, MAX_IMAGES));
+      images = await jobFilesToBase64(jobImagesList.slice(0, MAX_IMAGES));
     } catch (err) {
       console.error("读取图片失败：", err);
       statusEl.textContent = "读取图片失败，请稍后重试。";
@@ -562,7 +553,7 @@ function setupJobForm() {
       user_email: user.email,
     };
 
-    const { error } = await supabase.from("jobs_posts").insert(payload);
+    const { error } = await supabaseClient.from("jobs_posts").insert(payload);
 
     if (error) {
       console.error("发布招聘失败：", error);
@@ -581,7 +572,7 @@ function setupJobForm() {
   });
 }
 
-/* ========== 初始化 ========== */
+/* ============= 初始化 ============= */
 
 document.addEventListener("DOMContentLoaded", () => {
   loadJobs();
