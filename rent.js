@@ -1,25 +1,11 @@
-// rent.js —— 使用 Supabase 数据库存储租房信息
-// 房源表：rent_posts
-// 评论表（新加）：rent_comments
+// rent.js —— Supabase 版租房：列表 + 详情弹窗 + 评论 + 发布
+// 表：rent_posts、rent_comments
 
 const MAX_IMAGES = 5;
-let rentImagesList = []; // 当前准备上传的图片 File 列表
+let rentImagesList = [];   // 当前准备上传的图片 File[]
+// ================= 工具函数 =================
 
-// 工具：File[] -> base64[]
-function filesToBase64(files) {
-  return Promise.all(
-    files.map(
-      (file) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        })
-    )
-  );
-}
-
-// 工具：检查 supabaseClient 是否存在
+// 检查 supabaseClient 是否存在
 function ensureSupabase() {
   if (!window.supabaseClient) {
     console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
@@ -29,7 +15,22 @@ function ensureSupabase() {
   return true;
 }
 
-// 工具：格式化时间
+// File[] -> base64[]
+function filesToBase64(files) {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })
+    )
+  );
+}
+
+// 时间格式化
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -42,10 +43,9 @@ function formatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-/* ===================== 评论相关 ===================== */
-// 约定：Supabase 新建 rent_comments 表，字段：
-// id, post_id(int8), content(text), user_id(uuid), user_email(text), created_at(timestamp)
+/* ================= 评论相关：rent_comments ================= */
 
+// 加载某条房源的评论
 async function loadRentComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
@@ -82,7 +82,9 @@ async function loadRentComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(c.created_at)}`;
+    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
+      c.created_at
+    )}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
@@ -96,6 +98,7 @@ async function loadRentComments(postId, listEl, infoEl) {
   });
 }
 
+// 提交评论
 async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
   const content = textarea.value.trim();
   if (!content) {
@@ -104,10 +107,10 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
     return;
   }
 
+  if (!ensureSupabase()) return;
+
   statusEl.textContent = "正在提交评论...";
   statusEl.style.color = "#6b7280";
-
-  if (!ensureSupabase()) return;
 
   const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
@@ -138,10 +141,10 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
   await loadRentComments(postId, listEl, infoEl);
 }
 
-/* ===================== 详情弹窗 ===================== */
+/* ================= 详情弹窗 ================= */
 
 function showRentDetail(rent) {
-  // 先移除旧的
+  // 清除旧的 overlay
   const old = document.getElementById("rentDetailOverlay");
   if (old) old.remove();
 
@@ -194,7 +197,6 @@ function showRentDetail(rent) {
   infoEl.style.fontSize = "14px";
   infoEl.style.color = "#111827";
   infoEl.style.lineHeight = "1.6";
-
   infoEl.innerHTML = `
     <p><strong>联系方式：</strong>${rent.contact || "未填写"}</p>
     ${
@@ -204,7 +206,7 @@ function showRentDetail(rent) {
     }
   `;
 
-  // 图片区域：查看大图 + 保存
+  // 图片区域
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(rent.images) && rent.images.length > 0) {
     imagesWrapper.style.marginTop = "14px";
@@ -315,15 +317,9 @@ function showRentDetail(rent) {
   submitBtn.style.background = "#16a34a";
   submitBtn.style.color = "#ffffff";
 
-  submitBtn.addEventListener("click", async () => {
-    await submitRentComment(
-      rent.id,
-      textarea,
-      statusSpan,
-      commentList,
-      commentInfo
-    );
-  });
+  submitBtn.addEventListener("click", () =>
+    submitRentComment(rent.id, textarea, statusSpan, commentList, commentInfo)
+  );
 
   actionRow.appendChild(statusSpan);
   actionRow.appendChild(submitBtn);
@@ -351,11 +347,11 @@ function showRentDetail(rent) {
 
   document.body.appendChild(overlay);
 
-  // 加载评论
+  // 打开弹窗后加载评论
   loadRentComments(rent.id, commentList, commentInfo);
 }
 
-/* ===================== 列表加载 ===================== */
+/* ================= 列表（rent_posts） ================= */
 
 async function loadRents() {
   const listEl = document.getElementById("rentList");
@@ -375,7 +371,7 @@ async function loadRents() {
 
   if (error) {
     console.error("加载租房列表失败：", error);
-    listEl.textContent = "加载失败，请稍后重试。";
+    listEl.textContent = "加载失败，请稍后再试。";
     return;
   }
 
@@ -389,8 +385,13 @@ async function loadRents() {
 
   data.forEach((rent) => {
     const div = document.createElement("div");
-    // 这里你可以用自己的卡片类，例如 rent-card；也可以只用内联样式
-    div.className = "rent-card";
+    // 方框卡片样式（你也可以只用 CSS 写一个 .rent-card）
+    div.style.border = "1px solid #d1e5d4";
+    div.style.borderRadius = "12px";
+    div.style.background = "#ffffff";
+    div.style.padding = "12px 16px";
+    div.style.marginBottom = "16px";
+    div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
     div.style.cursor = "pointer";
 
     const createdAt = rent.created_at ? new Date(rent.created_at) : new Date();
@@ -398,46 +399,29 @@ async function loadRents() {
       createdAt.getMonth() + 1
     ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
-    let imagesHtml = "";
-    if (Array.isArray(rent.images) && rent.images.length > 0) {
-      imagesHtml = `
-        <div class="rent-photos">
-          ${rent.images
-            .slice(0, 3)
-            .map((img) => `<img src="${img}" alt="房源图片" />`)
-            .join("")}
-          ${
-            rent.images.length > 3
-              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${rent.images.length - 3} 张</span>`
-              : ""
-          }
-        </div>
-      `;
-    }
-
     let summary = rent.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
     div.innerHTML = `
-      <h3>${rent.title || "未命名房源"}</h3>
-      <p><strong>联系方式：</strong>${rent.contact || "未填写"}</p>
+      <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
+      <p style="margin:2px 0;"><strong>联系方式：</strong>${
+        rent.contact || "未填写"
+      }</p>
       ${
         summary
-          ? `<p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>`
+          ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
           : ""
       }
-      ${imagesHtml}
       <small style="color:#6b7280;">发布于：${dateStr}</small>
     `;
 
-    // 点击进入详情（带图片 + 评论）
     div.addEventListener("click", () => showRentDetail(rent));
 
     listEl.appendChild(div);
   });
 }
 
-/* ===================== 图片预览 ===================== */
+/* ================= 图片预览 ================= */
 
 function updateRentPreview() {
   const previewEl = document.getElementById("rentPreview");
@@ -447,7 +431,9 @@ function updateRentPreview() {
 
   rentImagesList.forEach((file, idx) => {
     const wrapper = document.createElement("div");
-    wrapper.className = "preview-item";
+    wrapper.style.display = "inline-block";
+    wrapper.style.position = "relative";
+    wrapper.style.marginRight = "6px";
 
     const img = document.createElement("img");
     img.style.width = "90px";
@@ -463,7 +449,17 @@ function updateRentPreview() {
     const btn = document.createElement("button");
     btn.textContent = "×";
     btn.type = "button";
-    btn.className = "preview-remove";
+    btn.style.position = "absolute";
+    btn.style.top = "0";
+    btn.style.right = "0";
+    btn.style.border = "none";
+    btn.style.background = "rgba(0,0,0,0.5)";
+    btn.style.color = "white";
+    btn.style.borderRadius = "999px";
+    btn.style.cursor = "pointer";
+    btn.style.width = "18px";
+    btn.style.height = "18px";
+    btn.style.fontSize = "12px";
     btn.addEventListener("click", () => {
       rentImagesList.splice(idx, 1);
       updateRentPreview();
@@ -475,7 +471,7 @@ function updateRentPreview() {
   });
 }
 
-/* ===================== 表单逻辑 ===================== */
+/* ================= 发布表单 ================= */
 
 function setupRentForm() {
   const form = document.getElementById("rentForm");
@@ -485,13 +481,14 @@ function setupRentForm() {
 
   if (!form || !statusEl) return;
 
-  // 选择图片（多次选择累加，最多 5 张）
+  // 选择图片
   if (input) {
     input.addEventListener("change", (e) => {
       const files = Array.from(e.target.files || []);
-      for (const file of files) {
-        if (rentImagesList.length >= MAX_IMAGES) break;
-        rentImagesList.push(file);
+      for (const f of files) {
+        if (rentImagesList.length < MAX_IMAGES) {
+          rentImagesList.push(f);
+        }
       }
       input.value = "";
       updateRentPreview();
@@ -525,9 +522,7 @@ function setupRentForm() {
     statusEl.textContent = "提交中...";
     statusEl.style.color = "#6b7280";
 
-    // 1. 检查登录
     const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
-
     if (userErr || !userData?.user) {
       alert("请先登录后再发布房源信息。");
       window.location.href = "login.html";
@@ -535,7 +530,6 @@ function setupRentForm() {
     }
     const user = userData.user;
 
-    // 2. 处理图片为 base64 数组
     let imagesBase64 = [];
     try {
       imagesBase64 = await filesToBase64(rentImagesList.slice(0, MAX_IMAGES));
@@ -546,14 +540,13 @@ function setupRentForm() {
       return;
     }
 
-    // 3. 写入 Supabase
     const payload = {
       title,
       contact,
+      content,
       images: imagesBase64,
       user_id: user.id,
       user_email: user.email,
-      content,
     };
 
     const { error } = await supabaseClient.from("rent_posts").insert(payload);
@@ -568,7 +561,6 @@ function setupRentForm() {
     statusEl.textContent = "发布成功！";
     statusEl.style.color = "green";
 
-    // 4. 重置表单 & 预览 & 列表
     form.reset();
     rentImagesList = [];
     updateRentPreview();
@@ -576,7 +568,7 @@ function setupRentForm() {
   });
 }
 
-/* ===================== 初始化 ===================== */
+/* ================= 初始化 ================= */
 
 document.addEventListener("DOMContentLoaded", () => {
   loadRents();
