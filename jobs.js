@@ -1,21 +1,26 @@
-// forum.js —— Supabase 论坛：列表 + 详情弹窗（大图/保存）+ 评论
-// 帖子表：forum_posts
-// 评论表：forum_comments
+// jobs.js
+// 招聘页面：使用 Supabase 存储帖子（文字 + 图片），任何人可看列表，登录用户可发布 / 评论
 
-const FORUM_MAX_IMAGES = 5;
-let forumImagesList = [];
+// 复用全站统一的 supabaseClient（在公共 auth / config 文件里初始化）
+const supabase = window.supabaseClient || null;
 
-// 检查 supabaseClient
+const MAX_IMAGES = 5;
+let jobImagesList = []; // 待上传图片 File[]
+// 不再使用 localStorage，列表直接从 Supabase 读取
+
+/* ========== 小工具 ========== */
+
+// 检查 supabase 是否可用
 function ensureSupabase() {
-  if (!window.supabaseClient) {
+  if (!supabase) {
     console.error("supabaseClient 未初始化，请检查公共配置脚本。");
-    alert("系统配置错误：未找到 supabaseClient。");
+    alert("系统错误：未找到 supabaseClient。");
     return false;
   }
   return true;
 }
 
-// 小工具：格式化日期
+// 格式化时间
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -29,43 +34,44 @@ function formatDate(iso) {
 }
 
 // File[] -> base64[]
-function forumFilesToBase64(files) {
+function filesToBase64(files) {
   return Promise.all(
     files.map(
       (file) =>
         new Promise((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = (e) => resolve(e.target.result);
-          r.onerror = reject;
-          r.readAsDataURL(file);
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         })
     )
   );
 }
 
-/* ============= 评论相关 ============= */
+/* ========== 评论：读取 & 提交 ========== */
 
-// 加载某个帖子的评论
-async function loadComments(postId, listEl, infoEl) {
+// 从 jobs_comments 读取评论并渲染
+async function loadJobComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
-  listEl.innerHTML = "评论加载中...";
+  listEl.innerHTML = "评论加载中…";
 
-  const { data, error } = await supabaseClient
-    .from("forum_comments")
+  const { data, error } = await supabase
+    .from("jobs_comments")
     .select("id, content, user_email, created_at")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
   if (error) {
     console.error("加载评论失败：", error);
-    listEl.textContent = "评论加载失败。";
+    listEl.textContent = "评论功能暂时不可用。";
+    infoEl.textContent = "";
     return;
   }
 
   if (!data || data.length === 0) {
     listEl.innerHTML =
-      '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎抢沙发。</p>';
+      '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎第一个留言。</p>';
     infoEl.textContent = "";
     return;
   }
@@ -81,9 +87,7 @@ async function loadComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
-      c.created_at
-    )}`;
+    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(c.created_at)}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
@@ -97,8 +101,8 @@ async function loadComments(postId, listEl, infoEl) {
   });
 }
 
-// 提交评论
-async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
+// 提交一条评论
+async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   const content = textarea.value.trim();
   if (!content) {
     statusEl.textContent = "评论内容不能为空。";
@@ -106,13 +110,12 @@ async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
     return;
   }
 
-  statusEl.textContent = "正在提交评论...";
+  statusEl.textContent = "正在提交评论…";
   statusEl.style.color = "#6b7280";
 
   if (!ensureSupabase()) return;
 
-  // 检查登录
-  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
@@ -120,7 +123,7 @@ async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
   }
   const user = userData.user;
 
-  const { error } = await supabaseClient.from("forum_comments").insert({
+  const { error } = await supabase.from("jobs_comments").insert({
     post_id: postId,
     content,
     user_id: user.id,
@@ -138,18 +141,17 @@ async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
   statusEl.textContent = "评论已发表。";
   statusEl.style.color = "green";
 
-  // 重新加载评论列表
-  await loadComments(postId, listEl, infoEl);
+  await loadJobComments(postId, listEl, infoEl);
 }
 
-/* ============= 详情弹窗（带图片保存 + 评论） ============= */
+/* ========== 详情弹窗（图片查看/保存 + 评论） ========== */
 
-function showForumDetail(post) {
-  const old = document.getElementById("forumDetailOverlay");
+function showJobDetail(job) {
+  const old = document.getElementById("jobDetailOverlay");
   if (old) old.remove();
 
   const overlay = document.createElement("div");
-  overlay.id = "forumDetailOverlay";
+  overlay.id = "jobDetailOverlay";
   overlay.style.position = "fixed";
   overlay.style.inset = "0";
   overlay.style.background = "rgba(15,23,42,0.45)";
@@ -181,34 +183,44 @@ function showForumDetail(post) {
   closeBtn.onclick = () => overlay.remove();
 
   const titleEl = document.createElement("h2");
-  titleEl.textContent = post.title || "未命名帖子";
-  titleEl.style.margin = "0 0 6px 0";
+  titleEl.textContent = job.title || "未命名职位";
+  titleEl.style.margin = "0 0 8px 0";
   titleEl.style.fontSize = "18px";
 
   const metaEl = document.createElement("div");
   metaEl.style.fontSize = "13px";
   metaEl.style.color = "#6b7280";
   metaEl.style.marginBottom = "10px";
-  const dateStr = formatDate(post.created_at);
+  const dateStr = formatDate(job.created_at);
   metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
 
-  const contentEl = document.createElement("div");
-  contentEl.style.fontSize = "14px";
-  contentEl.style.color = "#111827";
-  contentEl.style.lineHeight = "1.6";
-  contentEl.style.whiteSpace = "pre-wrap";
-  contentEl.textContent = post.content || "";
+  const infoEl = document.createElement("div");
+  infoEl.style.fontSize = "14px";
+  infoEl.style.color = "#111827";
+  infoEl.style.lineHeight = "1.6";
 
-  // 图片区域：支持大图 + 保存
+  let infoHtml = "";
+  if (job.company) {
+    infoHtml += `<p><strong>公司：</strong>${job.company}</p>`;
+  }
+  if (job.contact) {
+    infoHtml += `<p><strong>联系方式：</strong>${job.contact}</p>`;
+  }
+  if (job.content) {
+    infoHtml += `<p style="margin-top:8px;white-space:pre-wrap;">${job.content}</p>`;
+  }
+  infoEl.innerHTML = infoHtml || "<p>暂无详细描述。</p>";
+
+  // 图片区域：查看大图 + 保存
   const imagesWrapper = document.createElement("div");
-  if (Array.isArray(post.images) && post.images.length > 0) {
+  if (Array.isArray(job.images) && job.images.length > 0) {
     imagesWrapper.style.marginTop = "14px";
     imagesWrapper.style.display = "grid";
     imagesWrapper.style.gridTemplateColumns =
       "repeat(auto-fill,minmax(160px,1fr))";
     imagesWrapper.style.gap = "10px";
 
-    post.images.forEach((src, idx) => {
+    job.images.forEach((src, idx) => {
       const box = document.createElement("div");
       box.style.borderRadius = "12px";
       box.style.border = "1px solid #e5e7eb";
@@ -217,11 +229,10 @@ function showForumDetail(post) {
       box.style.display = "flex";
       box.style.flexDirection = "column";
       box.style.gap = "6px";
-      box.style.alignItems = "stretch";
 
       const img = document.createElement("img");
       img.src = src;
-      img.alt = "帖子图片";
+      img.alt = "职位图片";
       img.style.width = "100%";
       img.style.borderRadius = "8px";
       img.style.objectFit = "cover";
@@ -243,7 +254,7 @@ function showForumDetail(post) {
       const saveLink = document.createElement("a");
       saveLink.textContent = "保存图片";
       saveLink.href = src;
-      saveLink.download = `forum-image-${post.id || "p"}-${idx + 1}.png`;
+      saveLink.download = `job-image-${job.id || "p"}-${idx + 1}.png`;
       saveLink.style.fontSize = "12px";
       saveLink.style.color = "#16a34a";
       saveLink.style.textDecoration = "none";
@@ -257,7 +268,7 @@ function showForumDetail(post) {
     });
   }
 
-  /* ======= 评论区域 ======= */
+  /* ===== 评论区域 ===== */
 
   const commentBlock = document.createElement("div");
   commentBlock.style.marginTop = "18px";
@@ -282,7 +293,7 @@ function showForumDetail(post) {
 
   const textarea = document.createElement("textarea");
   textarea.rows = 3;
-  textarea.placeholder = "写下你的评论...";
+  textarea.placeholder = "写下你的评论，例如：有兴趣，怎么申请？";
   textarea.style.width = "100%";
   textarea.style.boxSizing = "border-box";
   textarea.style.resize = "vertical";
@@ -313,13 +324,7 @@ function showForumDetail(post) {
   submitBtn.style.color = "#ffffff";
 
   submitBtn.addEventListener("click", async () => {
-    await submitComment(
-      post.id,
-      textarea,
-      statusSpan,
-      commentList,
-      commentInfo
-    );
+    await submitJobComment(job.id, textarea, statusSpan, commentList, commentInfo);
   });
 
   actionRow.appendChild(statusSpan);
@@ -333,13 +338,12 @@ function showForumDetail(post) {
   commentBlock.appendChild(commentList);
   commentBlock.appendChild(commentForm);
 
+  // 组装弹窗
   card.appendChild(closeBtn);
   card.appendChild(titleEl);
   card.appendChild(metaEl);
-  card.appendChild(contentEl);
-  if (imagesWrapper.childElementCount > 0) {
-    card.appendChild(imagesWrapper);
-  }
+  card.appendChild(infoEl);
+  if (imagesWrapper.childElementCount > 0) card.appendChild(imagesWrapper);
   card.appendChild(commentBlock);
 
   overlay.appendChild(card);
@@ -350,91 +354,97 @@ function showForumDetail(post) {
 
   document.body.appendChild(overlay);
 
-  loadComments(post.id, commentList, commentInfo);
+  // 打开弹窗后，加载评论
+  loadJobComments(job.id, commentList, commentInfo);
 }
 
-/* ============= 列表展示 ============= */
+/* ========== 列表：从 Supabase 加载招聘信息 ========== */
 
-async function loadForumPosts() {
-  const list = document.getElementById("posts");
-  if (!list) return;
+async function loadJobs() {
+  const listEl = document.getElementById("jobList");
+  if (!listEl) return;
 
-  list.innerHTML = "加载中...";
+  listEl.innerHTML = "加载中…";
 
   if (!ensureSupabase()) {
-    list.textContent = "系统配置错误，无法加载数据。";
+    listEl.textContent = "系统错误，无法加载数据。";
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("forum_posts")
-    .select("id, title, content, images, created_at")
+  const { data, error } = await supabase
+    .from("jobs_posts")
+    .select("id, title, company, contact, content, images, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("加载帖子失败：", error);
-    list.textContent = "加载失败，请稍后再试。";
+    console.error("加载招聘信息失败：", error);
+    listEl.textContent = "加载失败，请稍后再试。";
     return;
   }
 
   if (!data || data.length === 0) {
-    list.innerHTML =
-      `<div class="posts-empty">暂时还没有帖子，欢迎发布第一条。</div>`;
+    listEl.innerHTML =
+      '<p style="color:#6b7280;font-size:13px;">目前还没有招聘信息，欢迎发布第一条。</p>';
     return;
   }
 
-  list.innerHTML = "";
+  listEl.innerHTML = "";
 
-  data.forEach((p) => {
+  data.forEach((job) => {
     const div = document.createElement("div");
-    // 关键修改：使用 job-item，让样式和 Jobs 页面一样
+    // 使用 job-item，让外观和你原来的方框一致
     div.className = "job-item";
     div.style.cursor = "pointer";
 
-    const dateStr = formatDate(p.created_at);
+    const dateStr = formatDate(job.created_at);
 
-    let imgHtml = "";
-    if (Array.isArray(p.images) && p.images.length > 0) {
-      imgHtml = `
-        <div class="forum-photos">
-          ${p.images
+    let imagesHtml = "";
+    if (Array.isArray(job.images) && job.images.length > 0) {
+      imagesHtml = `
+        <div class="job-photos">
+          ${job.images
             .slice(0, 3)
-            .map((url) => `<img src="${url}" alt="帖子图片">`)
+            .map((img) => `<img src="${img}" alt="职位图片" />`)
             .join("")}
           ${
-            p.images.length > 3
-              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${p.images.length - 3} 张</span>`
+            job.images.length > 3
+              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${job.images.length - 3} 张</span>`
               : ""
           }
-        </div>
-      `;
+        </div>`;
     }
 
-    let summary = p.content || "";
-    if (summary.length > 60) summary = summary.slice(0, 60) + "…";
+    let summary = job.content || "";
+    if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
     div.innerHTML = `
-      <h3>${p.title}</h3>
-      <p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>
-      ${imgHtml}
+      <h3>${job.title}</h3>
+      ${job.company ? `<p><strong>公司：</strong>${job.company}</p>` : ""}
+      ${job.contact ? `<p><strong>联系方式：</strong>${job.contact}</p>` : ""}
+      ${
+        summary
+          ? `<p style="margin-top:4px;white-space:pre-wrap;">${summary}</p>`
+          : ""
+      }
+      ${imagesHtml}
       <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
     `;
 
-    div.addEventListener("click", () => showForumDetail(p));
+    div.addEventListener("click", () => showJobDetail(job));
 
-    list.appendChild(div);
+    listEl.appendChild(div);
   });
 }
 
-/* ============= 发帖表单 ============= */
+/* ========== 图片预览（发帖时） ========== */
 
-function updateForumPreview() {
-  const preview = document.getElementById("forumPreview");
-  if (!preview) return;
+function updateJobPreview() {
+  const previewEl = document.getElementById("jobPreview");
+  if (!previewEl) return;
 
-  preview.innerHTML = "";
+  previewEl.innerHTML = "";
 
-  forumImagesList.forEach((file, idx) => {
+  jobImagesList.forEach((file, index) => {
     const wrap = document.createElement("div");
     wrap.className = "preview-item";
 
@@ -449,117 +459,131 @@ function updateForumPreview() {
     reader.onload = (e) => (img.src = e.target.result);
     reader.readAsDataURL(file);
 
-    const del = document.createElement("button");
-    del.textContent = "×";
-    del.type = "button";
-    del.className = "preview-remove";
-    del.onclick = () => {
-      forumImagesList.splice(idx, 1);
-      updateForumPreview();
-    };
+    const btn = document.createElement("button");
+    btn.textContent = "×";
+    btn.type = "button";
+    btn.className = "preview-remove";
+    btn.addEventListener("click", () => {
+      jobImagesList.splice(index, 1);
+      updateJobPreview();
+    });
 
     wrap.appendChild(img);
-    wrap.appendChild(del);
-    preview.appendChild(wrap);
+    wrap.appendChild(btn);
+    previewEl.appendChild(wrap);
   });
 }
 
-function setupForumForm() {
-  const form = document.getElementById("forumForm");
-  const statusEl = document.getElementById("forumStatus");
-  const input = document.getElementById("forumImages");
-  const clearBtn = document.getElementById("forumClearImages");
+/* ========== 发帖表单：发布招聘 ========== */
+
+function setupJobForm() {
+  const form = document.getElementById("jobForm");
+  const statusEl = document.getElementById("jobStatus");
+  const inputImg = document.getElementById("jobImages");
+  const btnClear = document.getElementById("jobClearImages");
 
   if (!form || !statusEl) return;
 
-  if (input) {
-    input.onchange = (e) => {
-      const newFiles = Array.from(e.target.files || []);
-      for (let file of newFiles) {
-        if (forumImagesList.length >= FORUM_MAX_IMAGES) break;
-        forumImagesList.push(file);
+  // 选择图片
+  if (inputImg) {
+    inputImg.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const f of files) {
+        if (jobImagesList.length < MAX_IMAGES) {
+          jobImagesList.push(f);
+        }
       }
-      input.value = "";
-      updateForumPreview();
-    };
+      inputImg.value = "";
+      updateJobPreview();
+    });
   }
 
-  if (clearBtn) {
-    clearBtn.onclick = () => {
-      forumImagesList = [];
-      updateForumPreview();
-      if (input) input.value = "";
-    };
+  // 清空图片
+  if (btnClear) {
+    btnClear.addEventListener("click", () => {
+      jobImagesList = [];
+      updateJobPreview();
+      if (inputImg) inputImg.value = "";
+    });
   }
 
-  form.onsubmit = async (e) => {
+  // 提交表单
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!ensureSupabase()) return;
 
-    const title = document.getElementById("title").value.trim();
-    const content = document.getElementById("content").value.trim();
+    const title = document.getElementById("jobTitle").value.trim();
+    const company = document.getElementById("jobCompany").value.trim();
+    const contact = document.getElementById("jobContact").value.trim();
+    const content = document.getElementById("jobContent").value.trim();
 
     if (!title) {
-      statusEl.textContent = "标题不能为空";
+      statusEl.textContent = "职位名称是必填项。";
+      statusEl.style.color = "red";
+      return;
+    }
+    if (!contact) {
+      statusEl.textContent = "联系方式是必填项。";
       statusEl.style.color = "red";
       return;
     }
 
-    statusEl.textContent = "发布中...";
+    statusEl.textContent = "正在发布…";
     statusEl.style.color = "#6b7280";
 
-    const { data: userData, error: userErr } =
-      await supabaseClient.auth.getUser();
+    if (!ensureSupabase()) return;
+
+    // 检查登录
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user) {
-      alert("请先登录后再发布帖子。");
+      alert("请先登录后再发布招聘信息。");
       window.location.href = "login.html";
       return;
     }
     const user = userData.user;
 
-    let urls = [];
+    // 处理图片
+    let images = [];
     try {
-      urls = await forumFilesToBase64(
-        forumImagesList.slice(0, FORUM_MAX_IMAGES)
-      );
+      images = await filesToBase64(jobImagesList.slice(0, MAX_IMAGES));
     } catch (err) {
       console.error("读取图片失败：", err);
-      statusEl.textContent = "读取图片失败，请重试。";
+      statusEl.textContent = "读取图片失败，请稍后重试。";
       statusEl.style.color = "red";
       return;
     }
 
     const payload = {
       title,
+      company,
+      contact,
       content,
-      images: urls,
+      images,
       user_id: user.id,
       user_email: user.email,
     };
 
-    const { error } = await supabaseClient.from("forum_posts").insert(payload);
+    const { error } = await supabase.from("jobs_posts").insert(payload);
 
     if (error) {
-      console.error("发布失败：", error);
-      statusEl.textContent = "发布失败，请稍后再试。";
+      console.error("发布招聘失败：", error);
+      statusEl.textContent = "发布失败，请稍后重试。";
       statusEl.style.color = "red";
       return;
     }
 
-    form.reset();
-    forumImagesList = [];
-    updateForumPreview();
-
-    statusEl.textContent = "发布成功";
+    statusEl.textContent = "发布成功！";
     statusEl.style.color = "green";
 
-    loadForumPosts();
-  };
+    form.reset();
+    jobImagesList = [];
+    updateJobPreview();
+    loadJobs();
+  });
 }
 
-/* ============= 初始化 ============= */
+/* ========== 初始化 ========== */
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadForumPosts();
-  setupForumForm();
+  loadJobs();
+  setupJobForm();
 });
