@@ -1,4 +1,4 @@
-// forum.js —— Supabase 论坛：列表 + 详情弹窗（大图/保存）+ 评论
+// forum.js —— Supabase 论坛：列表 + 详情弹窗（大图/保存）+ 评论 + 分享
 // 帖子表：forum_posts
 // 评论表：forum_comments
 
@@ -60,6 +60,7 @@ async function loadComments(postId, listEl, infoEl) {
   if (error) {
     console.error("加载评论失败：", error);
     listEl.textContent = "评论加载失败。";
+    infoEl.textContent = "";
     return;
   }
 
@@ -112,7 +113,8 @@ async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
   // 检查登录
-  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+  const { data: userData, error: userErr } =
+    await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
@@ -327,7 +329,6 @@ function showForumDetail(post) {
 
   actionRow.appendChild(statusSpan);
   actionRow.appendChild(submitBtn);
-
   commentForm.appendChild(textarea);
   commentForm.appendChild(actionRow);
 
@@ -358,7 +359,24 @@ function showForumDetail(post) {
   loadComments(post.id, commentList, commentInfo);
 }
 
-/* ============= 列表展示 ============= */
+/* ============= URL 深度链接：?forum=123 自动打开 ============= */
+
+function handleForumDeepLink(posts) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("forum");
+    if (!id) return;
+
+    const post = posts.find((p) => String(p.id) === String(id));
+    if (!post) return;
+
+    setTimeout(() => showForumDetail(post), 0);
+  } catch (e) {
+    console.error("解析 forum 参数失败：", e);
+  }
+}
+
+/* ============= 列表展示（带分享按钮） ============= */
 
 async function loadForumPosts() {
   const list = document.getElementById("posts");
@@ -421,7 +439,18 @@ async function loadForumPosts() {
       <h3>${p.title}</h3>
       <p style="white-space:pre-wrap;margin-top:4px;">${summary}</p>
       ${imgHtml}
-      <small style="color:#6b7280;display:block;margin-top:4px;">发布于：${dateStr}</small>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <small style="color:#6b7280;display:block;">发布于：${dateStr}</small>
+        <button
+          class="forum-share-btn"
+          type="button"
+          data-id="${p.id}"
+          data-title="${p.title || "论坛帖子"}"
+          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+        >
+          分享
+        </button>
+      </div>
     `;
 
     // 点击整条帖子 → 打开详情（带评论）
@@ -429,6 +458,9 @@ async function loadForumPosts() {
 
     list.appendChild(div);
   });
+
+  // 处理 ?forum= 深度链接
+  handleForumDeepLink(data);
 }
 
 /* ============= 发帖表单 ============= */
@@ -561,6 +593,60 @@ function setupForumForm() {
     loadForumPosts();
   };
 }
+
+/* ============= 分享功能：标题 + 链接 ============= */
+
+async function shareForum(postId, postTitle) {
+  const url =
+    window.location.origin +
+    window.location.pathname +
+    "?forum=" +
+    encodeURIComponent(postId);
+
+  const safeTitle =
+    postTitle && postTitle.trim() ? postTitle.trim() : "达尔文本地论坛帖子";
+
+  const shareText = `【论坛】${safeTitle}\nDarwin BBS 帖子详情：`;
+
+  // 1）系统分享
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: safeTitle,
+        text: shareText,
+        url: url,
+      });
+      return;
+    } catch (err) {
+      console.error("系统分享失败：", err);
+    }
+  }
+
+  // 2）复制：标题 + 链接
+  const copyText = `【论坛】${safeTitle}\n查看详情：${url}`;
+  try {
+    await navigator.clipboard.writeText(copyText);
+    alert("已复制：标题 + 链接，可以直接粘贴给好友。");
+  } catch (err) {
+    console.error("复制失败：", err);
+    alert("请手动复制以下内容分享：\n\n" + copyText);
+  }
+}
+
+// 事件代理：监听分享按钮（并阻止触发卡片点击）
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".forum-share-btn");
+  if (!btn) return;
+
+  e.stopPropagation();
+
+  const postId = btn.dataset.id;
+  const postTitle = btn.dataset.title || "论坛帖子";
+
+  if (postId) {
+    shareForum(postId, postTitle);
+  }
+});
 
 /* ============= 初始化 ============= */
 
