@@ -1,5 +1,5 @@
-// cv.js —— 使用 Supabase 存储求职信息
-// 表名：cv_posts
+// cv.js —— 求职信息：列表 + 详情弹窗 + 评论 + 发布 + 分享
+// 表：cv_posts, cv_comments
 
 const CV_MAX_IMAGES = 5;
 let cvImagesList = [];
@@ -29,7 +29,7 @@ function cvFilesToBase64(files) {
   );
 }
 
-// 时间格式化（用于详情和评论）
+// 时间格式化
 function cvFormatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -43,9 +43,6 @@ function cvFormatDate(iso) {
 }
 
 /* ============ 评论相关：cv_comments ============ */
-
-// 约定 Supabase 表：cv_comments
-// 字段：id, created_at, post_id, content, user_id, user_email
 
 async function loadCvComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
@@ -112,7 +109,8 @@ async function submitCvComment(postId, textarea, statusEl, listEl, infoEl) {
   statusEl.textContent = "正在提交评论...";
   statusEl.style.color = "#6b7280";
 
-  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+  const { data: userData, error: userErr } =
+    await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
@@ -205,7 +203,7 @@ function showCvDetail(cv) {
     }
   `;
 
-  // 图片展示：查看大图 + 保存
+  // 图片展示
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(cv.images) && cv.images.length > 0) {
     imagesWrapper.style.marginTop = "14px";
@@ -330,7 +328,6 @@ function showCvDetail(cv) {
   commentBlock.appendChild(commentList);
   commentBlock.appendChild(commentForm);
 
-  // 组装 card
   card.appendChild(closeBtn);
   card.appendChild(titleEl);
   card.appendChild(metaEl);
@@ -346,11 +343,27 @@ function showCvDetail(cv) {
 
   document.body.appendChild(overlay);
 
-  // 打开后加载评论
   loadCvComments(cv.id, commentList, commentInfo);
 }
 
-/* ============ 图片预览（原逻辑不动） ============ */
+/* ============ URL 深度链接：?cv=123 自动打开 ============ */
+
+function handleCvDeepLink(cvs) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("cv");
+    if (!id) return;
+
+    const cv = cvs.find((item) => String(item.id) === String(id));
+    if (!cv) return;
+
+    setTimeout(() => showCvDetail(cv), 0);
+  } catch (e) {
+    console.error("解析 cv 参数失败：", e);
+  }
+}
+
+/* ============ 图片预览 ============ */
 
 function updateCvPreview() {
   const previewEl = document.getElementById("cvPreview");
@@ -388,7 +401,7 @@ function updateCvPreview() {
   });
 }
 
-/* ============ 加载求职列表（只加点击事件） ============ */
+/* ============ 加载求职列表（含分享按钮） ============ */
 
 async function loadCvs() {
   const listEl = document.getElementById("cvList");
@@ -423,7 +436,7 @@ async function loadCvs() {
   data.forEach((cv) => {
     const div = document.createElement("div");
     div.className = "post";
-    div.style.cursor = "pointer"; // 新增：表明可点击
+    div.style.cursor = "pointer";
 
     const createdAt = cv.created_at ? new Date(cv.created_at) : new Date();
     const dateStr = `${createdAt.getFullYear()}-${String(
@@ -443,26 +456,43 @@ async function loadCvs() {
       `;
     }
 
+    let contentHtml = "";
+    if (cv.content) {
+      let summary = cv.content;
+      if (summary.length > 80) summary = summary.slice(0, 80) + "…";
+      contentHtml = `<p style="white-space:pre-wrap;">${summary}</p>`;
+    }
+
     div.innerHTML = `
       <h3>${cv.title || "匿名求职"}</h3>
       ${cv.contact ? `<p><strong>联系方式：</strong>${cv.contact}</p>` : ""}
-      ${
-        cv.content
-          ? `<p style="white-space:pre-wrap;">${cv.content}</p>`
-          : ""
-      }
+      ${contentHtml}
       ${imagesHtml}
-      <small>发布于：${dateStr}</small>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <small>发布于：${dateStr}</small>
+        <button
+          class="cv-share-btn"
+          type="button"
+          data-id="${cv.id}"
+          data-title="${cv.title || "求职信息"}"
+          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+        >
+          分享
+        </button>
+      </div>
     `;
 
-    // 新增：点击查看详情（含图片 + 评论）
+    // 点击整卡片打开详情
     div.addEventListener("click", () => showCvDetail(cv));
 
     listEl.appendChild(div);
   });
+
+  // 处理 ?cv= 深度链接
+  handleCvDeepLink(data);
 }
 
-/* ============ 表单逻辑（保持不变） ============ */
+/* ============ 发布表单 ============ */
 
 function setupCvForm() {
   const form = document.getElementById("cvForm");
@@ -518,7 +548,6 @@ function setupCvForm() {
     statusEl.textContent = "正在保存...";
     statusEl.style.color = "#6b7280";
 
-    // 登录检查
     const { data: userData, error: userErr } =
       await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
@@ -528,7 +557,6 @@ function setupCvForm() {
     }
     const user = userData.user;
 
-    // 处理图片
     let imageDataUrls = [];
     try {
       if (cvImagesList.length > 0) {
@@ -571,6 +599,62 @@ function setupCvForm() {
     loadCvs();
   });
 }
+
+/* ============ 分享功能：标题 + 链接 ============ */
+
+async function shareCv(cvId, cvTitle) {
+  const url =
+    window.location.origin +
+    window.location.pathname +
+    "?cv=" +
+    encodeURIComponent(cvId);
+
+  const safeTitle =
+    cvTitle && cvTitle.trim() ? cvTitle.trim() : "达尔文求职信息";
+
+  const shareText = `【求职】${safeTitle}\nDarwin BBS 求职详情：`;
+
+  // 1）系统分享
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: safeTitle,
+        text: shareText,
+        url: url,
+      });
+      return;
+    } catch (err) {
+      console.error("系统分享失败：", err);
+    }
+  }
+
+  // 2）复制：标题 + 链接
+  const copyText = `【求职】${safeTitle}\n查看详情：${url}`;
+  try {
+    await navigator.clipboard.writeText(copyText);
+    alert("已复制：标题 + 链接，可以直接粘贴给好友。");
+  } catch (err) {
+    console.error("复制失败：", err);
+    alert("请手动复制以下内容分享：\n\n" + copyText);
+  }
+}
+
+// 事件代理：监听分享按钮（并阻止触发卡片点击）
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".cv-share-btn");
+  if (!btn) return;
+
+  e.stopPropagation();
+
+  const cvId = btn.dataset.id;
+  const cvTitle = btn.dataset.title || "求职信息";
+
+  if (cvId) {
+    shareCv(cvId, cvTitle);
+  }
+});
+
+/* ============ 初始化 ============ */
 
 document.addEventListener("DOMContentLoaded", () => {
   loadCvs();
