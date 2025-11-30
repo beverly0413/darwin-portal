@@ -1,8 +1,9 @@
-// rent.js —— Supabase 版租房：列表 + 详情弹窗 + 评论 + 发布
+// rent.js —— Supabase 版租房：列表 + 详情弹窗 + 评论 + 发布 + 分享
 // 表：rent_posts、rent_comments
 
 const MAX_IMAGES = 5;
-let rentImagesList = [];   // 当前准备上传的图片 File[]
+let rentImagesList = []; // 当前准备上传的图片 File[]
+
 // ================= 工具函数 =================
 
 // 检查 supabaseClient 是否存在
@@ -112,7 +113,8 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
   statusEl.textContent = "正在提交评论...";
   statusEl.style.color = "#6b7280";
 
-  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+  const { data: userData, error: userErr } =
+    await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
@@ -351,6 +353,23 @@ function showRentDetail(rent) {
   loadRentComments(rent.id, commentList, commentInfo);
 }
 
+/* ================= URL 深度链接（?rent=123 自动打开） ================= */
+
+function handleRentDeepLink(rents) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("rent");
+    if (!id) return;
+
+    const rent = rents.find((r) => String(r.id) === String(id));
+    if (!rent) return;
+
+    setTimeout(() => showRentDetail(rent), 0);
+  } catch (e) {
+    console.error("解析 rent 参数失败：", e);
+  }
+}
+
 /* ================= 列表（rent_posts） ================= */
 
 async function loadRents() {
@@ -385,12 +404,12 @@ async function loadRents() {
 
   data.forEach((rent) => {
     const div = document.createElement("div");
-    // 方框卡片样式（你也可以只用 CSS 写一个 .rent-card）
+    // 卡片样式
     div.style.border = "1px solid #d1e5d4";
     div.style.borderRadius = "12px";
     div.style.background = "#ffffff";
     div.style.padding = "12px 16px";
-    div.style.marginBottom = "16px";
+    div.style.marginBottom = "10px";
     div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
     div.style.cursor = "pointer";
 
@@ -412,13 +431,28 @@ async function loadRents() {
           ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
           : ""
       }
-      <small style="color:#6b7280;">发布于：${dateStr}</small>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <small style="color:#6b7280;">发布于：${dateStr}</small>
+        <button
+          class="rent-share-btn"
+          type="button"
+          data-id="${rent.id}"
+          data-title="${rent.title || "房源信息"}"
+          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+        >
+          分享
+        </button>
+      </div>
     `;
 
+    // 点击整卡片打开详情
     div.addEventListener("click", () => showRentDetail(rent));
 
     listEl.appendChild(div);
   });
+
+  // 处理 ?rent= 深度链接
+  handleRentDeepLink(data);
 }
 
 /* ================= 图片预览 ================= */
@@ -522,7 +556,8 @@ function setupRentForm() {
     statusEl.textContent = "提交中...";
     statusEl.style.color = "#6b7280";
 
-    const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
+    const { data: userData, error: userErr } =
+      await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
       alert("请先登录后再发布房源信息。");
       window.location.href = "login.html";
@@ -567,6 +602,61 @@ function setupRentForm() {
     loadRents();
   });
 }
+
+/* ================= 分享功能：标题 + 链接 ================= */
+
+async function shareRent(rentId, rentTitle) {
+  const url =
+    window.location.origin +
+    window.location.pathname +
+    "?rent=" +
+    encodeURIComponent(rentId);
+
+  const safeTitle = rentTitle && rentTitle.trim()
+    ? rentTitle.trim()
+    : "达尔文租房信息";
+
+  const shareText = `【租房】${safeTitle}\n达尔文BBS 房源详情：`;
+
+  // 1）系统分享（手机等）
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: safeTitle,
+        text: shareText,
+        url: url,
+      });
+      return;
+    } catch (err) {
+      console.error("系统分享失败：", err);
+    }
+  }
+
+  // 2）不支持系统分享：复制 文案 + 链接
+  const copyText = `【租房】${safeTitle}\n查看详情：${url}`;
+  try {
+    await navigator.clipboard.writeText(copyText);
+    alert("已复制：标题 + 链接，可以直接粘贴给好友。");
+  } catch (err) {
+    console.error("复制失败：", err);
+    alert("请手动复制以下内容分享：\n\n" + copyText);
+  }
+}
+
+// 事件代理：监听分享按钮（避免触发卡片点击）
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".rent-share-btn");
+  if (!btn) return;
+
+  e.stopPropagation();
+
+  const rentId = btn.dataset.id;
+  const rentTitle = btn.dataset.title || "房源信息";
+
+  if (rentId) {
+    shareRent(rentId, rentTitle);
+  }
+});
 
 /* ================= 初始化 ================= */
 
