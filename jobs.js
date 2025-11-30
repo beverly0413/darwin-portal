@@ -1,4 +1,4 @@
-// jobs.js —— Supabase 招聘：列表 + 详情弹窗（图片查看/保存）+ 评论
+// jobs.js —— Supabase 招聘：列表 + 详情弹窗（图片查看/保存）+ 评论 + 分享
 // 帖子表：jobs_posts
 // 评论表：jobs_comments
 
@@ -130,7 +130,7 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   if (error) {
     console.error("发表评论失败：", error);
     statusEl.textContent = "发表评论失败，请稍后再试。";
-    statusEl.style.color = "red";
+    statusEl.style.color = "红色";
     return;
   }
 
@@ -353,7 +353,24 @@ function showJobDetail(job) {
   loadJobComments(job.id, commentList, commentInfo);
 }
 
-/* ============= 列表：加载所有招聘信息 ============= */
+/* ============= 列表：加载所有招聘信息 + 分享按钮 + 深度链接 ============= */
+
+// URL 中如果有 ?job=xxx，则自动打开对应详情
+function handleJobDeepLink(jobs) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("job");
+    if (!id) return;
+
+    const job = jobs.find((j) => String(j.id) === String(id));
+    if (!job) return;
+
+    // 小延迟，确保列表渲染完成
+    setTimeout(() => showJobDetail(job), 0);
+  } catch (e) {
+    console.error("解析 job 参数失败：", e);
+  }
+}
 
 async function loadJobs() {
   const listEl = document.getElementById("jobList");
@@ -387,20 +404,16 @@ async function loadJobs() {
 
   data.forEach((job) => {
     const div = document.createElement("div");
-        div.className = "post";
-        div.style.marginBottom = "16px";
-      
-        const date = new Date(job.createdAt);
 
     // 绿色方框卡片样式
-      div.className = "job-card";
-      div.style.border = "1px solid #d1e5d4";
-      div.style.borderRadius = "12px";
-      div.style.background = "#ffffff";
-      div.style.padding = "12px 16px";
-      div.style.marginBottom = "10px";
-      div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
-      div.style.cursor = "pointer";
+    div.className = "job-card";
+    div.style.border = "1px solid #d1e5d4";
+    div.style.borderRadius = "12px";
+    div.style.background = "#ffffff";
+    div.style.padding = "12px 16px";
+    div.style.marginBottom = "10px";
+    div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
+    div.style.cursor = "pointer";
 
     const createdAt = job.created_at ? new Date(job.created_at) : new Date();
     const dateStr = `${createdAt.getFullYear()}-${String(
@@ -410,14 +423,17 @@ async function loadJobs() {
     let imagesHtml = "";
     if (Array.isArray(job.images) && job.images.length > 0) {
       imagesHtml = `
-        <div class="job-photos">
+        <div class="job-photos" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
           ${job.images
             .slice(0, 3)
-            .map((img) => `<img src="${img}" />`)
+            .map(
+              (img) =>
+                `<img src="${img}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #d1e5d4;" />`
+            )
             .join("")}
           ${
             job.images.length > 3
-              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${job.images.length - 3} 张</span>`
+              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;align-self:center;">+${job.images.length - 3} 张</span>`
               : ""
           }
         </div>`;
@@ -426,23 +442,39 @@ async function loadJobs() {
     let summary = job.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
+    // 内部 HTML + 分享按钮
     div.innerHTML = `
-      <h3>${job.title}</h3>
-      ${job.company ? `<p><strong>公司：</strong>${job.company}</p>` : ""}
-      ${job.contact ? `<p><strong>联系方式：</strong>${job.contact}</p>` : ""}
+      <h3 style="margin:0 0 4px 0;font-size:16px;">${job.title}</h3>
+      ${job.company ? `<p style="margin:0;font-size:14px;"><strong>公司：</strong>${job.company}</p>` : ""}
+      ${job.contact ? `<p style="margin:2px 0 0 0;font-size:14px;"><strong>联系方式：</strong>${job.contact}</p>` : ""}
       ${
         summary
-          ? `<p style="margin-top:4px;white-space:pre-wrap;">${summary}</p>`
+          ? `<p style="margin-top:4px;font-size:14px;color:#6b7280;white-space:pre-wrap;">${summary}</p>`
           : ""
       }
       ${imagesHtml}
-      <small>发布于：${dateStr}</small>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <small style="font-size:12px;color:#6b7280;">发布于：${dateStr}</small>
+        <button
+          class="job-share-btn"
+          type="button"
+          data-id="${job.id}"
+          data-title="${job.title || ""}"
+          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+        >
+          分享
+        </button>
+      </div>
     `;
 
+    // 点击整卡片打开详情（分享按钮会在事件里 stopPropagation）
     div.addEventListener("click", () => showJobDetail(job));
 
     listEl.appendChild(div);
   });
+
+  // 如果 URL 中有 ?job=xxx，则自动打开对应详情
+  handleJobDeepLink(data);
 }
 
 /* ============= 发帖表单：发布招聘 ============= */
@@ -581,6 +613,56 @@ function setupJobForm() {
     loadJobs();
   });
 }
+
+/* ============= 分享功能（系统分享 + 复制链接） ============= */
+
+async function shareJob(jobId, jobTitle) {
+  const url =
+    window.location.origin +
+    window.location.pathname +
+    "?job=" +
+    encodeURIComponent(jobId);
+
+  // 优先使用系统分享（手机等）
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: jobTitle || "招聘信息",
+        text: jobTitle || "达尔文招聘信息",
+        url,
+      });
+      return;
+    } catch (err) {
+      console.error("系统分享失败：", err);
+      // 失败后继续走复制逻辑
+    }
+  }
+
+  // 复制链接
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("分享链接已复制，可以粘贴到微信或其他应用。");
+  } catch (err) {
+    console.error("复制链接失败：", err);
+    alert("请手动复制此链接分享：\n" + url);
+  }
+}
+
+// 事件代理：监听分享按钮（并阻止触发卡片点击）
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".job-share-btn");
+  if (!btn) return;
+
+  // 避免点击分享按钮时同时触发卡片的点击事件
+  e.stopPropagation();
+
+  const jobId = btn.dataset.id;
+  const jobTitle = btn.dataset.title || "招聘信息";
+
+  if (jobId) {
+    shareJob(jobId, jobTitle);
+  }
+});
 
 /* ============= 初始化 ============= */
 
