@@ -4,16 +4,6 @@
   <meta charset="UTF-8" />
   <title>Darwin Life Hub · News</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- 分享卡片（WeChat / QQ / 朋友圈用来显示标题和描述） -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Darwin Life Hub · 北领地本地新闻">
-  <meta property="og:description" content="达尔文、北领地本地新闻汇总，方便华人和留学生了解最新动态。">
-  <meta property="og:image" content="https://darwinbbs.com/darwin-logo.png">
-  <meta property="og:url" content="https://darwinbbs.com/news.html">
-
-  <!-- 备用描述（部分国内 App 使用） -->
-  <meta name="description" content="达尔文及北领地本地新闻，覆盖工作、学习、生活等各类信息。">
-
 <style>
     :root {
       --bg:#f5f9f5;
@@ -243,6 +233,87 @@
       line-height:1.7;
       white-space:normal;
     }
+    /* 评论区 */
+    .news-comments{
+      margin-top:16px;
+      padding-top:12px;
+      border-top:1px solid #e5e7eb;
+      font-size:14px;
+    }
+    .news-comments h3{
+      margin:0 0 6px 0;
+      font-size:15px;
+      font-weight:600;
+      color:#022c22;
+    }
+    .news-comments-info{
+      font-size:12px;
+      color:var(--text-muted);
+      margin-bottom:6px;
+    }
+    .news-comments-list{
+      max-height:220px;
+      overflow-y:auto;
+      padding-right:4px;
+      margin-bottom:8px;
+    }
+    .news-comment-item{
+      padding:6px 0;
+      border-bottom:1px dashed #e5e7eb;
+    }
+    .news-comment-meta{
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:2px;
+    }
+    .news-comment-content{
+      white-space:pre-wrap;
+      font-size:14px;
+      color:#111827;
+    }
+    .news-comment-form{
+      margin-top:4px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .news-comment-form input,
+    .news-comment-form textarea{
+      font-family:inherit;
+      font-size:13px;
+      padding:6px 8px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      box-sizing:border-box;
+      width:100%;
+    }
+    .news-comment-form textarea{
+      resize:vertical;
+      min-height:60px;
+    }
+    .news-comment-actions{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:2px;
+    }
+    .news-comment-status{
+      font-size:12px;
+      color:#6b7280;
+    }
+    .news-comment-submit{
+      padding:4px 12px;
+      border-radius:999px;
+      border:none;
+      font-size:13px;
+      cursor:pointer;
+      background:#16a34a;
+      color:#ffffff;
+    }
+    .news-comment-submit:disabled{
+      opacity:0.6;
+      cursor:default;
+    }
 </style>
 </head>
 
@@ -293,8 +364,29 @@
         <img id="modalImage" src="" alt="新闻图片">
       </div>
       <div id="modalBody" class="modal-body"></div>
+
+      <!-- 评论区 -->
+          <div id="newsComments" class="news-comments">
+            <h3>评论</h3>
+            <div id="newsCommentsInfo" class="news-comments-info"></div>
+            <div id="newsCommentsList" class="news-comments-list"></div>
+            <div class="news-comment-form">
+              <input id="newsCommentName" placeholder="昵称（可选）">
+              <textarea id="newsCommentContent" placeholder="写下你的看法..."></textarea>
+              <div class="news-comment-actions">
+                <div id="newsCommentStatus" class="news-comment-status"></div>
+                <button id="newsCommentSubmit" class="news-comment-submit" type="button">
+                  发表评论
+                </button>
+              </div>
+            </div>
+          </div>
+
+
     </div>
   </div>
+
+
 
   <script type="module" src="./news.js"></script>
 </body>
