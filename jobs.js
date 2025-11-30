@@ -616,6 +616,7 @@ function setupJobForm() {
 
 /* ============= 分享功能（系统分享 + 复制链接） ============= */
 
+// 升级版分享：带“帖子主题提醒”
 async function shareJob(jobId, jobTitle) {
   const url =
     window.location.origin +
@@ -623,13 +624,20 @@ async function shareJob(jobId, jobTitle) {
     "?job=" +
     encodeURIComponent(jobId);
 
-  // 优先使用系统分享（手机等）
+  const safeTitle = jobTitle && jobTitle.trim()
+    ? jobTitle.trim()
+    : "达尔文招聘信息";
+
+  // 在分享内容里主动带上标题提示
+  const shareText = `【招聘】${safeTitle}\n达尔文BBS 职位详情：`;
+
+  // 1）优先使用系统分享（手机）
   if (navigator.share) {
     try {
       await navigator.share({
-        title: jobTitle || "招聘信息",
-        text: jobTitle || "达尔文招聘信息",
-        url,
+        title: safeTitle,
+        text: shareText, // 这里就包含“帖子主题提醒”
+        url: url,
       });
       return;
     } catch (err) {
@@ -638,15 +646,18 @@ async function shareJob(jobId, jobTitle) {
     }
   }
 
-  // 复制链接
+  // 2）不支持系统分享时，复制一段文案 + 链接
+  const copyText = `【招聘】${safeTitle}\n查看详情：${url}`;
+
   try {
-    await navigator.clipboard.writeText(url);
-    alert("分享链接已复制，可以粘贴到微信或其他应用。");
+    await navigator.clipboard.writeText(copyText);
+    alert("已复制：标题 + 链接，可以直接粘贴给好友。");
   } catch (err) {
     console.error("复制链接失败：", err);
-    alert("请手动复制此链接分享：\n" + url);
+    alert("请手动复制此内容分享：\n\n" + copyText);
   }
 }
+
 
 // 事件代理：监听分享按钮（并阻止触发卡片点击）
 document.addEventListener("click", (e) => {
