@@ -388,10 +388,18 @@ async function loadForumPosts() {
     list.textContent = "系统配置错误，无法加载数据。";
     return;
   }
+  // ✅ 加在这里
+  const { data: userData } = await supabaseClient.auth.getUser();
+  const currentUserId = userData?.user?.id || null;
 
   const { data, error } = await supabaseClient
     .from("forum_posts")
-    .select("id, title, content, images, created_at")
+    .select("id, title, content, images, created_at, user_id")
+    .order("created_at", { ascending: false });
+
+  const { data, error } = await supabaseClient
+    .from("forum_posts")
+   .select("id, title, content, images, created_at, user_id")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -452,6 +460,43 @@ async function loadForumPosts() {
         </button>
       </div>
     `;
+
+// ✅ 仅本人发的帖子显示“删除”按钮
+if (currentUserId && p.user_id === currentUserId) {
+  const delBtn = document.createElement("button");
+  delBtn.textContent = "删除";
+  delBtn.type = "button";
+  delBtn.style.padding = "4px 10px";
+  delBtn.style.borderRadius = "999px";
+  delBtn.style.border = "1px solid #dc2626";
+  delBtn.style.background = "#fff";
+  delBtn.style.color = "#dc2626";
+  delBtn.style.fontSize = "12px";
+  delBtn.style.cursor = "pointer";
+
+  delBtn.onclick = async (e) => {
+    e.stopPropagation(); // 防止点删除时打开帖子详情
+
+    const ok = confirm("确定要删除这条帖子吗？");
+    if (!ok) return;
+
+    const { error } = await supabaseClient
+      .from("forum_posts")
+      .delete()
+      .eq("id", p.id);
+
+    if (error) {
+      alert("删除失败：" + error.message);
+      return;
+    }
+
+    // 重新加载列表
+    loadForumPosts();
+  };
+
+  // 把按钮加到帖子卡片里
+  div.appendChild(delBtn);
+}
 
     // 点击整条帖子 → 打开详情（带评论）
     div.addEventListener("click", () => showForumDetail(p));
