@@ -1,8 +1,6 @@
 // my.js —— 从 Supabase 四张表加载“我发布的帖子”，并支持点击查看详情 & 删除
-// 需要的表名：jobs_posts / cv_posts / rent_posts / forum_posts
-// 如果你的表名不一样，改 TABLES 里的 name 就可以
 
-const supabase = window.supabaseClient || null;
+const sb = window.supabaseClient || null;
 
 const TABLES = {
   jobs:  { name: "jobs_posts",  label: "招聘" },
@@ -13,8 +11,6 @@ const TABLES = {
 
 let currentUser = null;
 let myPosts = [];
-
-/* ---------------- 公共小工具 ---------------- */
 
 // 格式化时间
 function formatDate(iso) {
@@ -29,10 +25,7 @@ function formatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-/* ---------------- 详情弹窗 ---------------- */
-
 function showPostDetail(post) {
-  // 先清掉旧的
   const old = document.getElementById("myDetailOverlay");
   if (old) old.remove();
 
@@ -75,7 +68,6 @@ function showPostDetail(post) {
 
   const createdAtStr = formatDate(post.createdAt);
   const metaEl = document.createElement("p");
-  metaEl.className = "job-meta";
   metaEl.style.margin = "0 0 8px 0";
   metaEl.style.fontSize = "12px";
   metaEl.style.color = "#6b7280";
@@ -103,7 +95,6 @@ function showPostDetail(post) {
     infoEl.appendChild(p);
   }
 
-  // 图片区域
   const imagesWrapper = document.createElement("div");
   imagesWrapper.style.marginTop = "12px";
   imagesWrapper.style.display = "grid";
@@ -132,8 +123,6 @@ function showPostDetail(post) {
   }
 
   overlay.appendChild(card);
-
-  // 点击遮罩关闭（点卡片本身不关闭）
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
@@ -141,10 +130,8 @@ function showPostDetail(post) {
   document.body.appendChild(overlay);
 }
 
-/* ---------------- 删除帖子（修复“假删除”） ---------------- */
-
 async function deletePost(post) {
-  if (!supabase) {
+  if (!sb) {
     alert("系统错误：未找到 supabaseClient。");
     return;
   }
@@ -163,8 +150,7 @@ async function deletePost(post) {
   }
 
   try {
-    // 按 id + user_id 双重条件删除，配合 Supabase RLS
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from(tableCfg.name)
       .delete()
       .eq("id", post.id)
@@ -182,7 +168,6 @@ async function deletePost(post) {
       return;
     }
 
-    // 从内存里移除并重新渲染
     myPosts = myPosts.filter(
       (p) => !(p.id === post.id && p.typeKey === post.typeKey)
     );
@@ -192,8 +177,6 @@ async function deletePost(post) {
     alert("删除时发生异常，请稍后重试。");
   }
 }
-
-/* ---------------- 渲染列表 ---------------- */
 
 function renderMyPosts() {
   const listEl = document.getElementById("myJobsList");
@@ -218,13 +201,12 @@ function renderMyPosts() {
   myPosts.forEach((post) => {
     const div = document.createElement("div");
     div.className = "job-item";
-    div.style.cursor = "pointer"; // 整条可点
+    div.style.cursor = "pointer";
 
     const createdAtStr = formatDate(post.createdAt);
 
     let imagesThumbHtml = "";
     if (Array.isArray(post.images) && post.images.length > 0) {
-      // 只显示一张缩略图
       imagesThumbHtml = `
         <div style="margin-top:8px;">
           <img src="${post.images[0]}" alt="图片预览"
@@ -238,11 +220,8 @@ function renderMyPosts() {
       `;
     }
 
-    // 内容只截取一部分作为摘要
     let summary = post.content || "";
-    if (summary.length > 80) {
-      summary = summary.slice(0, 80) + "…";
-    }
+    if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -253,11 +232,7 @@ function renderMyPosts() {
           ${post.company ? `<p style="margin:0 0 2px 0;"><strong>公司：</strong>${post.company}</p>` : ""}
           ${post.contact ? `<p style="margin:0 0 2px 0;"><strong>联系方式：</strong>${post.contact}</p>` : ""}
           ${summary ? `<p style="margin:4px 0 0 0;color:#4b5563;font-size:14px;">${summary}</p>` : ""}
-          ${
-            createdAtStr
-              ? `<p style="margin:6px 0 0 0;font-size:12px;color:#9ca3af;">发布于：${createdAtStr}</p>`
-              : ""
-          }
+          ${createdAtStr ? `<p style="margin:6px 0 0 0;font-size:12px;color:#9ca3af;">发布于：${createdAtStr}</p>` : ""}
           ${imagesThumbHtml}
         </div>
         <div class="job-actions" style="margin-left:8px;">
@@ -270,13 +245,11 @@ function renderMyPosts() {
       </div>
     `;
 
-    // 点击整条卡片 → 查看详情（但点击“删除”按钮除外）
     div.addEventListener("click", (e) => {
       if (e.target.closest(".delete-btn")) return;
       showPostDetail(post);
     });
 
-    // 删除按钮
     const delBtn = div.querySelector(".delete-btn");
     if (delBtn) {
       delBtn.addEventListener("click", (e) => {
@@ -289,10 +262,8 @@ function renderMyPosts() {
   });
 }
 
-/* ---------------- 加载“我的帖子” ---------------- */
-
 async function loadMyPosts() {
-  if (!supabase) {
+  if (!sb) {
     console.error("supabaseClient 未初始化。");
     return;
   }
@@ -301,7 +272,7 @@ async function loadMyPosts() {
   const uid = currentUser.id;
 
   const queries = Object.entries(TABLES).map(([key, info]) =>
-    supabase
+    sb
       .from(info.name)
       .select("*")
       .eq("user_id", uid)
@@ -328,19 +299,14 @@ async function loadMyPosts() {
   );
 
   const results = await Promise.all(queries);
-  // 合并并按时间倒序
-  myPosts = results
-    .flat()
-    .sort((a, b) => {
-      const t1 = new Date(a.createdAt || 0).getTime();
-      const t2 = new Date(b.createdAt || 0).getTime();
-      return t2 - t1;
-    });
+  myPosts = results.flat().sort((a, b) => {
+    const t1 = new Date(a.createdAt || 0).getTime();
+    const t2 = new Date(b.createdAt || 0).getTime();
+    return t2 - t1;
+  });
 
   renderMyPosts();
 }
-
-/* ---------------- 初始化页面（带昵称） ---------------- */
 
 async function initMyPage() {
   const userInfoEl = document.getElementById("userInfo");
@@ -349,16 +315,14 @@ async function initMyPage() {
   const saveNicknameBtn = document.getElementById("saveNicknameBtn");
   const nicknameStatusEl = document.getElementById("nicknameStatus");
 
-  if (!supabase) {
+  if (!sb) {
     alert("系统错误：未找到 supabaseClient。");
-    if (userInfoEl) {
-      userInfoEl.textContent = "系统错误：登录模块未初始化。";
-    }
+    if (userInfoEl) userInfoEl.textContent = "系统错误：登录模块未初始化。";
     return;
   }
 
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await sb.auth.getUser();
     if (error || !data?.user) {
       alert("请先登录后再访问“我的”页面。");
       window.location.href = "login.html";
@@ -367,7 +331,6 @@ async function initMyPage() {
 
     currentUser = data.user;
 
-    // 一个小函数：根据当前邮箱 + 昵称，刷新顶部文字
     const applyUserInfo = () => {
       const nick = (localStorage.getItem("dlh_nickname") || "").trim();
       if (userInfoEl) {
@@ -376,27 +339,19 @@ async function initMyPage() {
       }
     };
 
-    // 初始化昵称输入框
     const savedNickname = (localStorage.getItem("dlh_nickname") || "").trim();
-    if (nicknameInput) {
-      nicknameInput.value = savedNickname;
-    }
+    if (nicknameInput) nicknameInput.value = savedNickname;
     applyUserInfo();
 
-    // 保存昵称按钮
     if (saveNicknameBtn) {
       saveNicknameBtn.addEventListener("click", () => {
         const value = (nicknameInput?.value || "").trim();
         if (!value) {
           localStorage.removeItem("dlh_nickname");
-          if (nicknameStatusEl) {
-            nicknameStatusEl.textContent = "已清空昵称，将继续使用邮箱显示。";
-          }
+          if (nicknameStatusEl) nicknameStatusEl.textContent = "已清空昵称，将继续使用邮箱显示。";
         } else {
           localStorage.setItem("dlh_nickname", value);
-          if (nicknameStatusEl) {
-            nicknameStatusEl.textContent = "昵称已保存，在评论区将显示这个名字。";
-          }
+          if (nicknameStatusEl) nicknameStatusEl.textContent = "昵称已保存，在评论区将显示这个名字。";
         }
         applyUserInfo();
       });
@@ -404,7 +359,7 @@ async function initMyPage() {
 
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
-        await supabase.auth.signOut();
+        await sb.auth.signOut();
         window.location.href = "index.html";
       });
     }
@@ -412,9 +367,7 @@ async function initMyPage() {
     await loadMyPosts();
   } catch (err) {
     console.error("初始化“我的”页面失败：", err);
-    if (userInfoEl) {
-      userInfoEl.textContent = "初始化失败，请刷新页面重试。";
-    }
+    if (userInfoEl) userInfoEl.textContent = "初始化失败，请刷新页面重试。";
   }
 }
 
