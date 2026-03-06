@@ -1,12 +1,10 @@
-// login.js（只负责“已有账号登录”，不自动注册）
-const supabase = window.supabaseClient;
+const sb = window.supabaseClient;
 
 const form = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const msgEl = document.getElementById("msg");
 
-// 显示提示文字
 function setMsg(text, color = "#6b7280") {
   if (!msgEl) return;
   msgEl.textContent = text;
@@ -31,7 +29,7 @@ form.addEventListener("submit", async (e) => {
 
   setMsg("正在登录，请稍候...");
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await sb.auth.signInWithPassword({
     email,
     password,
   });
@@ -40,7 +38,6 @@ form.addEventListener("submit", async (e) => {
     console.error("Login error:", error);
 
     const msg = (error.message || "").toLowerCase();
-    // 针对常见几种情况给一点更清楚的提示
     if (msg.includes("email not confirmed")) {
       setMsg("登录失败：邮箱还没有验证，请先去邮箱点击验证链接。", "red");
     } else {
@@ -49,7 +46,6 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  // 登录成功
   setMsg("登录成功，正在跳转...", "#15803d");
   setTimeout(() => {
     window.location.href = "index.html";
