@@ -71,6 +71,57 @@
       background:#fecaca;
     }
 
+    /* 昵称卡片 */
+    .nickname-card {
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px dashed #d1e5d4;
+      background:#ecfdf3;
+      font-size:13px;
+      color:#374151;
+    }
+    .nickname-card h2 {
+      margin:0 0 4px;
+      font-size:14px;
+    }
+    .nickname-tip {
+      margin:0 0 8px;
+      font-size:12px;
+      color:#6b7280;
+    }
+    .nickname-row {
+      display:flex;
+      gap:8px;
+      margin-bottom:6px;
+    }
+    .nickname-row input {
+      flex:1;
+      padding:6px 10px;
+      font-size:13px;
+      border-radius:999px;
+      border:1px solid #d1e5d4;
+      background:#ffffff;
+      outline:none;
+    }
+    .nickname-row button {
+      padding:6px 12px;
+      border-radius:999px;
+      border:none;
+      font-size:13px;
+      cursor:pointer;
+      background:#16a34a;
+      color:#f0fdf4;
+      white-space:nowrap;
+    }
+    .nickname-row button:hover {
+      background:#15803d;
+    }
+    .nickname-status {
+      font-size:12px;
+      color:#6b7280;
+    }
+
     #myJobsList {
       margin-top:16px;
       display:flex;
@@ -142,10 +193,21 @@
 
   <div class="shell">
     <h1>我的</h1>
-    <div class="subtitle">查看并管理你自己发布的招聘信息</div>
+    <div class="subtitle">查看并管理你自己发布的招聘 / 求职 / 租房 / 论坛内容</div>
 
     <div id="userInfo">正在获取用户信息...</div>
     <button id="logoutBtn" class="logout-btn">退出登录</button>
+
+    <!-- 昵称设置区域 -->
+    <div class="nickname-card">
+      <h2>我的昵称</h2>
+      <p class="nickname-tip">设置后，在各个页面评论时会显示这个昵称，而不是邮箱。</p>
+      <div class="nickname-row">
+        <input id="nicknameInput" type="text" placeholder="例如：达尔文小伙伴" />
+        <button id="saveNicknameBtn" type="button">保存昵称</button>
+      </div>
+      <p id="nicknameStatus" class="nickname-status"></p>
+    </div>
 
     <div id="myJobsList"></div>
     <div id="myJobsStatus"></div>

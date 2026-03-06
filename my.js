@@ -55,6 +55,7 @@ function showPostDetail(post) {
   card.style.borderRadius = "16px";
   card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
   card.style.padding = "20px 24px 24px";
+  card.style.position = "relative";
 
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "×";
@@ -69,40 +70,47 @@ function showPostDetail(post) {
 
   const titleEl = document.createElement("h2");
   titleEl.textContent = `[${post.typeLabel}] ${post.title || "未命名"}`;
+  titleEl.style.margin = "0 0 6px 0";
   titleEl.style.fontSize = "18px";
-  titleEl.style.margin = "0 0 8px 0";
 
-  const metaEl = document.createElement("div");
-  metaEl.style.fontSize = "13px";
-  metaEl.style.color = "#6b7280";
-  metaEl.style.marginBottom = "12px";
   const createdAtStr = formatDate(post.createdAt);
+  const metaEl = document.createElement("p");
+  metaEl.className = "job-meta";
+  metaEl.style.margin = "0 0 8px 0";
+  metaEl.style.fontSize = "12px";
+  metaEl.style.color = "#6b7280";
   metaEl.textContent = createdAtStr ? `发布于：${createdAtStr}` : "";
 
   const infoEl = document.createElement("div");
   infoEl.style.fontSize = "14px";
-  infoEl.style.color = "#111827";
+  infoEl.style.color = "#374151";
   infoEl.style.lineHeight = "1.6";
 
-  let html = "";
   if (post.company) {
-    html += `<p><strong>公司：</strong>${post.company}</p>`;
+    const p = document.createElement("p");
+    p.innerHTML = `<strong>公司：</strong>${post.company}`;
+    infoEl.appendChild(p);
   }
   if (post.contact) {
-    html += `<p><strong>联系方式：</strong>${post.contact}</p>`;
+    const p = document.createElement("p");
+    p.innerHTML = `<strong>联系方式：</strong>${post.contact}`;
+    infoEl.appendChild(p);
   }
   if (post.content) {
-    html += `<p style="margin-top:8px;white-space:pre-wrap;">${post.content}</p>`;
+    const p = document.createElement("p");
+    p.style.marginTop = "8px";
+    p.textContent = post.content;
+    infoEl.appendChild(p);
   }
-  infoEl.innerHTML = html || "<p>暂无详情内容。</p>";
 
+  // 图片区域
   const imagesWrapper = document.createElement("div");
-  if (Array.isArray(post.images) && post.images.length > 0) {
-    imagesWrapper.style.display = "grid";
-    imagesWrapper.style.gridTemplateColumns = "repeat(auto-fill,minmax(120px,1fr))";
-    imagesWrapper.style.gap = "10px";
-    imagesWrapper.style.marginTop = "12px";
+  imagesWrapper.style.marginTop = "12px";
+  imagesWrapper.style.display = "grid";
+  imagesWrapper.style.gridTemplateColumns = "minmax(0,1fr)";
+  imagesWrapper.style.gap = "10px";
 
+  if (Array.isArray(post.images) && post.images.length > 0) {
     post.images.forEach((src) => {
       const img = document.createElement("img");
       img.src = src;
@@ -133,33 +141,56 @@ function showPostDetail(post) {
   document.body.appendChild(overlay);
 }
 
-/* ---------------- 删除帖子 ---------------- */
+/* ---------------- 删除帖子（修复“假删除”） ---------------- */
 
 async function deletePost(post) {
-  if (!window.supabaseClient) {
+  if (!supabase) {
     alert("系统错误：未找到 supabaseClient。");
+    return;
+  }
+  if (!currentUser) {
+    alert("当前用户信息丢失，请刷新页面后重试。");
     return;
   }
 
   const ok = confirm("确认删除这条信息吗？删除后不可恢复。");
   if (!ok) return;
 
-  const tableName = TABLES[post.typeKey].name;
-
-  const { error } = await supabaseClient
-    .from(tableName)
-    .delete()
-    .eq("id", post.id);
-
-  if (error) {
-    console.error("删除失败：", error);
-    alert("删除失败：请检查 Supabase 是否为该表开启了 DELETE 权限策略。");
+  const tableCfg = TABLES[post.typeKey];
+  if (!tableCfg) {
+    alert("未知的帖子类型，无法删除。");
     return;
   }
 
-  // 从内存里移除并重新渲染
-  myPosts = myPosts.filter((p) => !(p.id === post.id && p.typeKey === post.typeKey));
-  renderMyPosts();
+  try {
+    // 按 id + user_id 双重条件删除，配合 Supabase RLS
+    const { data, error } = await supabase
+      .from(tableCfg.name)
+      .delete()
+      .eq("id", post.id)
+      .eq("user_id", currentUser.id)
+      .select();
+
+    if (error) {
+      console.error("删除失败：", error);
+      alert("删除失败：请稍后重试，或检查 Supabase 的删除权限策略。");
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      alert("删除失败：可能没有权限删除这条记录。");
+      return;
+    }
+
+    // 从内存里移除并重新渲染
+    myPosts = myPosts.filter(
+      (p) => !(p.id === post.id && p.typeKey === post.typeKey)
+    );
+    renderMyPosts();
+  } catch (err) {
+    console.error("删除异常：", err);
+    alert("删除时发生异常，请稍后重试。");
+  }
 }
 
 /* ---------------- 渲染列表 ---------------- */
@@ -198,9 +229,11 @@ function renderMyPosts() {
         <div style="margin-top:8px;">
           <img src="${post.images[0]}" alt="图片预览"
                style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid #d1e5d4;" />
-          ${post.images.length > 1
-            ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${post.images.length - 1} 张</span>`
-            : ""}
+          ${
+            post.images.length > 1
+              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${post.images.length - 1} 张</span>`
+              : ""
+          }
         </div>
       `;
     }
@@ -220,9 +253,11 @@ function renderMyPosts() {
           ${post.company ? `<p style="margin:0 0 2px 0;"><strong>公司：</strong>${post.company}</p>` : ""}
           ${post.contact ? `<p style="margin:0 0 2px 0;"><strong>联系方式：</strong>${post.contact}</p>` : ""}
           ${summary ? `<p style="margin:4px 0 0 0;color:#4b5563;font-size:14px;">${summary}</p>` : ""}
-          ${createdAtStr
-            ? `<p style="margin:6px 0 0 0;font-size:12px;color:#9ca3af;">发布于：${createdAtStr}</p>`
-            : ""}
+          ${
+            createdAtStr
+              ? `<p style="margin:6px 0 0 0;font-size:12px;color:#9ca3af;">发布于：${createdAtStr}</p>`
+              : ""
+          }
           ${imagesThumbHtml}
         </div>
         <div class="job-actions" style="margin-left:8px;">
@@ -294,20 +329,25 @@ async function loadMyPosts() {
 
   const results = await Promise.all(queries);
   // 合并并按时间倒序
-  myPosts = results.flat().sort((a, b) => {
-    const t1 = new Date(a.createdAt || 0).getTime();
-    const t2 = new Date(b.createdAt || 0).getTime();
-    return t2 - t1;
-  });
+  myPosts = results
+    .flat()
+    .sort((a, b) => {
+      const t1 = new Date(a.createdAt || 0).getTime();
+      const t2 = new Date(b.createdAt || 0).getTime();
+      return t2 - t1;
+    });
 
   renderMyPosts();
 }
 
-/* ---------------- 初始化页面 ---------------- */
+/* ---------------- 初始化页面（带昵称） ---------------- */
 
 async function initMyPage() {
   const userInfoEl = document.getElementById("userInfo");
   const logoutBtn = document.getElementById("logoutBtn");
+  const nicknameInput = document.getElementById("nicknameInput");
+  const saveNicknameBtn = document.getElementById("saveNicknameBtn");
+  const nicknameStatusEl = document.getElementById("nicknameStatus");
 
   if (!supabase) {
     alert("系统错误：未找到 supabaseClient。");
@@ -326,8 +366,40 @@ async function initMyPage() {
     }
 
     currentUser = data.user;
-    if (userInfoEl) {
-      userInfoEl.textContent = `当前登录：${currentUser.email}`;
+
+    // 一个小函数：根据当前邮箱 + 昵称，刷新顶部文字
+    const applyUserInfo = () => {
+      const nick = (localStorage.getItem("dlh_nickname") || "").trim();
+      if (userInfoEl) {
+        userInfoEl.textContent =
+          `当前登录：${currentUser.email}` + (nick ? `（昵称：${nick}）` : "");
+      }
+    };
+
+    // 初始化昵称输入框
+    const savedNickname = (localStorage.getItem("dlh_nickname") || "").trim();
+    if (nicknameInput) {
+      nicknameInput.value = savedNickname;
+    }
+    applyUserInfo();
+
+    // 保存昵称按钮
+    if (saveNicknameBtn) {
+      saveNicknameBtn.addEventListener("click", () => {
+        const value = (nicknameInput?.value || "").trim();
+        if (!value) {
+          localStorage.removeItem("dlh_nickname");
+          if (nicknameStatusEl) {
+            nicknameStatusEl.textContent = "已清空昵称，将继续使用邮箱显示。";
+          }
+        } else {
+          localStorage.setItem("dlh_nickname", value);
+          if (nicknameStatusEl) {
+            nicknameStatusEl.textContent = "昵称已保存，在评论区将显示这个名字。";
+          }
+        }
+        applyUserInfo();
+      });
     }
 
     if (logoutBtn) {
