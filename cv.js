@@ -284,7 +284,7 @@ function showCvDetail(cv) {
 
   const textarea = document.createElement("textarea");
   textarea.rows = 3;
-  textarea.placeholder = "写下你的评论，例如：想联系这位求职者。";
+  textarea.placeholder = "写下你的评论";
   textarea.style.width = "100%";
   textarea.style.boxSizing = "border-box";
   textarea.style.resize = "vertical";
