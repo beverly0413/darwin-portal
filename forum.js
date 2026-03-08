@@ -491,6 +491,30 @@ function setupForumForm() {
     }
     const user = userData.user;
 
+// ===== 每人每天最多 3 条 =====
+const now = new Date();
+const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+const { count, error: countError } = await supabaseClient
+  .from("forum_posts")
+  .select("id", { count: "exact", head: true })
+  .eq("user_id", user.id)
+  .gte("created_at", startOfDay.toISOString())
+  .lt("created_at", endOfDay.toISOString());
+
+if (countError) {
+  console.error("检查今日发帖次数失败：", countError);
+  statusEl.textContent = "检查发帖次数失败，请稍后再试。";
+  statusEl.style.color = "red";
+  return;
+}
+
+if ((count || 0) >= 3) {
+  statusEl.textContent = "今天已经发满 3 条了，明天再来吧。";
+  statusEl.style.color = "red";
+  return;
+}
     let urls = [];
     try {
       urls = await forumFilesToBase64(
