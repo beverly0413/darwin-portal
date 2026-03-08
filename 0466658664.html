@@ -105,12 +105,11 @@
   </p>
 
   <div class="grid">
-    <!-- 发布 -->
     <section class="card">
       <div class="card-header">
         <div>
           <div class="card-title">发布新闻</div>
-          <div class="card-sub">图片会上传到 Firebase Storage，文本写入 Firestore 集合 <code>news</code>。</div>
+          <div class="card-sub">图片会上传到 Supabase Storage，文本写入 Firestore 集合 <code>news</code>。</div>
         </div>
       </div>
 
@@ -133,7 +132,7 @@
         <label for="newsImageFile">封面图片（可选，本地上传）</label>
         <input id="newsImageFile" type="file" accept="image/*">
         <div class="card-sub" style="margin-top:4px;">
-          不选图片就发纯文字；选了图片会自动上传并生成访问地址。
+          不选图片就发纯文字；选了图片会自动上传到 Supabase 并生成访问地址。
         </div>
       </div>
 
@@ -141,7 +140,6 @@
       <div id="publishStatus" class="status"></div>
     </section>
 
-    <!-- 列表 -->
     <section class="card">
       <div class="card-header">
         <div>
@@ -156,6 +154,8 @@
   </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
 <script type="module" src="./0466658664.js"></script>
 </body>
 </html>
