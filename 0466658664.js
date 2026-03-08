@@ -16,7 +16,8 @@ const supabase = window.supabaseClient;
 const titleEl = document.getElementById("newsTitle");
 const summaryEl = document.getElementById("newsSummary");
 const bodyEl = document.getElementById("newsBody");
-const imageFileEl = document.getElementById("newsImageFile");
+const imageFilesEl = document.getElementById("newsImageFiles");
+const imagePreviewEl = document.getElementById("imagePreview");
 const publishBtn = document.getElementById("publishBtn");
 const publishStatus = document.getElementById("publishStatus");
 
@@ -31,30 +32,109 @@ function setStatus(el, msg, ok = false) {
   el.classList.add(ok ? "status-ok" : "status-error");
 }
 
-async function uploadImage(file) {
-  const safeName = file.name.replace(/[^\w.\-]/g, "_");
-  const filePath = `news/${Date.now()}_${safeName}`;
+function renderPreview() {
+  if (!imagePreviewEl || !imageFilesEl) return;
+  imagePreviewEl.innerHTML = "";
 
-  const { error } = await supabase.storage
-    .from("news-images")
-    .upload(filePath, file);
+  const files = Array.from(imageFilesEl.files || []);
+  files.forEach((file, index) => {
+    const item = document.createElement("div");
+    item.className = "preview-item";
 
-  if (error) throw error;
+    const img = document.createElement("img");
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 
-  const { data } = supabase.storage
-    .from("news-images")
-    .getPublicUrl(filePath);
+    const caption = document.createElement("div");
+    caption.className = "preview-caption";
+    caption.textContent = `img${index + 1}`;
 
-  return data.publicUrl;
+    item.appendChild(img);
+    item.appendChild(caption);
+    imagePreviewEl.appendChild(item);
+  });
+}
+
+imageFilesEl?.addEventListener("change", renderPreview);
+
+async function uploadImages(files) {
+  const urls = [];
+
+  for (const file of files) {
+    const safeName = file.name.replace(/[^\w.\-]/g, "_");
+    const filePath = `news/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+
+    const { error } = await supabase.storage
+      .from("news-images")
+      .upload(filePath, file);
+
+    if (error) throw error;
+
+    const { data } = supabase.storage
+      .from("news-images")
+      .getPublicUrl(filePath);
+
+    urls.push(data.publicUrl);
+  }
+
+  return urls;
+}
+
+function buildBodyBlocks(rawBody, imageUrls) {
+  const blocks = [];
+  const usedImageIndexes = new Set();
+
+  const parts = rawBody
+    .split(/\n\s*\n/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  parts.forEach((part) => {
+    const imgMatch = part.match(/^\[img(\d+)\]$/i);
+
+    if (imgMatch) {
+      const imgIndex = Number(imgMatch[1]) - 1;
+      if (imageUrls[imgIndex]) {
+        usedImageIndexes.add(imgIndex);
+        blocks.push({
+          type: "image",
+          url: imageUrls[imgIndex],
+          imageIndex: imgIndex + 1,
+        });
+      }
+      return;
+    }
+
+    blocks.push({
+      type: "paragraph",
+      text: part,
+    });
+  });
+
+  const unusedImages = imageUrls
+    .map((url, index) => ({ url, index }))
+    .filter((item) => !usedImageIndexes.has(item.index));
+
+  if (unusedImages.length > 0) {
+    blocks.push({
+      type: "gallery",
+      images: unusedImages.map((item) => item.url),
+    });
+  }
+
+  return blocks;
 }
 
 publishBtn.addEventListener("click", async () => {
   const title = titleEl.value.trim();
   const summary = summaryEl.value.trim();
-  const body = bodyEl.value.trim();
-  const file = imageFileEl.files[0];
+  const rawBody = bodyEl.value.trim();
+  const files = Array.from(imageFilesEl.files || []);
 
-  if (!title || !summary || !body) {
+  if (!title || !summary || !rawBody) {
     setStatus(publishStatus, "标题、摘要、正文都不能为空。");
     return;
   }
@@ -62,27 +142,31 @@ publishBtn.addEventListener("click", async () => {
   setStatus(publishStatus, "正在发布…", true);
 
   try {
-    let imageUrl = null;
+    let imageUrls = [];
 
-    if (file) {
-      imageUrl = await uploadImage(file);
+    if (files.length > 0) {
+      imageUrls = await uploadImages(files);
     }
+
+    const bodyBlocks = buildBodyBlocks(rawBody, imageUrls);
 
     await addDoc(collection(db, "news"), {
       title,
       summary,
-      body,
-      imageUrl,
+      body: rawBody,
+      bodyBlocks,
+      coverImages: imageUrls,
+      imageUrl: imageUrls[0] || null,
       createdAt: serverTimestamp(),
     });
 
     titleEl.value = "";
     summaryEl.value = "";
     bodyEl.value = "";
-    imageFileEl.value = "";
+    imageFilesEl.value = "";
+    imagePreviewEl.innerHTML = "";
 
     setStatus(publishStatus, "发布成功。", true);
-
     loadNews();
   } catch (err) {
     console.error(err);
@@ -112,7 +196,6 @@ async function loadNews() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       const id = docSnap.id;
-
       const createdText = data.createdAt?.toDate
         ? data.createdAt.toDate().toLocaleString()
         : "时间未知";
@@ -124,7 +207,6 @@ async function loadNews() {
       top.className = "item-top";
 
       const left = document.createElement("div");
-
       const titleDiv = document.createElement("div");
       titleDiv.className = "item-title";
       titleDiv.textContent = data.title || "(无标题)";
@@ -157,18 +239,22 @@ async function loadNews() {
       const summaryDiv = document.createElement("div");
       summaryDiv.className = "item-meta";
       summaryDiv.textContent =
-        (data.summary || "").slice(0, 60) +
-        (data.summary && data.summary.length > 60 ? "…" : "");
+        (data.summary || "").slice(0, 90) +
+        ((data.summary || "").length > 90 ? "…" : "");
 
       item.appendChild(top);
       item.appendChild(summaryDiv);
 
-      if (data.imageUrl) {
-        const img = document.createElement("img");
-        img.src = data.imageUrl;
-        img.style.maxWidth = "120px";
-        img.style.marginTop = "6px";
-        item.appendChild(img);
+      const images = Array.isArray(data.coverImages) ? data.coverImages : [];
+      if (images.length > 0) {
+        const imgs = document.createElement("div");
+        imgs.className = "item-images";
+        images.slice(0, 3).forEach((src) => {
+          const img = document.createElement("img");
+          img.src = src;
+          imgs.appendChild(img);
+        });
+        item.appendChild(imgs);
       }
 
       listEl.appendChild(item);
@@ -181,5 +267,4 @@ async function loadNews() {
 }
 
 refreshBtn.addEventListener("click", loadNews);
-
 loadNews();

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Darwin Life Hub · News</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
+  <style>
     :root {
       --bg:#f5f9f5;
       --card-bg:#ffffff;
@@ -15,14 +15,11 @@
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
-      margin:0;
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      /* 和其他页面统一的背景 */
       background:radial-gradient(circle at top left,#bbf7d0,#f5f9f5);
       color:var(--text-main);
     }
 
-    /* 顶部导航（统一模板） */
     .top-nav {
       width:100%;
       background:#e8f5ec;
@@ -47,9 +44,8 @@
       align-items:center;
       gap:10px;
       text-decoration:none;
+      color:inherit;
     }
-
-    /* —— 圆形 LOGO（新版） —— */
     .brand-logo{
       width:42px;
       height:42px;
@@ -67,7 +63,6 @@
       object-fit:cover;
       display:block;
     }
-
     .brand-text-main {
       font-size:18px;
       font-weight:600;
@@ -101,75 +96,91 @@
     }
 
     .page {
-      max-width:900px;
+      max-width:980px;
       margin:0 auto;
-      padding:24px 16px 60px;
+      padding:26px 16px 60px;
     }
     .page h1 {
-      margin-top:0;
-      font-size:26px;
+      font-size:30px;
       color:#064e3b;
-      letter-spacing:0.06em;
+      letter-spacing:0.04em;
+      margin-bottom:4px;
     }
     .lead {
       font-size:15px;
       color:var(--text-muted);
-      margin-top:4px;
     }
 
-    /* 新闻列表 */
     .news-list {
-      margin-top:18px;
+      margin-top:22px;
       display:flex;
       flex-direction:column;
-      gap:12px;
+      gap:14px;
     }
     .news-item {
       display:flex;
-      gap:14px;
-      padding:12px 14px;
-      border-radius:16px;
+      gap:16px;
+      padding:14px 16px;
+      border-radius:18px;
       background:var(--card-bg);
       border:1px solid var(--border-soft);
-      box-shadow:0 8px 18px rgba(15,23,42,0.04);
+      box-shadow:0 8px 18px rgba(15,23,42,0.05);
       cursor:pointer;
       transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
     }
     .news-item:hover {
       transform:translateY(-1px);
-      box-shadow:0 14px 30px rgba(15,23,42,0.10);
+      box-shadow:0 16px 32px rgba(15,23,42,0.10);
       background:#f9fffb;
     }
-    .news-text {flex:1;min-width:0;}
+    .news-text { flex:1; min-width:0; }
     .news-title {
-      font-size:17px;
-      font-weight:600;
-      margin-bottom:4px;
+      font-size:20px;
+      font-weight:700;
+      margin-bottom:6px;
       color:#022c22;
+      line-height:1.4;
     }
     .news-summary {
-      font-size:14px;
-      color:var(--text-main);
-      margin-bottom:6px;
+      font-size:15px;
+      color:#334155;
+      margin-bottom:10px;
+      line-height:1.7;
+    }
+    .news-meta-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-top:4px;
     }
     .news-meta {
       font-size:12px;
       color:var(--text-muted);
     }
     .news-image img {
-      width:150px;
-      height:100px;
+      width:180px;
+      height:120px;
       object-fit:cover;
-      border-radius:12px;
-      box-shadow:0 8px 16px rgba(15,23,42,0.18);
+      border-radius:14px;
+      box-shadow:0 8px 16px rgba(15,23,42,0.12);
     }
 
     @media (max-width:700px){
       .news-item{flex-direction:column;}
-      .news-image img{width:100%;height:180px;}
+      .news-image img{width:100%;height:210px;}
     }
 
-    /* 详情弹窗 */
+    .news-share-btn {
+      padding:5px 12px;
+      border-radius:999px;
+      border:1px solid #16a34a;
+      background:#ffffff;
+      color:#16a34a;
+      font-size:12px;
+      cursor:pointer;
+    }
+
     .modal {
       position:fixed;
       inset:0;
@@ -178,118 +189,164 @@
       justify-content:center;
       z-index:40;
     }
-    .modal.show {display:flex;}
+    .modal.show { display:flex; }
     .modal-backdrop {
       position:absolute;
       inset:0;
-      background:rgba(15,23,42,0.45);
+      background:rgba(15,23,42,0.52);
     }
     .modal-dialog {
       position:relative;
-      margin:60px 16px 24px;
-      max-width:720px;
+      margin:40px 16px 24px;
+      max-width:860px;
       width:100%;
       background:#ffffff;
-      border-radius:18px;
-      padding:18px 18px 20px;
-      box-shadow:0 25px 60px rgba(15,23,42,0.5);
-      max-height:calc(100vh - 100px);
+      border-radius:22px;
+      padding:24px 24px 26px;
+      box-shadow:0 25px 60px rgba(15,23,42,0.45);
+      max-height:calc(100vh - 70px);
       overflow:auto;
     }
     .modal-close {
       position:absolute;
-      top:10px;
-      right:10px;
-      width:28px;height:28px;
+      top:12px;
+      right:12px;
+      width:32px;
+      height:32px;
       border-radius:999px;
       border:none;
       cursor:pointer;
       background:#e5e7eb;
-      font-size:18px;
+      font-size:20px;
       line-height:1;
     }
+
+    .article-head {
+      margin-bottom:16px;
+      padding-bottom:12px;
+      border-bottom:1px solid #e5e7eb;
+    }
     .modal-title {
-      font-size:20px;
-      font-weight:600;
-      margin-bottom:4px;
+      font-size:30px;
+      font-weight:800;
+      line-height:1.35;
+      margin-bottom:8px;
       color:#022c22;
     }
     .modal-meta {
-      font-size:12px;
+      font-size:13px;
       color:var(--text-muted);
       margin-bottom:10px;
     }
-    .modal-image-wrapper {
-      margin-bottom:12px;
+    .article-lead {
+      font-size:17px;
+      line-height:1.8;
+      color:#334155;
+      font-weight:500;
     }
-    .modal-image-wrapper img {
+
+    .hero-image {
+      margin:14px 0 18px;
+    }
+    .hero-image img {
       width:100%;
-      max-height:360px;
-      border-radius:14px;
+      max-height:420px;
+      object-fit:cover;
+      border-radius:16px;
+      display:block;
+    }
+
+    .article-body {
+      font-size:16px;
+      line-height:1.95;
+      color:#1f2937;
+    }
+    .article-paragraph {
+      margin:0 0 18px 0;
+      white-space:pre-wrap;
+    }
+    .article-inline-image {
+      margin:18px 0 22px;
+    }
+    .article-inline-image img {
+      width:100%;
+      border-radius:16px;
+      display:block;
+      max-height:480px;
       object-fit:cover;
     }
-    .modal-body {
-      font-size:14px;
-      line-height:1.7;
-      white-space:normal;
+
+    .article-gallery {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:12px;
+      margin:20px 0;
     }
-    /* 评论区 */
+    .article-gallery img {
+      width:100%;
+      height:170px;
+      object-fit:cover;
+      border-radius:12px;
+      display:block;
+    }
+
     .news-comments{
-      margin-top:16px;
-      padding-top:12px;
+      margin-top:22px;
+      padding-top:16px;
       border-top:1px solid #e5e7eb;
       font-size:14px;
     }
     .news-comments h3{
-      margin:0 0 6px 0;
-      font-size:15px;
-      font-weight:600;
+      margin:0 0 8px 0;
+      font-size:18px;
+      font-weight:700;
       color:#022c22;
     }
     .news-comments-info{
       font-size:12px;
       color:var(--text-muted);
-      margin-bottom:6px;
-    }
-    .news-comments-list{
-      max-height:220px;
-      overflow-y:auto;
-      padding-right:4px;
       margin-bottom:8px;
     }
+    .news-comments-list{
+      max-height:240px;
+      overflow-y:auto;
+      padding-right:4px;
+      margin-bottom:10px;
+    }
     .news-comment-item{
-      padding:6px 0;
+      padding:8px 0;
       border-bottom:1px dashed #e5e7eb;
     }
     .news-comment-meta{
       font-size:12px;
       color:#6b7280;
-      margin-bottom:2px;
+      margin-bottom:3px;
     }
     .news-comment-content{
       white-space:pre-wrap;
       font-size:14px;
       color:#111827;
+      line-height:1.7;
     }
     .news-comment-form{
       margin-top:4px;
       display:flex;
       flex-direction:column;
-      gap:4px;
+      gap:6px;
     }
     .news-comment-form input,
     .news-comment-form textarea{
       font-family:inherit;
       font-size:13px;
-      padding:6px 8px;
-      border-radius:8px;
+      padding:8px 10px;
+      border-radius:10px;
       border:1px solid #d1d5db;
       box-sizing:border-box;
       width:100%;
     }
     .news-comment-form textarea{
       resize:vertical;
-      min-height:60px;
+      min-height:70px;
     }
     .news-comment-actions{
       display:flex;
@@ -302,7 +359,7 @@
       color:#6b7280;
     }
     .news-comment-submit{
-      padding:4px 12px;
+      padding:6px 14px;
       border-radius:999px;
       border:none;
       font-size:13px;
@@ -314,16 +371,15 @@
       opacity:0.6;
       cursor:default;
     }
-</style>
+  </style>
 </head>
 
 <body>
   <header class="top-nav">
     <div class="nav-inner">
-      <!-- 左上角 logo 改成和其他页面一样，可点击回首页 -->
       <a href="index.html" class="brand" aria-label="返回 Darwin Life Hub 首页">
         <div class="brand-logo">
-          <img src="darwin-logo.png">
+          <img src="darwin-logo.png" alt="logo">
         </div>
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
@@ -335,7 +391,7 @@
         <a href="index.html">首页</a>
         <a href="news.html" class="active">新闻</a>
         <a href="jobs.html">工作</a>
-       <a href="cv.html">Marketplace</a>
+        <a href="cv.html">Marketplace</a>
         <a href="rent.html">租房</a>
         <a href="forum.html">广场</a>
         <a href="my.html">我的</a>
@@ -346,47 +402,45 @@
 
   <main class="page">
     <h1>新闻 · NEWS</h1>
-    <p class="lead">北领地本地新闻</p>
+    <p class="lead">北领地本地新闻与生活资讯</p>
 
     <div id="newsList" class="news-list">
       <p>加载中…</p>
     </div>
   </main>
 
-  <!-- 详情弹窗 -->
   <div id="newsModal" class="modal">
     <div id="modalBackdrop" class="modal-backdrop"></div>
     <div class="modal-dialog">
       <button id="modalClose" class="modal-close" aria-label="关闭">×</button>
-      <h2 id="modalTitle" class="modal-title"></h2>
-      <div id="modalMeta" class="modal-meta"></div>
-      <div id="modalImageWrap" class="modal-image-wrapper">
-        <img id="modalImage" src="" alt="新闻图片">
+
+      <div class="article-head">
+        <h2 id="modalTitle" class="modal-title"></h2>
+        <div id="modalMeta" class="modal-meta"></div>
+        <div id="modalLead" class="article-lead"></div>
       </div>
-      <div id="modalBody" class="modal-body"></div>
 
-      <!-- 评论区 -->
-          <div id="newsComments" class="news-comments">
-            <h3>评论</h3>
-            <div id="newsCommentsInfo" class="news-comments-info"></div>
-            <div id="newsCommentsList" class="news-comments-list"></div>
-            <div class="news-comment-form">
-              <input id="newsCommentName" placeholder="昵称（可选）">
-              <textarea id="newsCommentContent" placeholder="写下你的看法..."></textarea>
-              <div class="news-comment-actions">
-                <div id="newsCommentStatus" class="news-comment-status"></div>
-                <button id="newsCommentSubmit" class="news-comment-submit" type="button">
-                  发表评论
-                </button>
-              </div>
-            </div>
+      <div id="modalHero" class="hero-image" style="display:none;">
+        <img id="modalHeroImage" src="" alt="新闻首图">
+      </div>
+
+      <div id="modalBody" class="article-body"></div>
+
+      <div id="newsComments" class="news-comments">
+        <h3>评论</h3>
+        <div id="newsCommentsInfo" class="news-comments-info"></div>
+        <div id="newsCommentsList" class="news-comments-list"></div>
+        <div class="news-comment-form">
+          <input id="newsCommentName" placeholder="昵称（可选）">
+          <textarea id="newsCommentContent" placeholder="写下你的看法..."></textarea>
+          <div class="news-comment-actions">
+            <div id="newsCommentStatus" class="news-comment-status"></div>
+            <button id="newsCommentSubmit" class="news-comment-submit" type="button">发表评论</button>
           </div>
-
-
+        </div>
+      </div>
     </div>
   </div>
-
-
 
   <script type="module" src="./news.js"></script>
 </body>

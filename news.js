@@ -1,7 +1,3 @@
-// news.js —— News 页面：列表 + 弹窗详情 + 分享 + 深度链接 + 评论
-// 新闻集合：news
-// 评论集合：news_comments（字段：newsId, content, name, createdAt）
-
 import { db } from "./firebase.js";
 import {
   collection,
@@ -13,7 +9,6 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 列表和弹窗相关 DOM
 const listEl = document.getElementById("newsList");
 
 const modalEl = document.getElementById("newsModal");
@@ -21,12 +16,11 @@ const modalBackdrop = document.getElementById("modalBackdrop");
 const modalClose = document.getElementById("modalClose");
 const modalTitle = document.getElementById("modalTitle");
 const modalMeta = document.getElementById("modalMeta");
-const modalImageWrap = document.getElementById("modalImageWrap");
-const modalImage = document.getElementById("modalImage");
+const modalLead = document.getElementById("modalLead");
+const modalHero = document.getElementById("modalHero");
+const modalHeroImage = document.getElementById("modalHeroImage");
 const modalBody = document.getElementById("modalBody");
 
-// 评论相关 DOM
-const commentsWrap = document.getElementById("newsComments");
 const commentsInfo = document.getElementById("newsCommentsInfo");
 const commentsList = document.getElementById("newsCommentsList");
 const commentNameInput = document.getElementById("newsCommentName");
@@ -34,37 +28,106 @@ const commentContentInput = document.getElementById("newsCommentContent");
 const commentSubmitBtn = document.getElementById("newsCommentSubmit");
 const commentStatus = document.getElementById("newsCommentStatus");
 
-// 用于分享 & 深度链接的缓存
-let newsItems = []; // { id, title, body, imageUrl, createdText }
+let newsItems = [];
 let currentNewsId = null;
 
 function setListLoading(msg) {
   listEl.innerHTML = `<p>${msg}</p>`;
 }
 
-// 打开 / 关闭弹窗
+function buildLegacyBlocks(item) {
+  const blocks = [];
+  if (item.body) {
+    item.body
+      .split(/\n\s*\n/g)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((text) => {
+        blocks.push({ type: "paragraph", text });
+      });
+  }
+
+  const images = Array.isArray(item.coverImages) ? item.coverImages : [];
+  if (images.length > 1) {
+    blocks.push({ type: "gallery", images: images.slice(1) });
+  }
+  return blocks;
+}
+
+function renderArticleBody(item) {
+  modalBody.innerHTML = "";
+
+  const blocks =
+    Array.isArray(item.bodyBlocks) && item.bodyBlocks.length > 0
+      ? item.bodyBlocks
+      : buildLegacyBlocks(item);
+
+  blocks.forEach((block) => {
+    if (block.type === "paragraph") {
+      const p = document.createElement("p");
+      p.className = "article-paragraph";
+      p.textContent = block.text || "";
+      modalBody.appendChild(p);
+      return;
+    }
+
+    if (block.type === "image" && block.url) {
+      const wrap = document.createElement("div");
+      wrap.className = "article-inline-image";
+
+      const img = document.createElement("img");
+      img.src = block.url;
+      img.alt = "新闻插图";
+      img.loading = "lazy";
+
+      wrap.appendChild(img);
+      modalBody.appendChild(wrap);
+      return;
+    }
+
+    if (block.type === "gallery" && Array.isArray(block.images) && block.images.length) {
+      const gallery = document.createElement("div");
+      gallery.className = "article-gallery";
+
+      block.images.forEach((src) => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "新闻图片";
+        img.loading = "lazy";
+        gallery.appendChild(img);
+      });
+
+      modalBody.appendChild(gallery);
+    }
+  });
+}
+
 function openModal(item) {
   currentNewsId = item.id || null;
 
   modalTitle.textContent = item.title || "";
   modalMeta.textContent = item.createdText || item.meta || "";
-  modalBody.textContent = item.body || "";
+  modalLead.textContent = item.summary || "";
 
-  if (item.imageUrl) {
-    modalImageWrap.style.display = "block";
-    modalImage.src = item.imageUrl;
+  const heroImage = Array.isArray(item.coverImages) && item.coverImages.length
+    ? item.coverImages[0]
+    : item.imageUrl || null;
+
+  if (heroImage) {
+    modalHero.style.display = "block";
+    modalHeroImage.src = heroImage;
   } else {
-    modalImageWrap.style.display = "none";
-    modalImage.src = "";
+    modalHero.style.display = "none";
+    modalHeroImage.src = "";
   }
 
-  // 每次打开弹窗时，加载对应新闻的评论
+  renderArticleBody(item);
+
   if (currentNewsId) {
     loadNewsComments(currentNewsId);
   } else {
-    // 没有 ID 时直接清空评论区
-    if (commentsList) commentsList.innerHTML = "";
-    if (commentsInfo) commentsInfo.textContent = "";
+    commentsList.innerHTML = "";
+    commentsInfo.textContent = "";
   }
 
   modalEl.classList.add("show");
@@ -80,8 +143,6 @@ modalBackdrop?.addEventListener("click", closeModal);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
-
-/* ========= 评论：读取 ========= */
 
 async function loadNewsComments(newsId) {
   if (!commentsList || !commentsInfo) return;
@@ -141,8 +202,6 @@ async function loadNewsComments(newsId) {
   }
 }
 
-/* ========= 评论：提交 ========= */
-
 async function submitNewsComment() {
   if (!currentNewsId) {
     commentStatus.textContent = "未找到对应新闻，稍后重试。";
@@ -172,7 +231,6 @@ async function submitNewsComment() {
     });
 
     commentContentInput.value = "";
-    // 名字可以保留，不清空，方便同一个人多次评论
     commentStatus.textContent = "评论已发表。";
     commentStatus.style.color = "green";
 
@@ -186,15 +244,12 @@ async function submitNewsComment() {
   }
 }
 
-// 绑定评论按钮
 if (commentSubmitBtn) {
   commentSubmitBtn.addEventListener("click", (e) => {
     e.preventDefault();
     submitNewsComment();
   });
 }
-
-/* ========= 深度链接：?news=xxx ========= */
 
 function handleNewsDeepLink() {
   try {
@@ -210,8 +265,6 @@ function handleNewsDeepLink() {
     console.error("解析 news 参数失败：", err);
   }
 }
-
-/* ========= 分享功能：标题 + 链接 ========= */
 
 async function shareNews(newsId, newsTitle) {
   const url =
@@ -248,7 +301,6 @@ async function shareNews(newsId, newsTitle) {
   }
 }
 
-// 事件代理：监听分享按钮
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".news-share-btn");
   if (!btn) return;
@@ -262,8 +314,6 @@ document.addEventListener("click", (e) => {
     shareNews(newsId, newsTitle);
   }
 });
-
-/* ========= 从 Firestore 读取新闻列表 ========= */
 
 async function loadNews() {
   try {
@@ -287,19 +337,28 @@ async function loadNews() {
       const title = data.title || "未命名新闻";
       const summary = data.summary || "";
       const body = data.body || "";
-      const imageUrl = data.imageUrl || null;
+      const coverImages = Array.isArray(data.coverImages) ? data.coverImages : [];
+      const imageUrl = data.imageUrl || coverImages[0] || null;
+      const bodyBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : [];
       const createdText = data.createdAt?.toDate
         ? data.createdAt.toDate().toLocaleString()
         : "时间未知";
 
-      const itemData = { id, title, summary, body, imageUrl, createdText };
+      const itemData = {
+        id,
+        title,
+        summary,
+        body,
+        coverImages,
+        imageUrl,
+        bodyBlocks,
+        createdText,
+      };
       newsItems.push(itemData);
 
-      // 外层容器
       const itemEl = document.createElement("div");
       itemEl.className = "news-item";
 
-      // 左侧文字区域
       const textWrap = document.createElement("div");
       textWrap.className = "news-text";
 
@@ -311,12 +370,8 @@ async function loadNews() {
       summaryEl.className = "news-summary";
       summaryEl.textContent = summary;
 
-      // 底部：时间 + 分享按钮
       const bottomRow = document.createElement("div");
-      bottomRow.style.display = "flex";
-      bottomRow.style.justifyContent = "space-between";
-      bottomRow.style.alignItems = "center";
-      bottomRow.style.marginTop = "4px";
+      bottomRow.className = "news-meta-row";
 
       const metaEl = document.createElement("div");
       metaEl.className = "news-meta";
@@ -328,13 +383,6 @@ async function loadNews() {
       shareBtn.dataset.id = id;
       shareBtn.dataset.title = title;
       shareBtn.textContent = "分享";
-      shareBtn.style.padding = "4px 10px";
-      shareBtn.style.borderRadius = "999px";
-      shareBtn.style.border = "1px solid #16a34a";
-      shareBtn.style.background = "#ffffff";
-      shareBtn.style.color = "#16a34a";
-      shareBtn.style.fontSize = "12px";
-      shareBtn.style.cursor = "pointer";
 
       bottomRow.appendChild(metaEl);
       bottomRow.appendChild(shareBtn);
@@ -342,21 +390,20 @@ async function loadNews() {
       textWrap.appendChild(titleEl);
       textWrap.appendChild(summaryEl);
       textWrap.appendChild(bottomRow);
-
       itemEl.appendChild(textWrap);
 
-      // 右侧图片（如果有）
       if (imageUrl) {
         const imgWrap = document.createElement("div");
         imgWrap.className = "news-image";
+
         const img = document.createElement("img");
         img.src = imageUrl;
         img.alt = title;
+
         imgWrap.appendChild(img);
         itemEl.appendChild(imgWrap);
       }
 
-      // 点击整条新闻 → 打开详情弹窗 + 评论
       itemEl.addEventListener("click", () => {
         openModal(itemData);
       });
@@ -364,7 +411,6 @@ async function loadNews() {
       listEl.appendChild(itemEl);
     });
 
-    // 列表加载完后，看 URL 是否带 news=xxx
     handleNewsDeepLink();
   } catch (err) {
     console.error("加载新闻失败：", err);
@@ -372,5 +418,4 @@ async function loadNews() {
   }
 }
 
-// 页面加载时自动执行
 loadNews();
