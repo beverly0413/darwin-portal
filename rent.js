@@ -421,12 +421,14 @@ async function loadRents() {
     let summary = rent.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
-const firstImage =
+const imagesHtml =
   Array.isArray(rent.images) && rent.images.length > 0
-    ? `<div style="margin:8px 0;">
-         <img src="${rent.images[0]}" 
-              style="max-width:200px;border-radius:8px;border:1px solid #e5e7eb;">
-       </div>`
+    ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+        ${rent.images.map(src => `
+          <img src="${src}"
+               style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
+        `).join("")}
+      </div>`
     : "";
 
 div.innerHTML = `
@@ -441,7 +443,7 @@ div.innerHTML = `
       : ""
   }
 
-  ${firstImage}
+  ${imagesHtml}
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
     <small style="color:#6b7280;">发布于：${dateStr}</small>
