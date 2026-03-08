@@ -8,22 +8,36 @@ import {
   limit,
   serverTimestamp,
   deleteDoc,
+  updateDoc,
   doc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const supabase = window.supabaseClient;
 
 const titleEl = document.getElementById("newsTitle");
 const summaryEl = document.getElementById("newsSummary");
-const bodyEl = document.getElementById("newsBody");
-const imageFilesEl = document.getElementById("newsImageFiles");
-const imagePreviewEl = document.getElementById("imagePreview");
+const editorEl = document.getElementById("newsEditor");
+
+const coverImageFilesEl = document.getElementById("coverImageFiles");
+const coverPreviewEl = document.getElementById("coverPreview");
+
+const inlineImageInput = document.getElementById("inlineImageInput");
+const insertImageBtn = document.getElementById("insertImageBtn");
+const insertHrBtn = document.getElementById("insertHrBtn");
+
 const publishBtn = document.getElementById("publishBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
 const publishStatus = document.getElementById("publishStatus");
+const editorMode = document.getElementById("editorMode");
 
 const refreshBtn = document.getElementById("refreshBtn");
 const listEl = document.getElementById("newsList");
 const emptyHint = document.getElementById("emptyHint");
+
+let editingId = null;
+let savedRange = null;
+let loadedNews = [];
 
 function setStatus(el, msg, ok = false) {
   el.textContent = msg || "";
@@ -32,11 +46,97 @@ function setStatus(el, msg, ok = false) {
   el.classList.add(ok ? "status-ok" : "status-error");
 }
 
-function renderPreview() {
-  if (!imagePreviewEl || !imageFilesEl) return;
-  imagePreviewEl.innerHTML = "";
+function setMode(isEditing) {
+  if (isEditing) {
+    editorMode.textContent = "编辑文章";
+    publishBtn.textContent = "更新文章";
+    cancelEditBtn.style.display = "inline-flex";
+  } else {
+    editorMode.textContent = "新建文章";
+    publishBtn.textContent = "发布文章";
+    cancelEditBtn.style.display = "none";
+  }
+}
 
-  const files = Array.from(imageFilesEl.files || []);
+function clearForm() {
+  editingId = null;
+  titleEl.value = "";
+  summaryEl.value = "";
+  editorEl.innerHTML = "";
+  coverImageFilesEl.value = "";
+  coverPreviewEl.innerHTML = "";
+  setStatus(publishStatus, "");
+  setMode(false);
+}
+
+function saveSelection() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    savedRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+function restoreSelection() {
+  if (!savedRange) return;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+}
+
+editorEl.addEventListener("keyup", saveSelection);
+editorEl.addEventListener("mouseup", saveSelection);
+editorEl.addEventListener("focus", saveSelection);
+
+document.querySelectorAll(".tool-btn[data-cmd]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const cmd = btn.dataset.cmd;
+    const value = btn.dataset.value || null;
+
+    editorEl.focus();
+    restoreSelection();
+
+    if (cmd === "blockquote") {
+      document.execCommand("formatBlock", false, "blockquote");
+    } else if (cmd === "formatBlock") {
+      document.execCommand("formatBlock", false, value);
+    } else {
+      document.execCommand(cmd, false, value);
+    }
+
+    saveSelection();
+  });
+});
+
+insertHrBtn.addEventListener("click", () => {
+  editorEl.focus();
+  restoreSelection();
+  document.execCommand("insertHorizontalRule");
+  saveSelection();
+});
+
+function stripHtml(html) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return (tmp.textContent || tmp.innerText || "").trim();
+}
+
+function collectImagesFromHtml(html) {
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+  const urls = [];
+  temp.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src");
+    if (src && !urls.includes(src)) {
+      urls.push(src);
+    }
+  });
+  return urls;
+}
+
+function renderCoverPreview() {
+  coverPreviewEl.innerHTML = "";
+  const files = Array.from(coverImageFilesEl.files || []);
+
   files.forEach((file, index) => {
     const item = document.createElement("div");
     item.className = "preview-item";
@@ -50,15 +150,15 @@ function renderPreview() {
 
     const caption = document.createElement("div");
     caption.className = "preview-caption";
-    caption.textContent = `img${index + 1}`;
+    caption.textContent = `封面 ${index + 1}`;
 
     item.appendChild(img);
     item.appendChild(caption);
-    imagePreviewEl.appendChild(item);
+    coverPreviewEl.appendChild(item);
   });
 }
 
-imageFilesEl?.addEventListener("change", renderPreview);
+coverImageFilesEl?.addEventListener("change", renderCoverPreview);
 
 async function uploadImages(files) {
   const urls = [];
@@ -83,96 +183,159 @@ async function uploadImages(files) {
   return urls;
 }
 
-function buildBodyBlocks(rawBody, imageUrls) {
-  const blocks = [];
-  const usedImageIndexes = new Set();
+function insertHtmlAtCursor(html) {
+  editorEl.focus();
+  restoreSelection();
 
-  const parts = rawBody
-    .split(/\n\s*\n/g)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  if (savedRange) {
+    const range = savedRange;
+    range.deleteContents();
 
-  parts.forEach((part) => {
-    const imgMatch = part.match(/^\[img(\d+)\]$/i);
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
 
-    if (imgMatch) {
-      const imgIndex = Number(imgMatch[1]) - 1;
-      if (imageUrls[imgIndex]) {
-        usedImageIndexes.add(imgIndex);
-        blocks.push({
-          type: "image",
-          url: imageUrls[imgIndex],
-          imageIndex: imgIndex + 1,
-        });
-      }
-      return;
+    const frag = document.createDocumentFragment();
+    let node;
+    let lastNode = null;
+
+    while ((node = temp.firstChild)) {
+      lastNode = frag.appendChild(node);
     }
 
-    blocks.push({
-      type: "paragraph",
-      text: part,
-    });
-  });
+    range.insertNode(frag);
 
-  const unusedImages = imageUrls
-    .map((url, index) => ({ url, index }))
-    .filter((item) => !usedImageIndexes.has(item.index));
+    if (lastNode) {
+      range.setStartAfter(lastNode);
+      range.collapse(true);
 
-  if (unusedImages.length > 0) {
-    blocks.push({
-      type: "gallery",
-      images: unusedImages.map((item) => item.url),
-    });
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      savedRange = range.cloneRange();
+    }
+  } else {
+    editorEl.insertAdjacentHTML("beforeend", html);
   }
-
-  return blocks;
 }
 
-publishBtn.addEventListener("click", async () => {
+insertImageBtn.addEventListener("click", () => {
+  saveSelection();
+  inlineImageInput.click();
+});
+
+inlineImageInput.addEventListener("change", async () => {
+  const files = Array.from(inlineImageInput.files || []);
+  if (!files.length) return;
+
+  setStatus(publishStatus, "正在上传插图…", true);
+
+  try {
+    const urls = await uploadImages(files);
+
+    urls.forEach((url) => {
+      insertHtmlAtCursor(
+        `<figure><img src="${url}" alt="新闻插图"><figcaption></figcaption></figure><p></p>`
+      );
+    });
+
+    setStatus(publishStatus, "插图已插入正文。", true);
+  } catch (err) {
+    console.error(err);
+    setStatus(publishStatus, "插图上传失败：" + err.message);
+  } finally {
+    inlineImageInput.value = "";
+  }
+});
+
+async function saveArticle() {
   const title = titleEl.value.trim();
   const summary = summaryEl.value.trim();
-  const rawBody = bodyEl.value.trim();
-  const files = Array.from(imageFilesEl.files || []);
+  const htmlBody = editorEl.innerHTML.trim();
+  const plainBody = stripHtml(htmlBody);
 
-  if (!title || !summary || !rawBody) {
+  if (!title || !summary || !plainBody) {
     setStatus(publishStatus, "标题、摘要、正文都不能为空。");
     return;
   }
 
-  setStatus(publishStatus, "正在发布…", true);
+  setStatus(publishStatus, editingId ? "正在更新…" : "正在发布…", true);
 
   try {
-    let imageUrls = [];
-
-    if (files.length > 0) {
-      imageUrls = await uploadImages(files);
+    let extraImages = [];
+    const coverFiles = Array.from(coverImageFilesEl.files || []);
+    if (coverFiles.length > 0) {
+      extraImages = await uploadImages(coverFiles);
     }
 
-    const bodyBlocks = buildBodyBlocks(rawBody, imageUrls);
+    const inlineImages = collectImagesFromHtml(htmlBody);
+    const coverImages = [...inlineImages, ...extraImages].filter(
+      (src, index, arr) => src && arr.indexOf(src) === index
+    );
 
-    await addDoc(collection(db, "news"), {
+    const payload = {
       title,
       summary,
-      body: rawBody,
-      bodyBlocks,
-      coverImages: imageUrls,
-      imageUrl: imageUrls[0] || null,
-      createdAt: serverTimestamp(),
-    });
+      htmlBody,
+      body: plainBody,
+      coverImages,
+      imageUrl: coverImages[0] || null,
+      updatedAt: serverTimestamp(),
+    };
 
-    titleEl.value = "";
-    summaryEl.value = "";
-    bodyEl.value = "";
-    imageFilesEl.value = "";
-    imagePreviewEl.innerHTML = "";
+    if (editingId) {
+      await updateDoc(doc(db, "news", editingId), payload);
+      setStatus(publishStatus, "文章已更新。", true);
+    } else {
+      await addDoc(collection(db, "news"), {
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+      setStatus(publishStatus, "发布成功。", true);
+    }
 
-    setStatus(publishStatus, "发布成功。", true);
-    loadNews();
+    clearForm();
+    await loadNews();
   } catch (err) {
     console.error(err);
-    setStatus(publishStatus, "发布失败：" + err.message);
+    setStatus(publishStatus, "保存失败：" + err.message);
   }
+}
+
+publishBtn.addEventListener("click", saveArticle);
+
+cancelEditBtn.addEventListener("click", () => {
+  clearForm();
 });
+
+async function startEdit(id) {
+  try {
+    const ref = doc(db, "news", id);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      alert("这篇文章不存在。");
+      return;
+    }
+
+    const data = snap.data();
+    editingId = id;
+
+    titleEl.value = data.title || "";
+    summaryEl.value = data.summary || "";
+    editorEl.innerHTML = data.htmlBody || "";
+
+    coverImageFilesEl.value = "";
+    coverPreviewEl.innerHTML = "";
+
+    setMode(true);
+    setStatus(publishStatus, "已载入文章，可直接修改后保存。", true);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (err) {
+    console.error(err);
+    alert("载入文章失败：" + err.message);
+  }
+}
 
 async function loadNews() {
   listEl.innerHTML = "";
@@ -186,6 +349,7 @@ async function loadNews() {
     );
 
     const snap = await getDocs(q);
+    loadedNews = [];
 
     if (snap.empty) {
       emptyHint.style.display = "block";
@@ -196,6 +360,8 @@ async function loadNews() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       const id = docSnap.id;
+      loadedNews.push({ id, ...data });
+
       const createdText = data.createdAt?.toDate
         ? data.createdAt.toDate().toLocaleString()
         : "时间未知";
@@ -218,31 +384,14 @@ async function loadNews() {
       left.appendChild(titleDiv);
       left.appendChild(metaDiv);
 
-      const delBtn = document.createElement("button");
-      delBtn.className = "btn btn-sm btn-danger";
-      delBtn.textContent = "删除";
-
-      delBtn.addEventListener("click", async () => {
-        if (!confirm("确定删除这条新闻吗？")) return;
-
-        try {
-          await deleteDoc(doc(db, "news", id));
-          item.remove();
-        } catch (err) {
-          alert("删除失败：" + err.message);
-        }
-      });
-
       top.appendChild(left);
-      top.appendChild(delBtn);
+      item.appendChild(top);
 
       const summaryDiv = document.createElement("div");
       summaryDiv.className = "item-meta";
       summaryDiv.textContent =
         (data.summary || "").slice(0, 90) +
         ((data.summary || "").length > 90 ? "…" : "");
-
-      item.appendChild(top);
       item.appendChild(summaryDiv);
 
       const images = Array.isArray(data.coverImages) ? data.coverImages : [];
@@ -257,6 +406,36 @@ async function loadNews() {
         item.appendChild(imgs);
       }
 
+      const actions = document.createElement("div");
+      actions.className = "item-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn btn-sm btn-light";
+      editBtn.textContent = "编辑";
+      editBtn.addEventListener("click", () => startEdit(id));
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-sm btn-danger";
+      delBtn.textContent = "删除";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm("确定删除这条新闻吗？")) return;
+
+        try {
+          await deleteDoc(doc(db, "news", id));
+          item.remove();
+          if (!listEl.children.length) {
+            emptyHint.style.display = "block";
+            emptyHint.textContent = "暂无新闻。";
+          }
+        } catch (err) {
+          alert("删除失败：" + err.message);
+        }
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      item.appendChild(actions);
+
       listEl.appendChild(item);
     });
   } catch (err) {
@@ -267,4 +446,5 @@ async function loadNews() {
 }
 
 refreshBtn.addEventListener("click", loadNews);
+setMode(false);
 loadNews();

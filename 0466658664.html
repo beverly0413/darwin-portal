@@ -15,7 +15,7 @@
       --text-muted:#6b7280;
       --border:#d1e5d4;
       --danger:#dc2626;
-      --max-width:1120px;
+      --max-width:1180px;
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -82,10 +82,10 @@
 
     .grid {
       display:grid;
-      grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+      grid-template-columns:minmax(0,1.2fr) minmax(0,0.9fr);
       gap:18px;
     }
-    @media (max-width: 920px) {
+    @media (max-width: 980px) {
       .grid { grid-template-columns:1fr; }
     }
 
@@ -130,8 +130,7 @@
       outline:none;
       font-family:inherit;
     }
-    textarea { resize:vertical; }
-    input:focus, textarea:focus {
+    input:focus, textarea:focus, .editor:focus {
       border-color:var(--primary);
       box-shadow:0 0 0 1px var(--primary-soft);
       background:#fff;
@@ -155,6 +154,11 @@
       padding:5px 10px;
       font-size:12px;
     }
+    .btn-light {
+      background:#fff;
+      color:#111827;
+      border-color:#d1d5db;
+    }
     .btn-danger {
       background:#fff;
       color:var(--danger);
@@ -168,6 +172,106 @@
     }
     .status-ok { color:var(--primary-dark); }
     .status-error { color:var(--danger); }
+
+    .mode-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      background:#eefbf2;
+      color:#166534;
+      border:1px solid #bbf7d0;
+    }
+
+    .toolbar {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:14px 14px 0 0;
+      background:#f8fffa;
+      border-bottom:none;
+    }
+    .tool-btn {
+      border:1px solid #d1d5db;
+      background:#fff;
+      border-radius:10px;
+      padding:6px 10px;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .tool-btn:hover {
+      background:#f3f4f6;
+    }
+
+    .editor-wrap {
+      border:1px solid var(--border);
+      border-radius:0 0 14px 14px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .editor {
+      min-height:420px;
+      padding:16px;
+      font-size:16px;
+      line-height:1.9;
+      outline:none;
+      background:#fff;
+    }
+    .editor:empty:before {
+      content: attr(data-placeholder);
+      color:#9ca3af;
+      pointer-events:none;
+    }
+    .editor p {
+      margin:0 0 18px 0;
+    }
+    .editor h2 {
+      font-size:26px;
+      line-height:1.45;
+      margin:20px 0 12px;
+      color:#022c22;
+    }
+    .editor h3 {
+      font-size:22px;
+      line-height:1.5;
+      margin:18px 0 10px;
+      color:#064e3b;
+    }
+    .editor blockquote {
+      border-left:4px solid #16a34a;
+      padding:10px 14px;
+      margin:16px 0;
+      background:#f8fffa;
+      color:#334155;
+      border-radius:8px;
+    }
+    .editor ul, .editor ol {
+      padding-left:22px;
+      margin:10px 0 16px;
+    }
+    .editor img {
+      display:block;
+      max-width:100%;
+      max-height:520px;
+      margin:18px auto;
+      border-radius:16px;
+      box-shadow:0 10px 22px rgba(15,23,42,0.10);
+    }
+    .editor figure {
+      margin:18px 0 22px;
+    }
+    .editor figcaption {
+      margin-top:8px;
+      text-align:center;
+      font-size:13px;
+      color:#6b7280;
+    }
 
     .tips-box {
       background:#f8fffa;
@@ -184,12 +288,6 @@
       font-size:12px;
       line-height:1.7;
       color:var(--text-muted);
-    }
-    .tips-box code {
-      background:#ecfdf3;
-      padding:2px 6px;
-      border-radius:6px;
-      font-size:12px;
     }
 
     .preview-grid {
@@ -217,8 +315,16 @@
       text-align:center;
     }
 
+    .action-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-top:14px;
+    }
+
     .list {
-      max-height:520px;
+      max-height:760px;
       overflow:auto;
       padding-right:4px;
     }
@@ -258,6 +364,12 @@
       border-radius:8px;
       border:1px solid #e5e7eb;
     }
+    .item-actions {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
   </style>
 </head>
 <body>
@@ -276,22 +388,23 @@
 
   <main class="shell">
     <h1 class="section-title">发布 / 管理 本地新闻</h1>
-    <p class="section-desc">支持多图、段落排版、正文插图，发布后前台将显示为更成熟的新闻详情页面。</p>
+    <p class="section-desc">像 Word 一样写新闻：支持富文本、随意插图、修改文章、删除文章。</p>
 
     <div class="grid">
       <section class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">发布新闻</div>
-            <div class="card-sub">图片上传到 Supabase Storage，正文和结构化内容写入 Firestore 集合 <code>news</code>。</div>
+            <div class="card-title">新闻编辑器</div>
+            <div class="card-sub">图片将上传到 Supabase Storage；文章 HTML 写入 Firestore 集合 <code>news</code>。</div>
           </div>
+          <div id="editorMode" class="mode-badge">新建文章</div>
         </div>
 
         <div class="tips-box">
-          <h4>插图写法</h4>
+          <h4>使用说明</h4>
           <p>
-            先上传多张图片，然后在正文中用 <code>[img1]</code>、<code>[img2]</code>、<code>[img3]</code> 插入对应图片。<br>
-            段落之间空一行，页面会自动生成更好看的新闻排版。
+            先写标题和摘要，再在正文里像 Word 一样直接编辑。点击“插入图片”后，选中的图片会自动上传并插入到当前光标位置。<br>
+            右侧新闻列表可直接编辑旧文章，不需要因为改一个字就整篇重写。
           </p>
         </div>
 
@@ -306,18 +419,35 @@
         </div>
 
         <div class="field">
-          <label for="newsBody">正文内容</label>
-          <textarea id="newsBody" rows="16" placeholder="这里输入完整正文。段落之间空一行；需要插图的位置可写 [img1]、[img2]。"></textarea>
+          <label>正文内容</label>
+          <div class="toolbar">
+            <button type="button" class="tool-btn" data-cmd="bold">加粗</button>
+            <button type="button" class="tool-btn" data-cmd="formatBlock" data-value="h2">二级标题</button>
+            <button type="button" class="tool-btn" data-cmd="formatBlock" data-value="h3">三级标题</button>
+            <button type="button" class="tool-btn" data-cmd="formatBlock" data-value="p">正文段落</button>
+            <button type="button" class="tool-btn" data-cmd="insertUnorderedList">项目符号</button>
+            <button type="button" class="tool-btn" data-cmd="blockquote">引用</button>
+            <button type="button" class="tool-btn" id="insertHrBtn">分隔线</button>
+            <button type="button" class="tool-btn" id="insertImageBtn">插入图片</button>
+            <input id="inlineImageInput" type="file" accept="image/*" multiple hidden>
+          </div>
+          <div class="editor-wrap">
+            <div id="newsEditor" class="editor" contenteditable="true" data-placeholder="在这里输入正文，支持直接插入图片、标题、段落、引用。"></div>
+          </div>
         </div>
 
         <div class="field">
-          <label for="newsImageFiles">新闻图片（可多选）</label>
-          <input id="newsImageFiles" type="file" accept="image/*" multiple>
-          <div class="card-sub" style="margin-top:6px;">第 1 张默认作为首图；其余图片可在正文中通过 [img1] [img2] 等方式插入。</div>
-          <div id="imagePreview" class="preview-grid"></div>
+          <label for="coverImageFiles">额外封面图 / 图集（可选，多选）</label>
+          <input id="coverImageFiles" type="file" accept="image/*" multiple>
+          <div class="card-sub" style="margin-top:6px;">这里上传的图片会作为首图 / 附加图集使用；正文里插入过的图片也会自动保存。</div>
+          <div id="coverPreview" class="preview-grid"></div>
         </div>
 
-        <button id="publishBtn" class="btn" type="button">发布新闻</button>
+        <div class="action-row">
+          <button id="publishBtn" class="btn" type="button">发布文章</button>
+          <button id="cancelEditBtn" class="btn btn-light" type="button" style="display:none;">取消编辑</button>
+        </div>
+
         <div id="publishStatus" class="status"></div>
       </section>
 
@@ -325,7 +455,7 @@
         <div class="card-header">
           <div>
             <div class="card-title">最新新闻列表</div>
-            <div class="card-sub">从 <code>news</code> 集合按时间倒序读取最近 30 条，可一键删除。</div>
+            <div class="card-sub">按时间倒序读取最近 30 条，可编辑或删除。</div>
           </div>
           <button id="refreshBtn" class="btn btn-sm" type="button">刷新</button>
         </div>
