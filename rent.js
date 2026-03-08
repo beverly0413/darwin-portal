@@ -44,6 +44,33 @@ function formatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
+// 读取当前用户昵称
+async function getUserNickname(user) {
+  if (!ensureSupabase() || !user?.id) return "Darwin用户";
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("nickname")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("读取昵称失败：", error);
+      return "Darwin用户";
+    }
+
+    if (data?.nickname && String(data.nickname).trim()) {
+      return String(data.nickname).trim();
+    }
+
+    return "Darwin用户";
+  } catch (err) {
+    console.error("获取昵称异常：", err);
+    return "Darwin用户";
+  }
+}
+
 /* ================= 评论相关：rent_comments ================= */
 
 // 加载某条房源的评论
@@ -54,7 +81,7 @@ async function loadRentComments(postId, listEl, infoEl) {
 
   const { data, error } = await supabaseClient
     .from("rent_comments")
-    .select("id, content, user_email, created_at")
+    .select("id, content, nickname, created_at")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -83,7 +110,7 @@ async function loadRentComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
+    meta.textContent = `${c.nickname || "Darwin用户"} · ${formatDate(
       c.created_at
     )}`;
 
@@ -121,12 +148,14 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
     return;
   }
   const user = userData.user;
+  const nickname = await getUserNickname(user);
 
   const { error } = await supabaseClient.from("rent_comments").insert({
     post_id: postId,
     content,
     user_id: user.id,
     user_email: user.email,
+    nickname: nickname,
   });
 
   if (error) {
@@ -421,32 +450,36 @@ async function loadRents() {
     let summary = rent.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
-const imagesHtml =
-  Array.isArray(rent.images) && rent.images.length > 0
-    ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
-        ${rent.images.map(src => `
-          <img src="${src}"
-               style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
-        `).join("")}
-      </div>`
-    : "";
+    const imagesHtml =
+      Array.isArray(rent.images) && rent.images.length > 0
+        ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+            ${rent.images
+              .map(
+                (src) => `
+              <img src="${src}"
+                   style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
+            `
+              )
+              .join("")}
+          </div>`
+        : "";
 
-div.innerHTML = `
-  <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
-  <p style="margin:2px 0;"><strong>联系方式：</strong>${
-    rent.contact || "未填写"
-  }</p>
+    div.innerHTML = `
+      <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
+      <p style="margin:2px 0;"><strong>联系方式：</strong>${
+        rent.contact || "未填写"
+      }</p>
 
-  ${
-    summary
-      ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
-      : ""
-  }
+      ${
+        summary
+          ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
+          : ""
+      }
 
-  ${imagesHtml}
+      ${imagesHtml}
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-    <small style="color:#6b7280;">发布于：${dateStr}</small>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+        <small style="color:#6b7280;">发布于：${dateStr}</small>
         <button
           class="rent-share-btn"
           type="button"
