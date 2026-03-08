@@ -14,43 +14,50 @@
       --border:#d1e5d4;
       --max-width:1040px;
     }
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       background:var(--bg);
       color:var(--text-main);
     }
-    a{color:inherit;text-decoration:none;}
-.admin-wechat-card {
-  margin-top: 18px;
-  padding: 14px 16px;
-  border: 1px solid #d1e5d4;
-  border-radius: 14px;
-  background: #f8fffa;
-}
 
-.admin-wechat-card h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  color: #111827;
-}
+    a {
+      color:inherit;
+      text-decoration:none;
+    }
 
-.admin-wechat-card p {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  color: #6b7280;
-}
+    .admin-wechat-card {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1px solid #d1e5d4;
+      border-radius: 14px;
+      background: #f8fffa;
+    }
 
-.admin-wechat-img {
-  width: 220px;
-  max-width: 100%;
-  border-radius: 12px;
-  border: 1px solid #d1e5d4;
-  display: block;
-}
+    .admin-wechat-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: #111827;
+    }
 
-    /* ——— 顶部导航（圆形 Logo） ——— */
-    .top-nav{
+    .admin-wechat-card p {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .admin-wechat-img {
+      width: 220px;
+      max-width: 100%;
+      border-radius: 12px;
+      border: 1px solid #d1e5d4;
+      display: block;
+    }
+
+    /* 顶部导航 */
+    .top-nav {
       width:100%;
       background:#e8f5ec;
       padding:10px 0;
@@ -60,7 +67,8 @@
       z-index:30;
       box-shadow:0 2px 4px rgba(15,23,42,0.06);
     }
-    .nav-inner{
+
+    .nav-inner {
       max-width:1100px;
       margin:0 auto;
       padding:0 16px;
@@ -69,12 +77,16 @@
       justify-content:space-between;
       gap:12px;
     }
-    .brand{
+
+    .brand {
       display:flex;
       align-items:center;
       gap:12px;
+      text-decoration:none;
+      color:inherit;
     }
-    .brand-logo{
+
+    .brand-logo {
       width:48px;
       height:48px;
       border-radius:50%;
@@ -85,74 +97,88 @@
       align-items:center;
       justify-content:center;
     }
-    .brand-logo img{
+
+    .brand-logo img {
       width:100%;
       height:100%;
       object-fit:cover;
     }
-    .brand-text-main{
+
+    .brand-text-main {
       font-size:18px;
       font-weight:600;
       color:#022c22;
     }
-    .brand-text-sub{
+
+    .brand-text-sub {
       font-size:13px;
       color:#6b7280;
       margin-top:-1px;
     }
-    .nav-links{
+
+    .nav-links {
       display:flex;
       flex-wrap:wrap;
       gap:10px;
       font-size:15px;
     }
-    .nav-links a{
+
+    .nav-links a {
       padding:6px 12px;
       border-radius:6px;
       color:#0f172a;
-      text-decoration:none;
       transition:0.15s ease;
     }
-    .nav-links a:hover{background:#d9fbe5;}
-    .nav-links a.active{
+
+    .nav-links a:hover {
+      background:#d9fbe5;
+    }
+
+    .nav-links a.active {
       background:#16a34a;
       color:#ffffff;
     }
 
-    /* ——— 页面内容 ——— */
-    .shell{
+    /* 页面内容 */
+    .shell {
       max-width:var(--max-width);
       margin:0 auto;
       padding:20px 16px 60px;
     }
-    .card{
+
+    .card {
       background:var(--bg-card);
       border-radius:16px;
       padding:22px 22px 26px;
       border:1px solid var(--border);
       box-shadow:0 10px 30px rgba(15,23,42,0.08);
     }
-    h1{
+
+    h1 {
       font-size:24px;
       font-weight:700;
       margin-bottom:8px;
     }
-    h2{
+
+    h2 {
       font-size:18px;
       font-weight:600;
       margin:22px 0 8px;
     }
-    p{
+
+    p {
       font-size:14px;
       color:var(--text-muted);
       line-height:1.6;
       margin:4px 0;
     }
-    ul{
+
+    ul {
       padding-left:20px;
       margin-top:6px;
     }
-    li{
+
+    li {
       font-size:14px;
       color:var(--text-muted);
       line-height:1.5;
@@ -162,25 +188,23 @@
 </head>
 
 <body>
-  <!-- 顶部导航 -->
   <header class="top-nav">
     <div class="nav-inner">
-      <div class="brand">
+      <a href="index.html" class="brand">
         <div class="brand-logo">
-          <!-- 这里使用你的文件名：darwin-logo.png -->
           <img src="darwin-logo.png" alt="Darwin Life Hub logo" />
         </div>
         <div>
           <div class="brand-text-main">Darwin Life Hub</div>
           <div class="brand-text-sub">达尔文华人生活门户</div>
         </div>
-      </div>
+      </a>
 
       <nav class="nav-links">
         <a href="index.html">首页</a>
         <a href="news.html">新闻</a>
         <a href="jobs.html">工作</a>
-       <a href="cv.html">Marketplace</a>
+        <a href="cv.html">Marketplace</a>
         <a href="rent.html">租房</a>
         <a href="forum.html">广场</a>
         <a href="my.html">我的</a>
@@ -189,7 +213,6 @@
     </div>
   </header>
 
-  <!-- 页面内容 -->
   <div class="shell">
     <section class="card">
       <h1>关于 Darwin Life Hub</h1>
@@ -205,7 +228,7 @@
 
       <h2>我们的初心</h2>
       <p>
-        做这个网站并不是大项目，只是希望在自己力所能及的范围内，为达尔本文华人社区多做一点事。
+        做这个网站并不是大项目，只是希望在自己力所能及的范围内，为达尔文华人社区多做一点事。
         如果这个平台能帮你解决一个小问题、找到一份工作、结识一两个朋友，那就是我们最大的动力。
       </p>
 
@@ -213,12 +236,14 @@
       <p>
         如果你有任何建议、想法，或者有合作、广告、活动推广等需求，都非常欢迎联系我们：
         <strong>zzf0413@outlook.com</strong>。
-<div class="admin-wechat-card">
-  <h3>管理员微信</h3>
-  <p>欢迎添加管理员微信</p>
-  <img src="wechat-admin.jpg" alt="管理员微信二维码" class="admin-wechat-img" />
-</div>
       </p>
+
+      <div class="admin-wechat-card">
+        <h3>管理员微信</h3>
+        <p>欢迎添加管理员微信</p>
+        <img src="admin-wechat-img.jpg" alt="管理员微信二维码" class="admin-wechat-img" />
+      </div>
+
       <p>
         也欢迎有兴趣的朋友一起参与改进这个平台，让 Darwin Life Hub 慢慢成长为
         达尔文本地华人共同维护的社区之家。
