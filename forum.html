@@ -267,8 +267,8 @@
 
 <div class="shell">
   <main>
-    <div class="page-title">广场吐槽 · Biu Zone</div>
-    <div class="page-subtitle">有话就说，随手发一句；吐槽日常、分享瞬间、记录生活都可以</div>
+<div class="page-title">匿名吐槽</div>
+<div class="page-subtitle">随心吐槽，前台不会显示是谁发的。每人每天最多可以发 3 条。</div>
 
     <div class="layout">
 
@@ -276,22 +276,22 @@
         <div class="section-title">Biu一下</div>
 
         <form id="forumForm">
-          <div class="biu-form-top">
-            <label for="forumImages">配图（可选，最多 5 张）</label>
-            <input id="forumImages" type="file" multiple />
-          </div>
+<div class="biu-editor-row" style="margin-top:10px;">
+  <textarea id="content" placeholder="这一刻想吐槽点什么？"></textarea>
 
-          <div id="forumPreview" class="forum-photos"></div>
-          <button type="button" id="forumClearImages" class="clear-images-btn">清空图片</button>
+  <div class="biu-side">
+    <button type="submit" class="biu-btn">Biu一下</button>
+    <div id="forumStatus" style="font-size:13px;color:#6b7280;"></div>
+  </div>
+</div>
 
-          <div class="biu-editor-row" style="margin-top:10px;">
-            <textarea id="content" placeholder="这一刻想说点什么？"></textarea>
+<div class="biu-form-bottom" style="margin-top:10px;">
+  <label for="forumImages">配图（可选，最多 5 张）</label>
+  <input id="forumImages" type="file" multiple />
+</div>
 
-            <div class="biu-side">
-              <button type="submit" class="biu-btn">Biu一下</button>
-              <div id="forumStatus" style="font-size:13px;color:#6b7280;"></div>
-            </div>
-          </div>
+<div id="forumPreview" class="forum-photos"></div>
+<button type="button" id="forumClearImages" class="clear-images-btn">清空图片</button>
         </form>
       </section>
 
