@@ -2,19 +2,16 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · Forum</title>
+  <title>Darwin Life Hub · 广场吐槽</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- 分享卡片（WeChat / QQ / 朋友圈等用来显示标题和描述） -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Darwin Life Hub · 达尔文本地交流论坛">
-  <meta property="og:description" content="达尔文华人、本地留学生的交流论坛，分享打工、租房、生活经验与问题讨论。">
+  <meta property="og:title" content="Darwin Life Hub · 达尔文广场吐槽">
+  <meta property="og:description" content="随手发一句、吐槽一下、分享生活碎片，达尔文本地轻松交流广场。">
   <meta property="og:image" content="https://darwinbbs.com/darwin-logo.png">
   <meta property="og:url" content="https://darwinbbs.com/forum.html">
+  <meta name="description" content="达尔文广场吐槽区，支持随手发布文字和图片，记录生活、吐槽日常、分享瞬间。">
 
-  <!-- 备用描述（部分国内 App 使用） -->
-  <meta name="description" content="达尔文本地论坛，提供打工经验、租房信息、生活问答等交流平台。">
-
-<style>
+  <style>
     :root {
       --bg:#f5f9f5;
       --bg-card:#ffffff;
@@ -32,7 +29,6 @@
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 顶部导航 */
     .top-nav{
       width:100%;
       background:#e8f5ec;
@@ -132,14 +128,14 @@
     .posts-empty{font-size:13px;color:var(--text-muted);}
     .post-card{
       margin-bottom:10px;
-      padding:10px 12px;
+      padding:12px 14px;
       border-radius:12px;
       border:1px solid var(--border);
       background:#ffffff;
       box-shadow:0 6px 16px rgba(15,23,42,0.06);
       font-size:14px;
     }
-    .post-card h3{font-size:15px;margin-bottom:4px;}
+    .post-card h3{display:none;}
 
     .fab{
       position:fixed; right:18px; bottom:18px;
@@ -153,7 +149,6 @@
       box-shadow:0 10px 24px rgba(15,23,42,0.6);
     }
 
-    /* === 新增：可删除图片预览样式 === */
     .preview-item{
       position:relative;
       display:inline-block;
@@ -199,7 +194,49 @@
       border-radius:8px;
       border:1px solid var(--border);
     }
-</style>
+
+    .biu-form-top {
+      margin-bottom: 10px;
+    }
+
+    .biu-editor-row {
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+    }
+
+    .biu-editor-row textarea {
+      margin-bottom:0;
+      min-height:120px;
+      flex:1;
+    }
+
+    .biu-side {
+      width:120px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .biu-btn {
+      width:100%;
+      padding:12px 0;
+      font-size:15px;
+      font-weight:600;
+    }
+
+    @media (max-width: 700px) {
+      .biu-editor-row {
+        flex-direction:column;
+      }
+      .biu-side {
+        width:100%;
+      }
+      .biu-btn {
+        width:100%;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -211,18 +248,18 @@
       </div>
       <div>
         <div class="brand-text-main">Darwin Life Hub</div>
-        <div class="brand-text-sub">达尔文华人生活门户 · Forum</div>
+        <div class="brand-text-sub">达尔文华人生活门户 · 广场</div>
       </div>
     </div>
 
     <nav class="nav-links">
-        <a href="index.html">首页</a>
-        <a href="news.html">新闻</a>
-        <a href="jobs.html">工作</a>
-       <a href="cv.html">Marketplace</a>
-        <a href="rent.html">租房</a>
-        <a href="forum.html" class="active">广场</a>
-        <a href="my.html">我的</a>
+      <a href="index.html">首页</a>
+      <a href="news.html">新闻</a>
+      <a href="jobs.html">工作</a>
+      <a href="cv.html">Marketplace</a>
+      <a href="rent.html">租房</a>
+      <a href="forum.html" class="active">广场</a>
+      <a href="my.html">我的</a>
       <a href="about.html">关于</a>
     </nav>
   </div>
@@ -230,38 +267,37 @@
 
 <div class="shell">
   <main>
-
-    <div class="page-title">论坛·Forum</div>
-    <div class="page-subtitle">提出问题、分享经验、闲聊都可以</div>
+    <div class="page-title">广场吐槽 · Biu Zone</div>
+    <div class="page-subtitle">有话就说，随手发一句；吐槽日常、分享瞬间、记录生活都可以</div>
 
     <div class="layout">
 
-      <section class="card">
-        <div class="section-title">所有帖子</div>
-        <div id="posts" class="posts-empty">暂时还没有帖子</div>
-      </section>
-
       <section class="card" id="forumFormSection">
-        <div class="section-title">发布帖子</div>
+        <div class="section-title">Biu一下</div>
 
         <form id="forumForm">
-          <label for="title">标题</label>
-          <input id="title" type="text" />
-
-          <label for="content">内容</label>
-          <textarea id="content"></textarea>
-
-          <div class="image-group">
-            <label for="forumImages">配图（最多 5 张）</label>
+          <div class="biu-form-top">
+            <label for="forumImages">配图（可选，最多 5 张）</label>
             <input id="forumImages" type="file" multiple />
           </div>
 
           <div id="forumPreview" class="forum-photos"></div>
           <button type="button" id="forumClearImages" class="clear-images-btn">清空图片</button>
 
-          <button type="submit">发布</button>
-          <div id="forumStatus" style="font-size:13px;margin-top:6px;"></div>
+          <div class="biu-editor-row" style="margin-top:10px;">
+            <textarea id="content" placeholder="这一刻想说点什么？"></textarea>
+
+            <div class="biu-side">
+              <button type="submit" class="biu-btn">Biu一下</button>
+              <div id="forumStatus" style="font-size:13px;color:#6b7280;"></div>
+            </div>
+          </div>
         </form>
+      </section>
+
+      <section class="card">
+        <div class="section-title">广场动态</div>
+        <div id="posts" class="posts-empty">暂时还没有内容</div>
       </section>
 
     </div>
@@ -276,7 +312,7 @@ document.getElementById("fabForum").addEventListener("click", () => {
     .scrollIntoView({ behavior: "smooth" });
 });
 </script>
-<!-- Supabase UMD 和你的客户端配置 -->
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <script src="auth-guard.js"></script>
