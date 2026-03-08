@@ -2,17 +2,17 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · 求职</title>
+  <title>Darwin Life Hub · Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- 分享卡片（WeChat / QQ / 朋友圈等用来显示标题和描述） -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Darwin Life Hub · 达尔文本地求职信息">
-  <meta property="og:description" content="达尔文华人、本地留学生求职信息集中展示，方便老板快速找到合适人选。">
+  <meta property="og:title" content="Darwin Life Hub · 达尔文本地二手交易">
+  <meta property="og:description" content="达尔文本地二手交易信息集中展示，方便买卖家具、电器、数码产品和生活物品。">
   <meta property="og:image" content="https://darwinbbs.com/darwin-logo.png">
   <meta property="og:url" content="https://darwinbbs.com/cv.html">
 
   <!-- 备用描述（部分国内 App 使用） -->
-  <meta name="description" content="达尔文本地求职信息，包括工地、餐饮、服务业等岗位的个人简历与联系方式。">
+  <meta name="description" content="达尔文本地二手交易信息，包括家具、电器、日用品、数码产品等买卖信息。">
 
 <style>
     :root {
@@ -197,7 +197,7 @@
       background:#15803d;
     }
 
-    /* 求职照片上传 + 预览 */
+    /* 图片上传 + 预览 */
     .image-group{
       margin-top:4px;
       font-size:13px;
@@ -223,7 +223,6 @@
       border:1px solid var(--border);
     }
 
-    /* 新增：可删除图片 + 清空按钮（和 jobs/forum 一样） */
     .preview-item{
       position:relative;
       display:inline-block;
@@ -279,7 +278,7 @@
         <a href="index.html">Home</a>
         <a href="news.html">News</a>
         <a href="jobs.html">Jobs</a>
-        <a href="cv.html" class="active">CV</a>
+        <a href="cv.html" class="active">Marketplace</a>
         <a href="rent.html">Rent</a>
         <a href="forum.html">Forum</a>
         <a href="my.html">My</a>
@@ -291,26 +290,24 @@
   <div class="shell">
     <main class="layout">
       <section class="card">
-        <h2>求职信息 · CV</h2>
-        <p>发布您的求职信息（职位方向、联系方式、个人简介）。</p>
+        <h2>二手交易 · Marketplace</h2>
+        <p>发布您的二手出售信息，包括物品名称、联系方式、价格和物品描述。</p>
 
         <div id="cvList"></div>
 
         <div class="form-section" id="cvFormSection">
-          <h3>发布求职</h3>
+          <h3>发布二手信息</h3>
           <form id="cvForm">
-            <input id="cvTitle" placeholder="职位方向 / 标题（必填）" required />
+            <input id="cvTitle" placeholder="物品名称 / 标题（必填）" required />
             <input id="cvContact" placeholder="联系方式（必填）" required />
-            <textarea id="cvContent" placeholder="个人简介 / 技能 / 求职意向"></textarea>
+            <textarea id="cvContent" placeholder="物品描述 / 新旧程度 / 价格 / 交易方式"></textarea>
 
-            <!-- 求职相关照片 -->
             <div class="image-group">
-              <label for="cvImages">求职相关照片（可选，最多 5 张）：</label>
+              <label for="cvImages">物品照片（可选，最多 5 张）：</label>
               <input id="cvImages" type="file" accept="image/*" multiple />
               <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
             </div>
             <div id="cvPreview" class="cv-photos"></div>
-            <!-- 新增：清空图片按钮 -->
             <button type="button" id="cvClearImages" class="clear-images-btn">清空图片</button>
 
             <button type="submit">发布</button>
@@ -323,8 +320,6 @@
 
   <button class="fab" id="fabCV">+</button>
 
-
-  <!-- Supabase UMD 和你的客户端配置 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
