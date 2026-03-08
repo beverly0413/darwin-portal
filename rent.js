@@ -421,18 +421,30 @@ async function loadRents() {
     let summary = rent.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
-    div.innerHTML = `
-      <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
-      <p style="margin:2px 0;"><strong>联系方式：</strong>${
-        rent.contact || "未填写"
-      }</p>
-      ${
-        summary
-          ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
-          : ""
-      }
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-        <small style="color:#6b7280;">发布于：${dateStr}</small>
+const firstImage =
+  Array.isArray(rent.images) && rent.images.length > 0
+    ? `<div style="margin:8px 0;">
+         <img src="${rent.images[0]}" 
+              style="max-width:200px;border-radius:8px;border:1px solid #e5e7eb;">
+       </div>`
+    : "";
+
+div.innerHTML = `
+  <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
+  <p style="margin:2px 0;"><strong>联系方式：</strong>${
+    rent.contact || "未填写"
+  }</p>
+
+  ${
+    summary
+      ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
+      : ""
+  }
+
+  ${firstImage}
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+    <small style="color:#6b7280;">发布于：${dateStr}</small>
         <button
           class="rent-share-btn"
           type="button"
