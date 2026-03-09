@@ -1,12 +1,13 @@
-// rent.js —— Supabase 版租房：列表 + 详情弹窗 + 评论 + 发布 + 分享
+// rent.js —— Supabase 版租房：列表 + 详情弹窗 + 阅读量 + 点赞 + 评论 + 发布 + 分享
 // 表：rent_posts、rent_comments
 
 const MAX_IMAGES = 5;
-let rentImagesList = []; // 当前准备上传的图片 File[]
+let rentImagesList = [];
+let allRentsCache = [];
+let currentRentDetailId = null;
 
 // ================= 工具函数 =================
 
-// 检查 supabaseClient 是否存在
 function ensureSupabase() {
   if (!window.supabaseClient) {
     console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
@@ -16,7 +17,6 @@ function ensureSupabase() {
   return true;
 }
 
-// File[] -> base64[]
 function filesToBase64(files) {
   return Promise.all(
     files.map(
@@ -31,7 +31,6 @@ function filesToBase64(files) {
   );
 }
 
-// 时间格式化
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -44,7 +43,15 @@ function formatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-// 读取当前用户昵称
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 async function getUserNickname(user) {
   if (!ensureSupabase() || !user?.id) return "Darwin用户";
 
@@ -71,9 +78,127 @@ async function getUserNickname(user) {
   }
 }
 
+function findRentInCache(rentId) {
+  return allRentsCache.find((r) => String(r.id) === String(rentId));
+}
+
+function updateRentInCache(rentId, patch) {
+  const item = findRentInCache(rentId);
+  if (!item) return null;
+  Object.assign(item, patch);
+  return item;
+}
+
+function refreshRentCardStats(rentId) {
+  const rent = findRentInCache(rentId);
+  if (!rent) return;
+
+  const card = document.querySelector(`.rent-card[data-id="${rentId}"]`);
+  if (!card) return;
+
+  const viewsEl = card.querySelector(".rent-stat-views");
+  const likesEl = card.querySelector(".rent-stat-likes");
+  const commentsEl = card.querySelector(".rent-stat-comments");
+
+  if (viewsEl) viewsEl.textContent = rent.views || 0;
+  if (likesEl) likesEl.textContent = rent.likes || 0;
+  if (commentsEl) commentsEl.textContent = rent.comments_count || 0;
+}
+
+function updateDetailStats(rent) {
+  const viewsEl = document.getElementById("rentDetailViews");
+  const likesEl = document.getElementById("rentDetailLikes");
+  const commentsEl = document.getElementById("rentDetailComments");
+
+  if (viewsEl) viewsEl.textContent = rent.views || 0;
+  if (likesEl) likesEl.textContent = rent.likes || 0;
+  if (commentsEl) commentsEl.textContent = rent.comments_count || 0;
+}
+
+async function increaseRentView(rentId) {
+  if (!ensureSupabase() || !rentId) return;
+
+  const rent = findRentInCache(rentId);
+  if (!rent) return;
+
+  const nextViews = (rent.views || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("rent_posts")
+    .update({ views: nextViews })
+    .eq("id", rentId);
+
+  if (error) {
+    console.error("更新阅读量失败：", error);
+    return;
+  }
+
+  updateRentInCache(rentId, { views: nextViews });
+  refreshRentCardStats(rentId);
+
+  if (String(currentRentDetailId) === String(rentId)) {
+    updateDetailStats(findRentInCache(rentId));
+  }
+}
+
+async function increaseRentLike(rentId) {
+  if (!ensureSupabase() || !rentId) return false;
+
+  const rent = findRentInCache(rentId);
+  if (!rent) return false;
+
+  const nextLikes = (rent.likes || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("rent_posts")
+    .update({ likes: nextLikes })
+    .eq("id", rentId);
+
+  if (error) {
+    console.error("更新点赞量失败：", error);
+    return false;
+  }
+
+  updateRentInCache(rentId, { likes: nextLikes });
+  refreshRentCardStats(rentId);
+
+  if (String(currentRentDetailId) === String(rentId)) {
+    updateDetailStats(findRentInCache(rentId));
+  }
+
+  return true;
+}
+
+async function increaseRentCommentsCount(rentId) {
+  if (!ensureSupabase() || !rentId) return false;
+
+  const rent = findRentInCache(rentId);
+  if (!rent) return false;
+
+  const nextCount = (rent.comments_count || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("rent_posts")
+    .update({ comments_count: nextCount })
+    .eq("id", rentId);
+
+  if (error) {
+    console.error("更新评论数失败：", error);
+    return false;
+  }
+
+  updateRentInCache(rentId, { comments_count: nextCount });
+  refreshRentCardStats(rentId);
+
+  if (String(currentRentDetailId) === String(rentId)) {
+    updateDetailStats(findRentInCache(rentId));
+  }
+
+  return true;
+}
+
 /* ================= 评论相关：rent_comments ================= */
 
-// 加载某条房源的评论
 async function loadRentComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
@@ -96,6 +221,12 @@ async function loadRentComments(postId, listEl, infoEl) {
     listEl.innerHTML =
       '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎第一个留言。</p>';
     infoEl.textContent = "";
+
+    const cached = updateRentInCache(postId, { comments_count: 0 });
+    if (cached) {
+      refreshRentCardStats(postId);
+      updateDetailStats(cached);
+    }
     return;
   }
 
@@ -110,23 +241,27 @@ async function loadRentComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.nickname || "Darwin用户"} · ${formatDate(
-      c.created_at
-    )}`;
+    meta.textContent = `${c.nickname || "Darwin用户"} · ${formatDate(c.created_at)}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
     body.style.color = "#111827";
     body.style.whiteSpace = "pre-wrap";
+    body.style.lineHeight = "1.7";
     body.textContent = c.content;
 
     item.appendChild(meta);
     item.appendChild(body);
     listEl.appendChild(item);
   });
+
+  const cached = updateRentInCache(postId, { comments_count: data.length });
+  if (cached) {
+    refreshRentCardStats(postId);
+    updateDetailStats(cached);
+  }
 }
 
-// 提交评论
 async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
   const content = textarea.value.trim();
   if (!content) {
@@ -140,13 +275,13 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
   statusEl.textContent = "正在提交评论...";
   statusEl.style.color = "#6b7280";
 
-  const { data: userData, error: userErr } =
-    await supabaseClient.auth.getUser();
+  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
     window.location.href = "login.html";
     return;
   }
+
   const user = userData.user;
   const nickname = await getUserNickname(user);
 
@@ -165,6 +300,8 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
     return;
   }
 
+  await increaseRentCommentsCount(postId);
+
   textarea.value = "";
   statusEl.textContent = "评论已发表。";
   statusEl.style.color = "green";
@@ -175,75 +312,64 @@ async function submitRentComment(postId, textarea, statusEl, listEl, infoEl) {
 /* ================= 详情弹窗 ================= */
 
 function showRentDetail(rent) {
-  // 清除旧的 overlay
   const old = document.getElementById("rentDetailOverlay");
   if (old) old.remove();
 
+  currentRentDetailId = rent.id;
+
   const overlay = document.createElement("div");
   overlay.id = "rentDetailOverlay";
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.background = "rgba(15,23,42,0.45)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.zIndex = "1000";
+  overlay.className = "rent-detail-overlay";
 
   const card = document.createElement("div");
-  card.style.maxWidth = "800px";
-  card.style.width = "92%";
-  card.style.maxHeight = "90vh";
-  card.style.overflowY = "auto";
-  card.style.background = "#ffffff";
-  card.style.borderRadius = "16px";
-  card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
-  card.style.padding = "20px 24px 24px";
-  card.style.position = "relative";
+  card.className = "rent-detail-card";
 
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "×";
-  closeBtn.style.border = "none";
-  closeBtn.style.background = "transparent";
-  closeBtn.style.fontSize = "22px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "8px";
-  closeBtn.style.right = "14px";
-  closeBtn.onclick = () => overlay.remove();
+  closeBtn.className = "rent-detail-close";
+  closeBtn.onclick = () => {
+    currentRentDetailId = null;
+    overlay.remove();
+  };
 
   const titleEl = document.createElement("h2");
   titleEl.textContent = rent.title || "未命名房源";
   titleEl.style.margin = "0 0 8px 0";
-  titleEl.style.fontSize = "18px";
+  titleEl.style.fontSize = "22px";
+  titleEl.style.color = "#0f172a";
 
   const metaEl = document.createElement("div");
   metaEl.style.fontSize = "13px";
   metaEl.style.color = "#6b7280";
-  metaEl.style.marginBottom = "10px";
-  metaEl.textContent = rent.created_at
-    ? `发布于：${formatDate(rent.created_at)}`
-    : "";
+  metaEl.style.marginBottom = "6px";
+  metaEl.textContent = rent.created_at ? `发布于：${formatDate(rent.created_at)}` : "";
+
+  const statsBar = document.createElement("div");
+  statsBar.className = "rent-detail-stats";
+  statsBar.innerHTML = `
+    <span class="rent-detail-stat">👁 阅读 <strong id="rentDetailViews">${rent.views || 0}</strong></span>
+    <button id="rentDetailLikeBtn" class="rent-detail-stat rent-like-btn" type="button">👍 点赞 <strong id="rentDetailLikes">${rent.likes || 0}</strong></button>
+    <span class="rent-detail-stat">💬 评论 <strong id="rentDetailComments">${rent.comments_count || 0}</strong></span>
+  `;
 
   const infoEl = document.createElement("div");
   infoEl.style.fontSize = "14px";
   infoEl.style.color = "#111827";
-  infoEl.style.lineHeight = "1.6";
+  infoEl.style.lineHeight = "1.8";
   infoEl.innerHTML = `
-    <p><strong>联系方式：</strong>${rent.contact || "未填写"}</p>
+    <p><strong>联系方式：</strong>${escapeHtml(rent.contact || "未填写")}</p>
     ${
       rent.content
-        ? `<p style="margin-top:8px;white-space:pre-wrap;">${rent.content}</p>`
+        ? `<p style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(rent.content)}</p>`
         : ""
     }
   `;
 
-  // 图片区域
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(rent.images) && rent.images.length > 0) {
     imagesWrapper.style.marginTop = "14px";
     imagesWrapper.style.display = "grid";
-    imagesWrapper.style.gridTemplateColumns =
-      "repeat(auto-fill,minmax(160px,1fr))";
+    imagesWrapper.style.gridTemplateColumns = "repeat(auto-fill,minmax(160px,1fr))";
     imagesWrapper.style.gap = "10px";
 
     rent.images.forEach((src, idx) => {
@@ -294,15 +420,12 @@ function showRentDetail(rent) {
     });
   }
 
-  // 评论区
   const commentBlock = document.createElement("div");
-  commentBlock.style.marginTop = "18px";
-  commentBlock.style.paddingTop = "12px";
-  commentBlock.style.borderTop = "1px solid #e5e7eb";
+  commentBlock.className = "rent-comments-block";
 
   const commentTitle = document.createElement("h3");
   commentTitle.textContent = "评论";
-  commentTitle.style.fontSize = "15px";
+  commentTitle.style.fontSize = "16px";
   commentTitle.style.margin = "0 0 6px 0";
 
   const commentInfo = document.createElement("div");
@@ -311,7 +434,7 @@ function showRentDetail(rent) {
   commentInfo.style.marginBottom = "6px";
 
   const commentList = document.createElement("div");
-  commentList.style.fontSize = "14px";
+  commentList.className = "rent-comments-list";
 
   const commentForm = document.createElement("div");
   commentForm.style.marginTop = "8px";
@@ -362,10 +485,10 @@ function showRentDetail(rent) {
   commentBlock.appendChild(commentList);
   commentBlock.appendChild(commentForm);
 
-  // 组装 card
   card.appendChild(closeBtn);
   card.appendChild(titleEl);
   card.appendChild(metaEl);
+  card.appendChild(statsBar);
   card.appendChild(infoEl);
   if (imagesWrapper.childElementCount > 0) card.appendChild(imagesWrapper);
   card.appendChild(commentBlock);
@@ -373,16 +496,28 @@ function showRentDetail(rent) {
   overlay.appendChild(card);
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) {
+      currentRentDetailId = null;
+      overlay.remove();
+    }
   });
 
   document.body.appendChild(overlay);
 
-  // 打开弹窗后加载评论
+  const likeBtn = document.getElementById("rentDetailLikeBtn");
+  if (likeBtn) {
+    likeBtn.addEventListener("click", async () => {
+      likeBtn.disabled = true;
+      await increaseRentLike(rent.id);
+      likeBtn.disabled = false;
+    });
+  }
+
   loadRentComments(rent.id, commentList, commentInfo);
+  increaseRentView(rent.id);
 }
 
-/* ================= URL 深度链接（?rent=123 自动打开） ================= */
+/* ================= URL 深度链接 ================= */
 
 function handleRentDeepLink(rents) {
   try {
@@ -399,7 +534,7 @@ function handleRentDeepLink(rents) {
   }
 }
 
-/* ================= 列表（rent_posts） ================= */
+/* ================= 列表 ================= */
 
 async function loadRents() {
   const listEl = document.getElementById("rentList");
@@ -414,7 +549,7 @@ async function loadRents() {
 
   const { data, error } = await supabaseClient
     .from("rent_posts")
-    .select("id, title, contact, content, images, created_at")
+    .select("id, title, contact, content, images, created_at, views, likes, comments_count")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -429,77 +564,77 @@ async function loadRents() {
     return;
   }
 
+  allRentsCache = data.map((rent) => ({
+    ...rent,
+    views: rent.views || 0,
+    likes: rent.likes || 0,
+    comments_count: rent.comments_count || 0,
+  }));
+
   listEl.innerHTML = "";
 
-  data.forEach((rent) => {
+  allRentsCache.forEach((rent) => {
     const div = document.createElement("div");
-    // 卡片样式
-    div.style.border = "1px solid #d1e5d4";
-    div.style.borderRadius = "12px";
-    div.style.background = "#ffffff";
-    div.style.padding = "12px 16px";
-    div.style.marginBottom = "10px";
-    div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
-    div.style.cursor = "pointer";
+    div.className = "rent-card";
+    div.dataset.id = rent.id;
 
     const createdAt = rent.created_at ? new Date(rent.created_at) : new Date();
-    const dateStr = `${createdAt.getFullYear()}-${String(
-      createdAt.getMonth() + 1
-    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
+    const dateStr = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
     let summary = rent.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
-    const imagesHtml =
-      Array.isArray(rent.images) && rent.images.length > 0
-        ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
-            ${rent.images
-              .map(
-                (src) => `
-              <img src="${src}"
-                   style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
-            `
-              )
-              .join("")}
-          </div>`
-        : "";
+    let imagesHtml = "";
+    if (Array.isArray(rent.images) && rent.images.length > 0) {
+      imagesHtml = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+          ${rent.images
+            .slice(0, 3)
+            .map(
+              (src) => `
+                <img src="${src}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">
+              `
+            )
+            .join("")}
+          ${
+            rent.images.length > 3
+              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;align-self:center;">+${rent.images.length - 3} 张</span>`
+              : ""
+          }
+        </div>
+      `;
+    }
 
     div.innerHTML = `
-      <h3 style="margin:0 0 4px;">${rent.title || "未命名房源"}</h3>
-      <p style="margin:2px 0;"><strong>联系方式：</strong>${
-        rent.contact || "未填写"
-      }</p>
-
-      ${
-        summary
-          ? `<p style="margin:4px 0 6px;white-space:pre-wrap;">${summary}</p>`
-          : ""
-      }
-
+      <h3 class="rent-card-title">${escapeHtml(rent.title || "未命名房源")}</h3>
+      <p style="margin:2px 0;"><strong>联系方式：</strong>${escapeHtml(rent.contact || "未填写")}</p>
+      ${summary ? `<p class="rent-summary">${escapeHtml(summary)}</p>` : ""}
       ${imagesHtml}
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-        <small style="color:#6b7280;">发布于：${dateStr}</small>
+      <div class="rent-meta-row">
+        <div class="rent-meta-left">
+          <small style="color:#6b7280;">发布于：${dateStr}</small>
+          <div class="rent-stats">
+            <span class="rent-stat">👁 <span class="rent-stat-views">${rent.views || 0}</span></span>
+            <span class="rent-stat">👍 <span class="rent-stat-likes">${rent.likes || 0}</span></span>
+            <span class="rent-stat">💬 <span class="rent-stat-comments">${rent.comments_count || 0}</span></span>
+          </div>
+        </div>
         <button
           class="rent-share-btn"
           type="button"
           data-id="${rent.id}"
-          data-title="${rent.title || "房源信息"}"
-          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+          data-title="${escapeHtml(rent.title || "房源信息")}"
         >
           分享
         </button>
       </div>
     `;
 
-    // 点击整卡片打开详情
     div.addEventListener("click", () => showRentDetail(rent));
-
     listEl.appendChild(div);
   });
 
-  // 处理 ?rent= 深度链接
-  handleRentDeepLink(data);
+  handleRentDeepLink(allRentsCache);
 }
 
 /* ================= 图片预览 ================= */
@@ -512,8 +647,7 @@ function updateRentPreview() {
 
   rentImagesList.forEach((file, idx) => {
     const wrapper = document.createElement("div");
-    wrapper.style.display = "inline-block";
-    wrapper.style.position = "relative";
+    wrapper.className = "preview-item";
     wrapper.style.marginRight = "6px";
 
     const img = document.createElement("img");
@@ -530,17 +664,7 @@ function updateRentPreview() {
     const btn = document.createElement("button");
     btn.textContent = "×";
     btn.type = "button";
-    btn.style.position = "absolute";
-    btn.style.top = "0";
-    btn.style.right = "0";
-    btn.style.border = "none";
-    btn.style.background = "rgba(0,0,0,0.5)";
-    btn.style.color = "white";
-    btn.style.borderRadius = "999px";
-    btn.style.cursor = "pointer";
-    btn.style.width = "18px";
-    btn.style.height = "18px";
-    btn.style.fontSize = "12px";
+    btn.className = "preview-remove";
     btn.addEventListener("click", () => {
       rentImagesList.splice(idx, 1);
       updateRentPreview();
@@ -562,7 +686,6 @@ function setupRentForm() {
 
   if (!form || !statusEl) return;
 
-  // 选择图片
   if (input) {
     input.addEventListener("change", (e) => {
       const files = Array.from(e.target.files || []);
@@ -576,7 +699,6 @@ function setupRentForm() {
     });
   }
 
-  // 清空图片
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
       rentImagesList = [];
@@ -585,7 +707,6 @@ function setupRentForm() {
     });
   }
 
-  // 提交发布
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!ensureSupabase()) return;
@@ -603,13 +724,13 @@ function setupRentForm() {
     statusEl.textContent = "提交中...";
     statusEl.style.color = "#6b7280";
 
-    const { data: userData, error: userErr } =
-      await supabaseClient.auth.getUser();
+    const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
       alert("请先登录后再发布房源信息。");
       window.location.href = "login.html";
       return;
     }
+
     const user = userData.user;
 
     let imagesBase64 = [];
@@ -629,6 +750,9 @@ function setupRentForm() {
       images: imagesBase64,
       user_id: user.id,
       user_email: user.email,
+      views: 0,
+      likes: 0,
+      comments_count: 0,
     };
 
     const { error } = await supabaseClient.from("rent_posts").insert(payload);
@@ -650,7 +774,7 @@ function setupRentForm() {
   });
 }
 
-/* ================= 分享功能：标题 + 链接 ================= */
+/* ================= 分享功能 ================= */
 
 async function shareRent(rentId, rentTitle) {
   const url =
@@ -665,7 +789,6 @@ async function shareRent(rentId, rentTitle) {
 
   const shareText = `【租房】${safeTitle}\n达尔文BBS 房源详情：`;
 
-  // 1）系统分享（手机等）
   if (navigator.share) {
     try {
       await navigator.share({
@@ -679,7 +802,6 @@ async function shareRent(rentId, rentTitle) {
     }
   }
 
-  // 2）不支持系统分享：复制 文案 + 链接
   const copyText = `【租房】${safeTitle}\n查看详情：${url}`;
   try {
     await navigator.clipboard.writeText(copyText);
@@ -690,7 +812,6 @@ async function shareRent(rentId, rentTitle) {
   }
 }
 
-// 事件代理：监听分享按钮（避免触发卡片点击）
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".rent-share-btn");
   if (!btn) return;
