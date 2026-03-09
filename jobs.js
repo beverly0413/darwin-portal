@@ -1,11 +1,12 @@
-// jobs.js —— Supabase 招聘：列表 + 详情弹窗（图片查看/保存）+ 评论 + 分享
+// jobs.js —— Supabase 招聘：列表 + 详情弹窗 + 阅读量 + 点赞 + 评论 + 分享
 // 帖子表：jobs_posts
 // 评论表：jobs_comments
 
 const MAX_IMAGES = 5;
 let jobImagesList = [];
+let allJobsCache = [];
+let currentJobDetailId = null;
 
-// 检查 supabaseClient 是否存在
 function ensureSupabase() {
   if (!window.supabaseClient) {
     console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
@@ -15,7 +16,6 @@ function ensureSupabase() {
   return true;
 }
 
-// 小工具：格式化时间
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -28,7 +28,6 @@ function formatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
-// File[] -> base64[]
 function jobFilesToBase64(files) {
   return Promise.all(
     files.map(
@@ -43,9 +42,136 @@ function jobFilesToBase64(files) {
   );
 }
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function findJobInCache(jobId) {
+  return allJobsCache.find((j) => String(j.id) === String(jobId));
+}
+
+function updateJobInCache(jobId, patch) {
+  const item = findJobInCache(jobId);
+  if (!item) return null;
+  Object.assign(item, patch);
+  return item;
+}
+
+function refreshJobCardStats(jobId) {
+  const job = findJobInCache(jobId);
+  if (!job) return;
+
+  const card = document.querySelector(`.job-card[data-id="${jobId}"]`);
+  if (!card) return;
+
+  const viewsEl = card.querySelector(".job-stat-views");
+  const likesEl = card.querySelector(".job-stat-likes");
+  const commentsEl = card.querySelector(".job-stat-comments");
+
+  if (viewsEl) viewsEl.textContent = job.views || 0;
+  if (likesEl) likesEl.textContent = job.likes || 0;
+  if (commentsEl) commentsEl.textContent = job.comments_count || 0;
+}
+
+function updateDetailStats(job) {
+  const viewsEl = document.getElementById("jobDetailViews");
+  const likesEl = document.getElementById("jobDetailLikes");
+  const commentsEl = document.getElementById("jobDetailComments");
+
+  if (viewsEl) viewsEl.textContent = job.views || 0;
+  if (likesEl) likesEl.textContent = job.likes || 0;
+  if (commentsEl) commentsEl.textContent = job.comments_count || 0;
+}
+
+async function increaseJobView(jobId) {
+  if (!ensureSupabase() || !jobId) return;
+
+  const job = findJobInCache(jobId);
+  if (!job) return;
+
+  const nextViews = (job.views || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("jobs_posts")
+    .update({ views: nextViews })
+    .eq("id", jobId);
+
+  if (error) {
+    console.error("更新阅读量失败：", error);
+    return;
+  }
+
+  updateJobInCache(jobId, { views: nextViews });
+  refreshJobCardStats(jobId);
+
+  if (String(currentJobDetailId) === String(jobId)) {
+    updateDetailStats(findJobInCache(jobId));
+  }
+}
+
+async function increaseJobLike(jobId) {
+  if (!ensureSupabase() || !jobId) return false;
+
+  const job = findJobInCache(jobId);
+  if (!job) return false;
+
+  const nextLikes = (job.likes || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("jobs_posts")
+    .update({ likes: nextLikes })
+    .eq("id", jobId);
+
+  if (error) {
+    console.error("更新点赞量失败：", error);
+    return false;
+  }
+
+  updateJobInCache(jobId, { likes: nextLikes });
+  refreshJobCardStats(jobId);
+
+  if (String(currentJobDetailId) === String(jobId)) {
+    updateDetailStats(findJobInCache(jobId));
+  }
+
+  return true;
+}
+
+async function increaseJobCommentsCount(jobId) {
+  if (!ensureSupabase() || !jobId) return false;
+
+  const job = findJobInCache(jobId);
+  if (!job) return false;
+
+  const nextCount = (job.comments_count || 0) + 1;
+
+  const { error } = await supabaseClient
+    .from("jobs_posts")
+    .update({ comments_count: nextCount })
+    .eq("id", jobId);
+
+  if (error) {
+    console.error("更新评论数失败：", error);
+    return false;
+  }
+
+  updateJobInCache(jobId, { comments_count: nextCount });
+  refreshJobCardStats(jobId);
+
+  if (String(currentJobDetailId) === String(jobId)) {
+    updateDetailStats(findJobInCache(jobId));
+  }
+
+  return true;
+}
+
 /* ============= 评论相关：加载 + 提交 ============= */
 
-// 加载某条 job 的评论
 async function loadJobComments(postId, listEl, infoEl) {
   if (!ensureSupabase()) return;
 
@@ -67,6 +193,11 @@ async function loadJobComments(postId, listEl, infoEl) {
     listEl.innerHTML =
       '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎第一个留言。</p>';
     infoEl.textContent = "";
+    const cached = updateJobInCache(postId, { comments_count: 0 });
+    if (cached) {
+      refreshJobCardStats(postId);
+      updateDetailStats(cached);
+    }
     return;
   }
 
@@ -75,29 +206,33 @@ async function loadJobComments(postId, listEl, infoEl) {
 
   data.forEach((c) => {
     const item = document.createElement("div");
-    item.style.padding = "6px 0";
+    item.style.padding = "8px 0";
     item.style.borderBottom = "1px dashed #e5e7eb";
 
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(
-      c.created_at
-    )}`;
+    meta.textContent = `${c.user_email || "匿名"} · ${formatDate(c.created_at)}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
     body.style.color = "#111827";
     body.style.whiteSpace = "pre-wrap";
+    body.style.lineHeight = "1.7";
     body.textContent = c.content;
 
     item.appendChild(meta);
     item.appendChild(body);
     listEl.appendChild(item);
   });
+
+  const cached = updateJobInCache(postId, { comments_count: data.length });
+  if (cached) {
+    refreshJobCardStats(postId);
+    updateDetailStats(cached);
+  }
 }
 
-// 提交评论
 async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   const content = textarea.value.trim();
   if (!content) {
@@ -111,7 +246,6 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
 
   if (!ensureSupabase()) return;
 
-  // 检查登录
   const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
   if (userErr || !userData?.user) {
     alert("请先登录后再发表评论。");
@@ -130,9 +264,11 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   if (error) {
     console.error("发表评论失败：", error);
     statusEl.textContent = "发表评论失败，请稍后再试。";
-    statusEl.style.color = "红色";
+    statusEl.style.color = "red";
     return;
   }
+
+  await increaseJobCommentsCount(postId);
 
   textarea.value = "";
   statusEl.textContent = "评论已发表。";
@@ -141,48 +277,34 @@ async function submitJobComment(postId, textarea, statusEl, listEl, infoEl) {
   await loadJobComments(postId, listEl, infoEl);
 }
 
-/* ============= 详情弹窗（含图片查看/保存 + 评论区） ============= */
+/* ============= 详情弹窗 ============= */
 
 function showJobDetail(job) {
   const old = document.getElementById("jobDetailOverlay");
   if (old) old.remove();
 
+  currentJobDetailId = job.id;
+
   const overlay = document.createElement("div");
   overlay.id = "jobDetailOverlay";
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.background = "rgba(15,23,42,0.45)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.zIndex = "1000";
+  overlay.className = "job-detail-overlay";
 
   const card = document.createElement("div");
-  card.style.maxWidth = "800px";
-  card.style.width = "92%";
-  card.style.maxHeight = "90vh";
-  card.style.overflowY = "auto";
-  card.style.background = "#ffffff";
-  card.style.borderRadius = "16px";
-  card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
-  card.style.padding = "20px 24px 24px";
-  card.style.position = "relative";
+  card.className = "job-detail-card";
 
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "×";
-  closeBtn.style.border = "none";
-  closeBtn.style.background = "transparent";
-  closeBtn.style.fontSize = "22px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "8px";
-  closeBtn.style.right = "14px";
-  closeBtn.onclick = () => overlay.remove();
+  closeBtn.className = "job-detail-close";
+  closeBtn.onclick = () => {
+    currentJobDetailId = null;
+    overlay.remove();
+  };
 
   const titleEl = document.createElement("h2");
   titleEl.textContent = job.title || "未命名职位";
   titleEl.style.margin = "0 0 8px 0";
-  titleEl.style.fontSize = "18px";
+  titleEl.style.fontSize = "22px";
+  titleEl.style.color = "#0f172a";
 
   const metaEl = document.createElement("div");
   metaEl.style.fontSize = "13px";
@@ -191,30 +313,36 @@ function showJobDetail(job) {
   const dateStr = formatDate(job.created_at);
   metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
 
+  const statsBar = document.createElement("div");
+  statsBar.className = "job-detail-stats";
+  statsBar.innerHTML = `
+    <span class="job-detail-stat">👁 阅读 <strong id="jobDetailViews">${job.views || 0}</strong></span>
+    <button id="jobDetailLikeBtn" class="job-detail-stat job-like-btn" type="button">👍 点赞 <strong id="jobDetailLikes">${job.likes || 0}</strong></button>
+    <span class="job-detail-stat">💬 评论 <strong id="jobDetailComments">${job.comments_count || 0}</strong></span>
+  `;
+
   const infoEl = document.createElement("div");
   infoEl.style.fontSize = "14px";
   infoEl.style.color = "#111827";
-  infoEl.style.lineHeight = "1.6";
+  infoEl.style.lineHeight = "1.8";
 
   let infoHtml = "";
   if (job.company) {
-    infoHtml += `<p><strong>公司：</strong>${job.company}</p>`;
+    infoHtml += `<p><strong>公司：</strong>${escapeHtml(job.company)}</p>`;
   }
   if (job.contact) {
-    infoHtml += `<p><strong>联系方式：</strong>${job.contact}</p>`;
+    infoHtml += `<p><strong>联系方式：</strong>${escapeHtml(job.contact)}</p>`;
   }
   if (job.content) {
-    infoHtml += `<p style="margin-top:8px;white-space:pre-wrap;">${job.content}</p>`;
+    infoHtml += `<p style="margin-top:10px;white-space:pre-wrap;">${escapeHtml(job.content)}</p>`;
   }
   infoEl.innerHTML = infoHtml || "<p>暂无详细描述。</p>";
 
-  // 图片区域：查看大图 + 保存
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(job.images) && job.images.length > 0) {
     imagesWrapper.style.marginTop = "14px";
     imagesWrapper.style.display = "grid";
-    imagesWrapper.style.gridTemplateColumns =
-      "repeat(auto-fill,minmax(160px,1fr))";
+    imagesWrapper.style.gridTemplateColumns = "repeat(auto-fill,minmax(160px,1fr))";
     imagesWrapper.style.gap = "10px";
 
     job.images.forEach((src, idx) => {
@@ -265,16 +393,12 @@ function showJobDetail(job) {
     });
   }
 
-  /* ======= 评论区域 ======= */
-
   const commentBlock = document.createElement("div");
-  commentBlock.style.marginTop = "18px";
-  commentBlock.style.paddingTop = "12px";
-  commentBlock.style.borderTop = "1px solid #e5e7eb";
+  commentBlock.className = "job-comments-block";
 
   const commentTitle = document.createElement("h3");
   commentTitle.textContent = "评论";
-  commentTitle.style.fontSize = "15px";
+  commentTitle.style.fontSize = "16px";
   commentTitle.style.margin = "0 0 6px 0";
 
   const commentInfo = document.createElement("div");
@@ -283,10 +407,10 @@ function showJobDetail(job) {
   commentInfo.style.marginBottom = "6px";
 
   const commentList = document.createElement("div");
-  commentList.style.fontSize = "14px";
+  commentList.className = "job-comments-list";
 
   const commentForm = document.createElement("div");
-  commentForm.style.marginTop = "8px";
+  commentForm.style.marginTop = "10px";
 
   const textarea = document.createElement("textarea");
   textarea.rows = 3;
@@ -296,7 +420,7 @@ function showJobDetail(job) {
   textarea.style.resize = "vertical";
   textarea.style.borderRadius = "8px";
   textarea.style.border = "1px solid #d1d5db";
-  textarea.style.padding = "6px 8px";
+  textarea.style.padding = "8px 10px";
   textarea.style.fontSize = "14px";
 
   const actionRow = document.createElement("div");
@@ -338,6 +462,7 @@ function showJobDetail(job) {
   card.appendChild(closeBtn);
   card.appendChild(titleEl);
   card.appendChild(metaEl);
+  card.appendChild(statsBar);
   card.appendChild(infoEl);
   if (imagesWrapper.childElementCount > 0) card.appendChild(imagesWrapper);
   card.appendChild(commentBlock);
@@ -345,17 +470,29 @@ function showJobDetail(job) {
   overlay.appendChild(card);
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) {
+      currentJobDetailId = null;
+      overlay.remove();
+    }
   });
 
   document.body.appendChild(overlay);
 
+  const likeBtn = document.getElementById("jobDetailLikeBtn");
+  if (likeBtn) {
+    likeBtn.addEventListener("click", async () => {
+      likeBtn.disabled = true;
+      await increaseJobLike(job.id);
+      likeBtn.disabled = false;
+    });
+  }
+
   loadJobComments(job.id, commentList, commentInfo);
+  increaseJobView(job.id);
 }
 
-/* ============= 列表：加载所有招聘信息 + 分享按钮 + 深度链接 ============= */
+/* ============= 列表 + 深度链接 ============= */
 
-// URL 中如果有 ?job=xxx，则自动打开对应详情
 function handleJobDeepLink(jobs) {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -365,7 +502,6 @@ function handleJobDeepLink(jobs) {
     const job = jobs.find((j) => String(j.id) === String(id));
     if (!job) return;
 
-    // 小延迟，确保列表渲染完成
     setTimeout(() => showJobDetail(job), 0);
   } catch (e) {
     console.error("解析 job 参数失败：", e);
@@ -385,7 +521,7 @@ async function loadJobs() {
 
   const { data, error } = await supabaseClient
     .from("jobs_posts")
-    .select("id, title, company, contact, content, images, created_at")
+    .select("id, title, company, contact, content, images, created_at, views, likes, comments_count")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -400,25 +536,22 @@ async function loadJobs() {
     return;
   }
 
+  allJobsCache = data.map((job) => ({
+    ...job,
+    views: job.views || 0,
+    likes: job.likes || 0,
+    comments_count: job.comments_count || 0,
+  }));
+
   listEl.innerHTML = "";
 
-  data.forEach((job) => {
+  allJobsCache.forEach((job) => {
     const div = document.createElement("div");
-
-    // 绿色方框卡片样式
     div.className = "job-card";
-    div.style.border = "1px solid #d1e5d4";
-    div.style.borderRadius = "12px";
-    div.style.background = "#ffffff";
-    div.style.padding = "12px 16px";
-    div.style.marginBottom = "10px";
-    div.style.boxShadow = "0 1px 2px rgba(15,23,42,0.05)";
-    div.style.cursor = "pointer";
+    div.dataset.id = job.id;
 
     const createdAt = job.created_at ? new Date(job.created_at) : new Date();
-    const dateStr = `${createdAt.getFullYear()}-${String(
-      createdAt.getMonth() + 1
-    ).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
+    const dateStr = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
 
     let imagesHtml = "";
     if (Array.isArray(job.images) && job.images.length > 0) {
@@ -442,42 +575,44 @@ async function loadJobs() {
     let summary = job.content || "";
     if (summary.length > 80) summary = summary.slice(0, 80) + "…";
 
-    // 内部 HTML + 分享按钮
     div.innerHTML = `
-      <h3 style="margin:0 0 4px 0;font-size:16px;">${job.title}</h3>
-      ${job.company ? `<p style="margin:0;font-size:14px;"><strong>公司：</strong>${job.company}</p>` : ""}
-      ${job.contact ? `<p style="margin:2px 0 0 0;font-size:14px;"><strong>联系方式：</strong>${job.contact}</p>` : ""}
+      <h3 class="job-card-title">${escapeHtml(job.title || "未命名职位")}</h3>
+      ${job.company ? `<p style="margin:0;font-size:14px;"><strong>公司：</strong>${escapeHtml(job.company)}</p>` : ""}
+      ${job.contact ? `<p style="margin:2px 0 0 0;font-size:14px;"><strong>联系方式：</strong>${escapeHtml(job.contact)}</p>` : ""}
       ${
         summary
-          ? `<p style="margin-top:4px;font-size:14px;color:#6b7280;white-space:pre-wrap;">${summary}</p>`
+          ? `<p style="margin-top:4px;font-size:14px;color:#6b7280;white-space:pre-wrap;">${escapeHtml(summary)}</p>`
           : ""
       }
       ${imagesHtml}
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-        <small style="font-size:12px;color:#6b7280;">发布于：${dateStr}</small>
+      <div class="job-meta-row">
+        <div class="job-meta-left">
+          <small style="font-size:12px;color:#6b7280;">发布于：${dateStr}</small>
+          <div class="job-stats">
+            <span class="job-stat">👁 <span class="job-stat-views">${job.views || 0}</span></span>
+            <span class="job-stat">👍 <span class="job-stat-likes">${job.likes || 0}</span></span>
+            <span class="job-stat">💬 <span class="job-stat-comments">${job.comments_count || 0}</span></span>
+          </div>
+        </div>
         <button
           class="job-share-btn"
           type="button"
           data-id="${job.id}"
-          data-title="${job.title || ""}"
-          style="padding:4px 10px;border-radius:999px;border:1px solid #16a34a;background:#ffffff;color:#16a34a;font-size:12px;cursor:pointer;"
+          data-title="${escapeHtml(job.title || "")}"
         >
           分享
         </button>
       </div>
     `;
 
-    // 点击整卡片打开详情（分享按钮会在事件里 stopPropagation）
     div.addEventListener("click", () => showJobDetail(job));
-
     listEl.appendChild(div);
   });
 
-  // 如果 URL 中有 ?job=xxx，则自动打开对应详情
-  handleJobDeepLink(data);
+  handleJobDeepLink(allJobsCache);
 }
 
-/* ============= 发帖表单：发布招聘 ============= */
+/* ============= 发帖表单 ============= */
 
 function updateJobPreview() {
   const previewEl = document.getElementById("jobPreview");
@@ -566,8 +701,7 @@ function setupJobForm() {
     statusEl.textContent = "正在保存...";
     statusEl.style.color = "#6b7280";
 
-    const { data: userData, error: userErr } =
-      await supabaseClient.auth.getUser();
+    const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
     if (userErr || !userData?.user) {
       alert("请先登录后再发布招聘信息。");
       window.location.href = "login.html";
@@ -593,6 +727,9 @@ function setupJobForm() {
       images,
       user_id: user.id,
       user_email: user.email,
+      views: 0,
+      likes: 0,
+      comments_count: 0,
     };
 
     const { error } = await supabaseClient.from("jobs_posts").insert(payload);
@@ -614,9 +751,8 @@ function setupJobForm() {
   });
 }
 
-/* ============= 分享功能（系统分享 + 复制链接） ============= */
+/* ============= 分享功能 ============= */
 
-// 升级版分享：带“帖子主题提醒”
 async function shareJob(jobId, jobTitle) {
   const url =
     window.location.origin +
@@ -628,25 +764,21 @@ async function shareJob(jobId, jobTitle) {
     ? jobTitle.trim()
     : "达尔文招聘信息";
 
-  // 在分享内容里主动带上标题提示
   const shareText = `【招聘】${safeTitle}\n达尔文BBS 职位详情：`;
 
-  // 1）优先使用系统分享（手机）
   if (navigator.share) {
     try {
       await navigator.share({
         title: safeTitle,
-        text: shareText, // 这里就包含“帖子主题提醒”
+        text: shareText,
         url: url,
       });
       return;
     } catch (err) {
       console.error("系统分享失败：", err);
-      // 失败后继续走复制逻辑
     }
   }
 
-  // 2）不支持系统分享时，复制一段文案 + 链接
   const copyText = `【招聘】${safeTitle}\n查看详情：${url}`;
 
   try {
@@ -658,13 +790,10 @@ async function shareJob(jobId, jobTitle) {
   }
 }
 
-
-// 事件代理：监听分享按钮（并阻止触发卡片点击）
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".job-share-btn");
   if (!btn) return;
 
-  // 避免点击分享按钮时同时触发卡片的点击事件
   e.stopPropagation();
 
   const jobId = btn.dataset.id;

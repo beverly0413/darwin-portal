@@ -13,18 +13,22 @@
   <meta name="description" content="达尔文本地招聘信息，涵盖餐饮、工地、兼职等岗位。">
   <style>
     :root {
-      --bg:#f5f9f5; --bg-card:#ffffff; --primary:#16a34a;
-      --text-main:#111827; --text-muted:#6b7280; --border:#d1e5d4;
+      --bg:#f5f9f5;
+      --bg-card:#ffffff;
+      --primary:#16a34a;
+      --text-main:#111827;
+      --text-muted:#6b7280;
+      --border:#d1e5d4;
       --max-width:1040px;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:var(--bg);color:var(--text-main);
+      background:var(--bg);
+      color:var(--text-main);
     }
     a{color:inherit;text-decoration:none;}
 
-    /* 顶部导航（统一模板） */
     .top-nav {
       width:100%;
       background:#e8f5ec;
@@ -45,7 +49,9 @@
       gap:12px;
     }
     .brand{
-      display:flex;align-items:center;gap:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
     }
     .brand-logo{
       width:48px;
@@ -64,22 +70,33 @@
       object-fit:cover;
     }
     .brand-text-main{
-      font-size:18px;font-weight:600;color:#022c22;
+      font-size:18px;
+      font-weight:600;
+      color:#022c22;
     }
     .brand-text-sub{
-      font-size:13px;color:var(--text-muted);margin-top:-2px;
+      font-size:13px;
+      color:var(--text-muted);
+      margin-top:-2px;
     }
 
     nav.nav-links{
-      display:flex;flex-wrap:wrap;gap:10px;font-size:15px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:15px;
     }
     nav.nav-links a{
-      padding:6px 12px;border-radius:6px;
-      color:#0f172a;text-decoration:none;transition:0.15s ease;
+      padding:6px 12px;
+      border-radius:6px;
+      color:#0f172a;
+      text-decoration:none;
+      transition:0.15s ease;
     }
     nav.nav-links a:hover{background:#d9fbe5;}
     nav.nav-links a.active{
-      background:#16a34a;color:#f0fdf4;
+      background:#16a34a;
+      color:#f0fdf4;
     }
 
     .shell{
@@ -115,20 +132,70 @@
       gap:12px;
       margin-top:10px;
     }
-    .job{
-      padding:12px 14px;
+
+    .job-card{
+      border:1px solid #d1e5d4;
       border-radius:12px;
-      border:1px solid var(--border);
       background:#ffffff;
-      box-shadow:0 6px 20px rgba(15,23,42,0.06);
+      padding:12px 16px;
+      box-shadow:0 1px 2px rgba(15,23,42,0.05);
+      cursor:pointer;
+      transition:0.15s ease;
     }
-    .job h3{margin-bottom:4px;font-size:16px;}
-    .job p{margin:0;font-size:14px;color:var(--text-muted);}
-    .job small{
-      display:block;
-      margin-top:4px;
+    .job-card:hover{
+      transform:translateY(-1px);
+      box-shadow:0 8px 24px rgba(15,23,42,0.08);
+      background:#fbfffc;
+    }
+
+    .job-card-title{
+      margin:0 0 4px 0;
+      font-size:16px;
+      color:#0f172a;
+    }
+
+    .job-meta-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-top:8px;
+      flex-wrap:wrap;
+    }
+
+    .job-meta-left{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
       font-size:12px;
-      color:var(--text-muted);
+      color:#6b7280;
+    }
+
+    .job-stats{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      font-size:12px;
+      color:#475569;
+    }
+
+    .job-stat{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      white-space:nowrap;
+    }
+
+    .job-share-btn{
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #16a34a;
+      background:#ffffff;
+      color:#16a34a;
+      font-size:12px;
+      cursor:pointer;
     }
 
     .form-section{
@@ -171,7 +238,6 @@
       margin-top:4px;
     }
 
-    /* 图片上传 + 预览样式 */
     .image-group{
       margin-top:4px;
       font-size:13px;
@@ -197,7 +263,6 @@
       border:1px solid var(--border);
     }
 
-    /* 新增：可删除图片 + 清空按钮样式（与 forum 一致） */
     .preview-item{
       position:relative;
       display:inline-block;
@@ -228,7 +293,7 @@
       font-size:12px;
       cursor:pointer;
       align-self:flex-start;
-      color:red; /* 和 forum 一样：红色字体 */
+      color:red;
     }
     .clear-images-btn:hover{
       background:#ffe5e5;
@@ -257,10 +322,82 @@
     .fab:hover{
       background:#15803d;
     }
+
+    .job-detail-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:1000;
+    }
+    .job-detail-card{
+      max-width:800px;
+      width:92%;
+      max-height:90vh;
+      overflow-y:auto;
+      background:#ffffff;
+      border-radius:16px;
+      box-shadow:0 20px 45px rgba(15,23,42,0.25);
+      padding:20px 24px 24px;
+      position:relative;
+    }
+    .job-detail-close{
+      border:none;
+      background:rgba(229,231,235,0.95);
+      font-size:22px;
+      cursor:pointer;
+      position:sticky;
+      top:8px;
+      margin-left:auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:38px;
+      height:38px;
+      border-radius:999px;
+      z-index:2;
+    }
+
+    .job-detail-stats{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin:10px 0 12px;
+      align-items:center;
+      font-size:13px;
+      color:#475569;
+    }
+    .job-detail-stat{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+    }
+    .job-like-btn{
+      border:1px solid #16a34a;
+      background:#ffffff;
+      color:#16a34a;
+      cursor:pointer;
+    }
+
+    .job-comments-block{
+      margin-top:18px;
+      padding-top:12px;
+      border-top:1px solid #e5e7eb;
+    }
+    .job-comments-list{
+      font-size:14px;
+      max-height:240px;
+      overflow-y:auto;
+    }
   </style>
 </head>
 <body>
-  <!-- 顶部导航（Jobs 高亮） -->
   <header class="top-nav">
     <div class="nav-inner">
       <div class="brand">
@@ -276,7 +413,7 @@
         <a href="index.html">首页</a>
         <a href="news.html">新闻</a>
         <a href="jobs.html" class="active">工作</a>
-       <a href="cv.html">Marketplace</a>
+        <a href="cv.html">Marketplace</a>
         <a href="rent.html">租房</a>
         <a href="forum.html">广场</a>
         <a href="my.html">我的</a>
@@ -293,10 +430,8 @@
           <p>发布您的招聘需求</p>
         </div>
 
-        <!-- 招聘列表 -->
         <div id="jobList"></div>
 
-        <!-- 发布招聘表单 -->
         <div class="form-section" id="jobFormSection">
           <h3>发布一条招聘</h3>
           <form id="jobForm">
@@ -305,15 +440,13 @@
             <input id="jobContact" placeholder="联系方式（必填，如：微信 / 电话）" required />
             <textarea id="jobContent" placeholder="工作内容、时间、工资范围、要求等（可选）"></textarea>
 
-            <!-- 最多 5 张图片上传 -->
             <div class="image-group">
               <label for="jobImages">职位相关照片（可选，最多 5 张）：</label>
               <input id="jobImages" type="file" accept="image/*" multiple />
               <small>提示：可以一次选择多张，也可以分多次选择，累计最多 5 张。</small>
             </div>
-            <!-- 本地预览区域 -->
+
             <div id="jobPreview" class="job-photos"></div>
-            <!-- 新增：清空图片按钮 -->
             <button type="button" id="jobClearImages" class="clear-images-btn">清空图片</button>
 
             <button type="submit">发布</button>
@@ -324,10 +457,8 @@
     </main>
   </div>
 
-  <!-- 右下角 + 按钮：回到底部表单 -->
   <button class="fab" id="fabJob">+</button>
 
-  <!-- 登录系统相关：Supabase CDN + 配置 + jobs.js -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
