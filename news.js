@@ -7,6 +7,9 @@ import {
   orderBy,
   where,
   serverTimestamp,
+  doc,
+  updateDoc,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const listEl = document.getElementById("newsList");
@@ -20,6 +23,11 @@ const modalLead = document.getElementById("modalLead");
 const modalHero = document.getElementById("modalHero");
 const modalHeroImage = document.getElementById("modalHeroImage");
 const modalBody = document.getElementById("modalBody");
+
+const modalViews = document.getElementById("modalViews");
+const modalLikes = document.getElementById("modalLikes");
+const modalCommentsCount = document.getElementById("modalCommentsCount");
+const likeBtn = document.getElementById("likeBtn");
 
 const commentsInfo = document.getElementById("newsCommentsInfo");
 const commentsList = document.getElementById("newsCommentsList");
@@ -103,12 +111,70 @@ function renderArticleBody(item) {
   });
 }
 
+async function increaseView(newsId) {
+  if (!newsId) return;
+
+  try {
+    const ref = doc(db, "news", newsId);
+    await updateDoc(ref, {
+      views: increment(1),
+    });
+
+    const current = newsItems.find((n) => n.id === newsId);
+    if (current) {
+      current.views = (current.views || 0) + 1;
+      modalViews.textContent = current.views;
+    }
+  } catch (e) {
+    console.error("view update fail", e);
+  }
+}
+
+async function increaseLike(newsId) {
+  if (!newsId) return;
+
+  try {
+    const ref = doc(db, "news", newsId);
+    await updateDoc(ref, {
+      likes: increment(1),
+    });
+
+    const current = newsItems.find((n) => n.id === newsId);
+    if (current) {
+      current.likes = (current.likes || 0) + 1;
+      modalLikes.textContent = current.likes;
+      refreshListStats(newsId);
+    }
+  } catch (e) {
+    console.error("like update fail", e);
+  }
+}
+
+function refreshListStats(newsId) {
+  const item = newsItems.find((n) => n.id === newsId);
+  if (!item) return;
+
+  const row = document.querySelector(`.news-item[data-id="${newsId}"]`);
+  if (!row) return;
+
+  const viewsEl = row.querySelector(".stat-views");
+  const likesEl = row.querySelector(".stat-likes");
+  const commentsEl = row.querySelector(".stat-comments");
+
+  if (viewsEl) viewsEl.textContent = item.views || 0;
+  if (likesEl) likesEl.textContent = item.likes || 0;
+  if (commentsEl) commentsEl.textContent = item.commentsCount || 0;
+}
+
 function openModal(item) {
   currentNewsId = item.id || null;
 
   modalTitle.textContent = item.title || "";
   modalMeta.textContent = item.createdText || item.meta || "";
   modalLead.textContent = item.summary || "";
+  modalViews.textContent = item.views || 0;
+  modalLikes.textContent = item.likes || 0;
+  modalCommentsCount.textContent = item.commentsCount || 0;
 
   const heroImage =
     Array.isArray(item.coverImages) && item.coverImages.length
@@ -126,6 +192,7 @@ function openModal(item) {
   renderArticleBody(item);
 
   if (currentNewsId) {
+    increaseView(currentNewsId);
     loadNewsComments(currentNewsId);
   } else {
     commentsList.innerHTML = "";
@@ -147,6 +214,16 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
 
+if (likeBtn) {
+  likeBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (!currentNewsId) return;
+    likeBtn.disabled = true;
+    await increaseLike(currentNewsId);
+    likeBtn.disabled = false;
+  });
+}
+
 async function loadNewsComments(newsId) {
   if (!commentsList || !commentsInfo) return;
 
@@ -166,6 +243,7 @@ async function loadNewsComments(newsId) {
       commentsList.innerHTML =
         '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎第一个留言。</p>';
       commentsInfo.textContent = "";
+      modalCommentsCount.textContent = "0";
       return;
     }
 
@@ -199,6 +277,13 @@ async function loadNewsComments(newsId) {
     });
 
     commentsInfo.textContent = `共 ${count} 条评论`;
+    modalCommentsCount.textContent = count;
+
+    const current = newsItems.find((n) => n.id === newsId);
+    if (current) {
+      current.commentsCount = count;
+      refreshListStats(newsId);
+    }
   } catch (err) {
     console.error("加载新闻评论失败：", err);
     commentsList.innerHTML = "<p>评论加载失败。</p>";
@@ -233,6 +318,17 @@ async function submitNewsComment() {
       name,
       createdAt: serverTimestamp(),
     });
+
+    await updateDoc(doc(db, "news", currentNewsId), {
+      commentsCount: increment(1),
+    });
+
+    const current = newsItems.find((n) => n.id === currentNewsId);
+    if (current) {
+      current.commentsCount = (current.commentsCount || 0) + 1;
+      modalCommentsCount.textContent = current.commentsCount;
+      refreshListStats(currentNewsId);
+    }
 
     commentContentInput.value = "";
     commentStatus.textContent = "评论已发表。";
@@ -348,6 +444,10 @@ async function loadNews() {
         ? data.createdAt.toDate().toLocaleString()
         : "时间未知";
 
+      const views = data.views || 0;
+      const likes = data.likes || 0;
+      const commentsCount = data.commentsCount || 0;
+
       const itemData = {
         id,
         title,
@@ -357,11 +457,15 @@ async function loadNews() {
         imageUrl,
         bodyBlocks,
         createdText,
+        views,
+        likes,
+        commentsCount,
       };
       newsItems.push(itemData);
 
       const itemEl = document.createElement("div");
       itemEl.className = "news-item";
+      itemEl.dataset.id = id;
 
       const textWrap = document.createElement("div");
       textWrap.className = "news-text";
@@ -377,9 +481,23 @@ async function loadNews() {
       const bottomRow = document.createElement("div");
       bottomRow.className = "news-meta-row";
 
+      const leftWrap = document.createElement("div");
+      leftWrap.className = "news-meta-left";
+
       const metaEl = document.createElement("div");
       metaEl.className = "news-meta";
       metaEl.textContent = createdText;
+
+      const statsEl = document.createElement("div");
+      statsEl.className = "news-stats";
+      statsEl.innerHTML = `
+        <span class="news-stat">👁 <span class="stat-views">${views}</span></span>
+        <span class="news-stat">👍 <span class="stat-likes">${likes}</span></span>
+        <span class="news-stat">💬 <span class="stat-comments">${commentsCount}</span></span>
+      `;
+
+      leftWrap.appendChild(metaEl);
+      leftWrap.appendChild(statsEl);
 
       const shareBtn = document.createElement("button");
       shareBtn.type = "button";
@@ -388,7 +506,7 @@ async function loadNews() {
       shareBtn.dataset.title = title;
       shareBtn.textContent = "分享";
 
-      bottomRow.appendChild(metaEl);
+      bottomRow.appendChild(leftWrap);
       bottomRow.appendChild(shareBtn);
 
       textWrap.appendChild(titleEl);

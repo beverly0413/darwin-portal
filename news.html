@@ -178,12 +178,37 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      margin-top: 4px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .news-meta-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
     .news-meta {
       font-size: 12px;
       color: var(--text-muted);
+    }
+
+    .news-stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .news-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
     }
 
     .news-image img {
@@ -284,6 +309,38 @@
       font-size: 13px;
       color: var(--text-muted);
       margin-bottom: 10px;
+    }
+
+    .article-stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin: 10px 0 12px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .article-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .article-like-btn {
+      border: 1px solid #16a34a;
+      background: #ffffff;
+      color: #16a34a;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .article-like-btn:hover {
+      background: #f0fdf4;
     }
 
     .article-lead {
@@ -487,6 +544,15 @@
       <div class="article-head">
         <h2 id="modalTitle" class="modal-title"></h2>
         <div id="modalMeta" class="modal-meta"></div>
+
+        <div class="article-stats-bar">
+          <span class="article-stat">👁 阅读 <strong id="modalViews">0</strong></span>
+          <button id="likeBtn" class="article-stat article-like-btn" type="button">
+            👍 点赞 <strong id="modalLikes">0</strong>
+          </button>
+          <span class="article-stat">💬 评论 <strong id="modalCommentsCount">0</strong></span>
+        </div>
+
         <div id="modalLead" class="article-lead"></div>
       </div>
 
