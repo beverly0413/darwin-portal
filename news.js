@@ -23,7 +23,6 @@ const modalBody = document.getElementById("modalBody");
 
 const commentsInfo = document.getElementById("newsCommentsInfo");
 const commentsList = document.getElementById("newsCommentsList");
-const commentNameInput = document.getElementById("newsCommentName");
 const commentContentInput = document.getElementById("newsCommentContent");
 const commentSubmitBtn = document.getElementById("newsCommentSubmit");
 const commentStatus = document.getElementById("newsCommentStatus");
@@ -37,6 +36,7 @@ function setListLoading(msg) {
 
 function buildLegacyBlocks(item) {
   const blocks = [];
+
   if (item.body) {
     item.body
       .split(/\n\s*\n/g)
@@ -51,6 +51,7 @@ function buildLegacyBlocks(item) {
   if (images.length > 1) {
     blocks.push({ type: "gallery", images: images.slice(1) });
   }
+
   return blocks;
 }
 
@@ -109,9 +110,10 @@ function openModal(item) {
   modalMeta.textContent = item.createdText || item.meta || "";
   modalLead.textContent = item.summary || "";
 
-  const heroImage = Array.isArray(item.coverImages) && item.coverImages.length
-    ? item.coverImages[0]
-    : item.imageUrl || null;
+  const heroImage =
+    Array.isArray(item.coverImages) && item.coverImages.length
+      ? item.coverImages[0]
+      : item.imageUrl || null;
 
   if (heroImage) {
     modalHero.style.display = "block";
@@ -140,6 +142,7 @@ function closeModal() {
 
 modalClose?.addEventListener("click", closeModal);
 modalBackdrop?.addEventListener("click", closeModal);
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
@@ -156,6 +159,7 @@ async function loadNewsComments(newsId) {
       where("newsId", "==", newsId),
       orderBy("createdAt", "asc")
     );
+
     const snap = await getDocs(qComments);
 
     if (snap.empty) {
@@ -210,7 +214,7 @@ async function submitNewsComment() {
   }
 
   const content = commentContentInput.value.trim();
-  const name = commentNameInput.value.trim() || "匿名";
+  const name = "匿名";
 
   if (!content) {
     commentStatus.textContent = "评论内容不能为空。";
