@@ -63,6 +63,98 @@ function buildLegacyBlocks(item) {
   return blocks;
 }
 
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function isLikelySubheading(text) {
+  if (!text) return false;
+  const clean = text.trim();
+  if (clean.length < 4 || clean.length > 26) return false;
+  if (/[。！？.!?]/.test(clean)) return false;
+  if (/\n/.test(clean)) return false;
+  return true;
+}
+
+function isLikelyQuote(text) {
+  if (!text) return false;
+  const clean = text.trim();
+  return (
+    (clean.startsWith("“") && clean.endsWith("”")) ||
+    (clean.startsWith('"') && clean.endsWith('"')) ||
+    clean.startsWith("他说") ||
+    clean.startsWith("她说") ||
+    clean.startsWith("他表示") ||
+    clean.startsWith("她表示")
+  );
+}
+
+function isLikelyList(text) {
+  if (!text) return false;
+  const lines = text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) return false;
+
+  return lines.every((line) => {
+    return (
+      /^[-•·▪‣]\s+/.test(line) ||
+      /^\d+[.)、]\s+/.test(line) ||
+      /^[（(]?\d+[）)]\s+/.test(line)
+    );
+  });
+}
+
+function renderListBlock(text) {
+  const ul = document.createElement("ul");
+  ul.className = "article-list";
+
+  text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line.replace(/^([-•·▪‣]|\d+[.)、]|[（(]?\d+[）)])\s+/, "");
+      ul.appendChild(li);
+    });
+
+  modalBody.appendChild(ul);
+}
+
+function renderParagraph(text, isFirstParagraph = false) {
+  const p = document.createElement("p");
+  p.className = "article-paragraph";
+  if (isFirstParagraph) p.classList.add("article-first-paragraph");
+  p.textContent = text || "";
+  modalBody.appendChild(p);
+}
+
+function renderSubheading(text) {
+  const h = document.createElement("div");
+  h.className = "article-subheading";
+  h.textContent = text || "";
+  modalBody.appendChild(h);
+}
+
+function renderQuote(text) {
+  const q = document.createElement("blockquote");
+  q.className = "article-quote";
+  q.textContent = text || "";
+  modalBody.appendChild(q);
+}
+
+function renderDivider() {
+  const hr = document.createElement("hr");
+  hr.className = "article-divider";
+  modalBody.appendChild(hr);
+}
+
 function renderArticleBody(item) {
   modalBody.innerHTML = "";
 
@@ -71,12 +163,35 @@ function renderArticleBody(item) {
       ? item.bodyBlocks
       : buildLegacyBlocks(item);
 
+  let paragraphCount = 0;
+
   blocks.forEach((block) => {
     if (block.type === "paragraph") {
-      const p = document.createElement("p");
-      p.className = "article-paragraph";
-      p.textContent = block.text || "";
-      modalBody.appendChild(p);
+      const text = (block.text || "").trim();
+      if (!text) return;
+
+      if (/^[-—–]{3,}$/.test(text) || /^_{3,}$/.test(text) || /^={3,}$/.test(text)) {
+        renderDivider();
+        return;
+      }
+
+      if (isLikelyList(text)) {
+        renderListBlock(text);
+        return;
+      }
+
+      if (isLikelySubheading(text)) {
+        renderSubheading(text);
+        return;
+      }
+
+      if (isLikelyQuote(text)) {
+        renderQuote(text);
+        return;
+      }
+
+      paragraphCount += 1;
+      renderParagraph(text, paragraphCount === 1);
       return;
     }
 
@@ -124,6 +239,7 @@ async function increaseView(newsId) {
     if (current) {
       current.views = (current.views || 0) + 1;
       modalViews.textContent = current.views;
+      refreshListStats(newsId);
     }
   } catch (e) {
     console.error("view update fail", e);
@@ -200,11 +316,13 @@ function openModal(item) {
   }
 
   modalEl.classList.add("show");
+  document.body.style.overflow = "hidden";
 }
 
 function closeModal() {
   modalEl.classList.remove("show");
   currentNewsId = null;
+  document.body.style.overflow = "";
 }
 
 modalClose?.addEventListener("click", closeModal);
@@ -241,7 +359,7 @@ async function loadNewsComments(newsId) {
 
     if (snap.empty) {
       commentsList.innerHTML =
-        '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎第一个留言。</p>';
+        '<p style="font-size:13px;color:#9c9387;">还没有评论，欢迎第一个留言。</p>';
       commentsInfo.textContent = "";
       modalCommentsCount.textContent = "0";
       return;
@@ -415,6 +533,16 @@ document.addEventListener("click", (e) => {
   }
 });
 
+function buildSummary(summary, body) {
+  const s = (summary || "").trim();
+  if (s) return s;
+
+  const b = (body || "").trim().replace(/\s+/g, " ");
+  if (!b) return "";
+
+  return b.length > 120 ? b.slice(0, 120) + "…" : b;
+}
+
 async function loadNews() {
   try {
     setListLoading("加载中…");
@@ -435,8 +563,8 @@ async function loadNews() {
       const id = docSnap.id;
 
       const title = data.title || "未命名新闻";
-      const summary = data.summary || "";
       const body = data.body || "";
+      const summary = buildSummary(data.summary || "", body);
       const coverImages = Array.isArray(data.coverImages) ? data.coverImages : [];
       const imageUrl = data.imageUrl || coverImages[0] || null;
       const bodyBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : [];
@@ -521,6 +649,7 @@ async function loadNews() {
         const img = document.createElement("img");
         img.src = imageUrl;
         img.alt = title;
+        img.loading = "lazy";
 
         imgWrap.appendChild(img);
         itemEl.appendChild(imgWrap);
