@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -19,32 +18,43 @@ export default async function handler(req, res) {
 
   const {
     board,
+    category,
     title,
     content,
     contact,
     price,
-    location
+    location,
+    image_urls,
+    user_id
   } = req.body;
 
-  if (!board || !title || !content) {
+  const finalCategory = category || board;
+
+  if (!finalCategory || !title || !content) {
     return res.status(400).json({
-      error: "Missing required fields"
+      error: "Missing required fields: category/board, title, content"
     });
+  }
+
+  const insertPayload = {
+    category: finalCategory,
+    title,
+    content,
+    contact: contact || null,
+    price: price || null,
+    location: location || null,
+    image_urls: image_urls || null,
+    created_at: new Date().toISOString()
+  };
+
+  if (user_id) {
+    insertPayload.user_id = user_id;
   }
 
   const { data, error } = await supabase
     .from("posts")
-    .insert([
-      {
-        board,
-        title,
-        content,
-        contact,
-        price,
-        location,
-        created_at: new Date().toISOString()
-      }
-    ]);
+    .insert([insertPayload])
+    .select();
 
   if (error) {
     return res.status(500).json({
