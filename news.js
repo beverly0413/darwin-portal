@@ -322,53 +322,152 @@ function buildLegacyBlocks(item) {
 }
 
 function renderArticleBody(item) {
+  // 先清空弹窗正文
   modalBody.innerHTML = "";
 
+  // =========================
+  // 1. 优先使用 htmlBody
+  // =========================
+  if (item.htmlBody && item.htmlBody.trim()) {
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = item.htmlBody;
+
+    // 给 p 加段落样式
+    const paragraphs = wrapper.querySelectorAll("p");
+    paragraphs.forEach((p, index) => {
+      p.classList.add("article-paragraph");
+      if (index === 0) {
+        p.classList.add("article-first-paragraph");
+      }
+    });
+
+    // 给 h2 / h3 加小标题样式
+    wrapper.querySelectorAll("h2, h3").forEach((el) => {
+      el.classList.add("article-subheading");
+    });
+
+    // 给引用加样式
+    wrapper.querySelectorAll("blockquote").forEach((el) => {
+      el.classList.add("article-quote");
+    });
+
+    // 给列表加样式
+    wrapper.querySelectorAll("ul, ol").forEach((el) => {
+      el.classList.add("article-list");
+    });
+
+    // 给分割线加样式
+    wrapper.querySelectorAll("hr").forEach((el) => {
+      el.classList.add("article-divider");
+    });
+
+    // 图片外面包一层，方便居中显示
+    wrapper.querySelectorAll("img").forEach((img) => {
+      if (!img.closest(".article-inline-image")) {
+        const figure = document.createElement("figure");
+        figure.className = "article-inline-image";
+        img.parentNode.insertBefore(figure, img);
+        figure.appendChild(img);
+      }
+
+      img.loading = "lazy";
+    });
+
+    modalBody.appendChild(wrapper);
+    return;
+  }
+
+  // =========================
+  // 2. 没有 htmlBody 时，走旧逻辑兼容
+  // =========================
   const blocks =
     Array.isArray(item.bodyBlocks) && item.bodyBlocks.length > 0
       ? item.bodyBlocks
       : buildLegacyBlocks(item);
 
-  const paragraphCounterRef = { count: 0 };
+  let paragraphCount = 0;
 
   blocks.forEach((block) => {
+    // 2.1 HTML block
     if (block.type === "html" && block.html) {
       const wrapper = document.createElement("div");
       wrapper.innerHTML = block.html;
-      upgradeRenderedHtml(wrapper, paragraphCounterRef);
+
+      wrapper.querySelectorAll("p").forEach((p) => {
+        p.classList.add("article-paragraph");
+        paragraphCount += 1;
+        if (paragraphCount === 1) {
+          p.classList.add("article-first-paragraph");
+        }
+      });
+
+      wrapper.querySelectorAll("h2, h3").forEach((el) => {
+        el.classList.add("article-subheading");
+      });
+
+      wrapper.querySelectorAll("blockquote").forEach((el) => {
+        el.classList.add("article-quote");
+      });
+
+      wrapper.querySelectorAll("ul, ol").forEach((el) => {
+        el.classList.add("article-list");
+      });
+
+      wrapper.querySelectorAll("hr").forEach((el) => {
+        el.classList.add("article-divider");
+      });
+
+      wrapper.querySelectorAll("img").forEach((img) => {
+        if (!img.closest(".article-inline-image")) {
+          const figure = document.createElement("figure");
+          figure.className = "article-inline-image";
+          img.parentNode.insertBefore(figure, img);
+          figure.appendChild(img);
+        }
+
+        img.loading = "lazy";
+      });
+
       modalBody.appendChild(wrapper);
       return;
     }
 
+    // 2.2 普通段落
     if (block.type === "paragraph") {
-      const text = normalizeNewlines(block.text || "").trim();
+      const text = (block.text || "").trim();
       if (!text) return;
 
+      // 分隔线
       if (/^[-—–]{3,}$/.test(text) || /^_{3,}$/.test(text) || /^={3,}$/.test(text)) {
         renderDivider();
         return;
       }
 
+      // 列表
       if (isLikelyList(text)) {
         renderListBlock(text);
         return;
       }
 
+      // 小标题
       if (isLikelySubheading(text)) {
         renderSubheading(text);
         return;
       }
 
+      // 引用
       if (isLikelyQuote(text)) {
         renderQuote(text);
         return;
       }
 
-      paragraphCounterRef.count += 1;
-      renderParagraph(text, paragraphCounterRef.count === 1);
+      // 普通正文
+      paragraphCount += 1;
+      renderParagraph(text, paragraphCount === 1);
       return;
     }
 
+    // 2.3 单图
     if (block.type === "image" && block.url) {
       const wrap = document.createElement("div");
       wrap.className = "article-inline-image";
@@ -383,6 +482,7 @@ function renderArticleBody(item) {
       return;
     }
 
+    // 2.4 图库
     if (block.type === "gallery" && Array.isArray(block.images) && block.images.length) {
       const gallery = document.createElement("div");
       gallery.className = "article-gallery";
@@ -747,6 +847,7 @@ async function loadNews() {
       const id = docSnap.id;
 
       const title = data.title || "未命名新闻";
+      const htmlBody = data.htmlBody || "";
       const body = data.body || "";
       const summary = buildSummary(data.summary || "", body);
       const coverImages = Array.isArray(data.coverImages) ? data.coverImages : [];
@@ -760,19 +861,20 @@ async function loadNews() {
       const likes = data.likes || 0;
       const commentsCount = data.commentsCount || 0;
 
-      const itemData = {
-        id,
-        title,
-        summary,
-        body,
-        coverImages,
-        imageUrl,
-        bodyBlocks,
-        createdText,
-        views,
-        likes,
-        commentsCount,
-      };
+const itemData = {
+  id,
+  title,
+  summary,
+  htmlBody,
+  body,
+  coverImages,
+  imageUrl,
+  bodyBlocks,
+  createdText,
+  views,
+  likes,
+  commentsCount,
+};
       newsItems.push(itemData);
 
       const itemEl = document.createElement("div");
