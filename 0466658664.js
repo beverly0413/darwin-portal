@@ -23,6 +23,9 @@ const emptyHint = document.getElementById("emptyHint");
 let editingId = null;
 let savedRange = null;
 
+// 当前文章已有封面（编辑旧文章时使用）
+let existingCoverImages = [];
+
 function setStatus(el, msg, ok = false) {
   el.textContent = msg || "";
   el.classList.remove("status-ok", "status-error");
@@ -44,11 +47,15 @@ function setMode(isEditing) {
 
 function clearForm() {
   editingId = null;
+  existingCoverImages = [];
+
   titleEl.value = "";
   summaryEl.value = "";
   editorEl.innerHTML = "";
+
   coverImageFilesEl.value = "";
   coverPreviewEl.innerHTML = "";
+
   setStatus(publishStatus, "");
   setMode(false);
 }
@@ -63,13 +70,14 @@ function saveSelection() {
 function restoreSelection() {
   if (!savedRange) return;
   const sel = window.getSelection();
+  if (!sel) return;
   sel.removeAllRanges();
   sel.addRange(savedRange);
 }
 
-editorEl.addEventListener("keyup", saveSelection);
-editorEl.addEventListener("mouseup", saveSelection);
-editorEl.addEventListener("focus", saveSelection);
+editorEl?.addEventListener("keyup", saveSelection);
+editorEl?.addEventListener("mouseup", saveSelection);
+editorEl?.addEventListener("focus", saveSelection);
 
 document.querySelectorAll(".tool-btn[data-cmd]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -91,7 +99,7 @@ document.querySelectorAll(".tool-btn[data-cmd]").forEach((btn) => {
   });
 });
 
-insertHrBtn.addEventListener("click", () => {
+insertHrBtn?.addEventListener("click", () => {
   editorEl.focus();
   restoreSelection();
   document.execCommand("insertHorizontalRule");
@@ -115,40 +123,70 @@ function slugify(text) {
     .slice(0, 80);
 }
 
-function collectImagesFromHtml(html) {
-  const temp = document.createElement("div");
-  temp.innerHTML = html;
-  const urls = [];
-  temp.querySelectorAll("img").forEach((img) => {
-    const src = img.getAttribute("src");
-    if (src && !urls.includes(src)) urls.push(src);
-  });
-  return urls;
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function renderCoverPreview() {
+function renderPreviewFromUrls(urls = [], prefix = "封面") {
   coverPreviewEl.innerHTML = "";
-  const files = Array.from(coverImageFilesEl.files || []);
 
-  files.forEach((file, index) => {
+  urls.forEach((url, index) => {
     const item = document.createElement("div");
     item.className = "preview-item";
 
     const img = document.createElement("img");
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    img.src = url;
 
     const caption = document.createElement("div");
     caption.className = "preview-caption";
-    caption.textContent = `封面 ${index + 1}`;
+    caption.textContent = `${prefix} ${index + 1}`;
 
     item.appendChild(img);
     item.appendChild(caption);
     coverPreviewEl.appendChild(item);
   });
+}
+
+function renderCoverPreview() {
+  coverPreviewEl.innerHTML = "";
+
+  const files = Array.from(coverImageFilesEl.files || []);
+
+  // 如果用户重新选择了新封面，就只显示新封面预览
+  if (files.length > 0) {
+    files.forEach((file, index) => {
+      const item = document.createElement("div");
+      item.className = "preview-item";
+
+      const img = document.createElement("img");
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+
+      reader.readAsDataURL(file);
+
+      const caption = document.createElement("div");
+      caption.className = "preview-caption";
+      caption.textContent = `新封面 ${index + 1}`;
+
+      item.appendChild(img);
+      item.appendChild(caption);
+      coverPreviewEl.appendChild(item);
+    });
+
+    return;
+  }
+
+  // 否则显示旧封面
+  if (existingCoverImages.length > 0) {
+    renderPreviewFromUrls(existingCoverImages, "当前封面");
+  }
 }
 
 coverImageFilesEl?.addEventListener("change", renderCoverPreview);
@@ -158,7 +196,9 @@ async function uploadImages(files) {
 
   for (const file of files) {
     const safeName = file.name.replace(/[^\w.\-]/g, "_");
-    const filePath = `news/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+    const filePath = `news/${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}_${safeName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("news-images")
@@ -211,27 +251,31 @@ function insertHtmlAtCursor(html) {
   }
 }
 
-insertImageBtn.addEventListener("click", () => {
+insertImageBtn?.addEventListener("click", () => {
   saveSelection();
   inlineImageInput.click();
 });
 
-inlineImageInput.addEventListener("change", async () => {
+inlineImageInput?.addEventListener("change", async () => {
   const files = Array.from(inlineImageInput.files || []);
   if (!files.length) return;
 
-  setStatus(publishStatus, "正在上传插图…", true);
+  setStatus(publishStatus, "正在上传正文插图…", true);
 
   try {
     const urls = await uploadImages(files);
 
     urls.forEach((url) => {
-      insertHtmlAtCursor(
-        `<figure><img src="${url}" alt="新闻插图"><figcaption></figcaption></figure><p></p>`
-      );
+      insertHtmlAtCursor(`
+        <figure class="article-figure">
+          <img src="${escapeHtml(url)}" alt="新闻插图">
+          <figcaption></figcaption>
+        </figure>
+        <p><br></p>
+      `);
     });
 
-    setStatus(publishStatus, "插图已插入正文。", true);
+    setStatus(publishStatus, "正文插图已插入。", true);
   } catch (err) {
     console.error(err);
     setStatus(publishStatus, "插图上传失败：" + err.message);
@@ -254,16 +298,26 @@ async function saveArticle() {
   setStatus(publishStatus, editingId ? "正在更新…" : "正在发布…", true);
 
   try {
-    let extraImages = [];
+    let uploadedCoverImages = [];
     const coverFiles = Array.from(coverImageFilesEl.files || []);
+
     if (coverFiles.length > 0) {
-      extraImages = await uploadImages(coverFiles);
+      uploadedCoverImages = await uploadImages(coverFiles);
     }
 
-    const inlineImages = collectImagesFromHtml(htmlBody);
-    const coverImages = [...inlineImages, ...extraImages].filter(
-      (src, index, arr) => src && arr.indexOf(src) === index
-    );
+    // 只认“封面上传区域”的图片作为封面
+    // 如果编辑旧文章时没有重新上传封面，则保留原封面
+    const finalCoverImages =
+      uploadedCoverImages.length > 0
+        ? uploadedCoverImages.filter(
+            (src, index, arr) => src && arr.indexOf(src) === index
+          )
+        : existingCoverImages.filter(
+            (src, index, arr) => src && arr.indexOf(src) === index
+          );
+
+    const primaryCoverImage =
+      finalCoverImages.length > 0 ? finalCoverImages[0] : null;
 
     const payload = {
       title,
@@ -272,9 +326,12 @@ async function saveArticle() {
       content: htmlBody,
       html_body: htmlBody,
       body: plainBody,
-      cover_image: coverImages[0] || null,
-      image_url: coverImages[0] || null,
-      cover_images: coverImages,
+
+      // 封面字段
+      cover_image: primaryCoverImage,
+      image_url: primaryCoverImage,
+      cover_images: finalCoverImages,
+
       updated_at: new Date().toISOString(),
       published: true,
       author: "Darwin Life Hub",
@@ -317,9 +374,9 @@ async function saveArticle() {
   }
 }
 
-publishBtn.addEventListener("click", saveArticle);
+publishBtn?.addEventListener("click", saveArticle);
 
-cancelEditBtn.addEventListener("click", () => {
+cancelEditBtn?.addEventListener("click", () => {
   clearForm();
 });
 
@@ -332,6 +389,7 @@ async function startEdit(id) {
       .single();
 
     if (error) throw error;
+
     if (!data) {
       alert("这篇文章不存在。");
       return;
@@ -342,8 +400,19 @@ async function startEdit(id) {
     summaryEl.value = data.summary || "";
     editorEl.innerHTML = data.html_body || data.content || "";
 
+    // 读取旧封面
+    if (Array.isArray(data.cover_images) && data.cover_images.length > 0) {
+      existingCoverImages = data.cover_images.filter(Boolean);
+    } else if (data.cover_image) {
+      existingCoverImages = [data.cover_image];
+    } else if (data.image_url) {
+      existingCoverImages = [data.image_url];
+    } else {
+      existingCoverImages = [];
+    }
+
     coverImageFilesEl.value = "";
-    coverPreviewEl.innerHTML = "";
+    renderCoverPreview();
 
     setMode(true);
     setStatus(publishStatus, "已载入文章，可直接修改后保存。", true);
@@ -387,6 +456,7 @@ async function loadNews() {
       top.className = "item-top";
 
       const left = document.createElement("div");
+
       const titleDiv = document.createElement("div");
       titleDiv.className = "item-title";
       titleDiv.textContent = row.title || "(无标题)";
@@ -407,15 +477,25 @@ async function loadNews() {
         summaryText.slice(0, 90) + (summaryText.length > 90 ? "…" : "");
       item.appendChild(summaryDiv);
 
-      const images = Array.isArray(row.cover_images) ? row.cover_images : [];
+      const images = Array.isArray(row.cover_images)
+        ? row.cover_images
+        : row.cover_image
+        ? [row.cover_image]
+        : row.image_url
+        ? [row.image_url]
+        : [];
+
       if (images.length > 0) {
         const imgs = document.createElement("div");
         imgs.className = "item-images";
+
         images.slice(0, 3).forEach((src) => {
           const img = document.createElement("img");
           img.src = src;
+          img.alt = "封面图";
           imgs.appendChild(img);
         });
+
         item.appendChild(imgs);
       }
 
@@ -438,11 +518,13 @@ async function loadNews() {
           if (error) throw error;
 
           item.remove();
+
           if (!listEl.children.length) {
             emptyHint.style.display = "block";
             emptyHint.textContent = "暂无新闻。";
           }
         } catch (err) {
+          console.error(err);
           alert("删除失败：" + err.message);
         }
       });
@@ -460,6 +542,7 @@ async function loadNews() {
   }
 }
 
-refreshBtn.addEventListener("click", loadNews);
+refreshBtn?.addEventListener("click", loadNews);
+
 setMode(false);
 loadNews();
