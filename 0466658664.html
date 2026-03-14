@@ -17,16 +17,20 @@
       --danger:#dc2626;
       --max-width:1180px;
     }
+
     * { margin:0; padding:0; box-sizing:border-box; }
+
     body {
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       background:var(--bg);
       color:var(--text-main);
     }
+
     header {
       background:#fff;
       border-bottom:1px solid var(--border);
     }
+
     .nav {
       max-width:var(--max-width);
       margin:0 auto;
@@ -36,11 +40,13 @@
       justify-content:space-between;
       gap:12px;
     }
+
     .nav-left {
       display:flex;
       align-items:center;
       gap:10px;
     }
+
     .nav-logo {
       width:34px;
       height:34px;
@@ -53,8 +59,10 @@
       font-weight:700;
       font-size:16px;
     }
+
     .nav-title-main { font-size:17px; font-weight:600; }
     .nav-title-sub { font-size:12px; color:var(--text-muted); }
+
     .tag {
       padding:3px 8px;
       border-radius:999px;
@@ -69,11 +77,13 @@
       margin:0 auto;
       padding:22px 16px 40px;
     }
+
     .section-title {
       font-size:28px;
       font-weight:800;
       margin-bottom:8px;
     }
+
     .section-desc {
       font-size:14px;
       color:var(--text-muted);
@@ -85,6 +95,7 @@
       grid-template-columns:minmax(0,1.2fr) minmax(0,0.9fr);
       gap:18px;
     }
+
     @media (max-width: 980px) {
       .grid { grid-template-columns:1fr; }
     }
@@ -96,6 +107,7 @@
       padding:18px;
       box-shadow:0 10px 24px rgba(15,23,42,.05);
     }
+
     .card-header {
       display:flex;
       justify-content:space-between;
@@ -103,23 +115,27 @@
       gap:10px;
       margin-bottom:12px;
     }
+
     .card-title {
       font-size:18px;
       font-weight:700;
     }
+
     .card-sub {
       font-size:12px;
       color:var(--text-muted);
       line-height:1.6;
     }
 
-    .field { margin-bottom:12px; }
+    .field { margin-bottom:14px; }
+
     label {
       display:block;
       font-size:13px;
-      margin-bottom:5px;
+      margin-bottom:6px;
       color:var(--text-muted);
     }
+
     input, textarea {
       width:100%;
       padding:10px 12px;
@@ -130,6 +146,7 @@
       outline:none;
       font-family:inherit;
     }
+
     input:focus, textarea:focus, .editor:focus {
       border-color:var(--primary);
       box-shadow:0 0 0 1px var(--primary-soft);
@@ -149,20 +166,30 @@
       font-weight:600;
       cursor:pointer;
     }
+
     .btn:hover { background:var(--primary-dark); }
+
     .btn-sm {
       padding:5px 10px;
       font-size:12px;
     }
+
     .btn-light {
       background:#fff;
       color:#111827;
       border-color:#d1d5db;
     }
+
     .btn-danger {
       background:#fff;
       color:var(--danger);
       border-color:#fecaca;
+    }
+
+    .btn-outline {
+      background:#fff;
+      color:var(--primary-dark);
+      border-color:#86efac;
     }
 
     .status {
@@ -170,6 +197,7 @@
       margin-top:8px;
       min-height:18px;
     }
+
     .status-ok { color:var(--primary-dark); }
     .status-error { color:var(--danger); }
 
@@ -197,6 +225,7 @@
       background:#f8fffa;
       border-bottom:none;
     }
+
     .tool-btn {
       border:1px solid #d1d5db;
       background:#fff;
@@ -205,9 +234,8 @@
       font-size:13px;
       cursor:pointer;
     }
-    .tool-btn:hover {
-      background:#f3f4f6;
-    }
+
+    .tool-btn:hover { background:#f3f4f6; }
 
     .editor-wrap {
       border:1px solid var(--border);
@@ -215,34 +243,42 @@
       background:#fff;
       overflow:hidden;
     }
+
     .editor {
-      min-height:420px;
-      padding:16px;
+      min-height:460px;
+      padding:18px;
       font-size:16px;
       line-height:1.9;
       outline:none;
       background:#fff;
     }
+
     .editor:empty:before {
       content: attr(data-placeholder);
       color:#9ca3af;
       pointer-events:none;
     }
+
     .editor p {
       margin:0 0 18px 0;
     }
+
     .editor h2 {
       font-size:26px;
       line-height:1.45;
       margin:20px 0 12px;
       color:#022c22;
+      font-weight:800;
     }
+
     .editor h3 {
       font-size:22px;
       line-height:1.5;
       margin:18px 0 10px;
       color:#064e3b;
+      font-weight:700;
     }
+
     .editor blockquote {
       border-left:4px solid #16a34a;
       padding:10px 14px;
@@ -251,21 +287,31 @@
       color:#334155;
       border-radius:8px;
     }
+
     .editor ul, .editor ol {
       padding-left:22px;
       margin:10px 0 16px;
     }
+
+    .editor hr {
+      border:none;
+      border-top:1px solid #d1d5db;
+      margin:22px 0;
+    }
+
     .editor img {
       display:block;
       max-width:100%;
       max-height:520px;
-      margin:18px auto;
+      margin:0 auto;
       border-radius:16px;
       box-shadow:0 10px 22px rgba(15,23,42,0.10);
     }
+
     .editor figure {
-      margin:18px 0 22px;
+      margin:20px 0 24px;
     }
+
     .editor figcaption {
       margin-top:8px;
       text-align:center;
@@ -280,39 +326,79 @@
       padding:12px 14px;
       margin-bottom:12px;
     }
+
     .tips-box h4 {
       font-size:14px;
       margin-bottom:6px;
     }
+
     .tips-box p {
       font-size:12px;
       line-height:1.7;
       color:var(--text-muted);
     }
 
+    .cover-panel {
+      border:1px solid #d1e5d4;
+      border-radius:14px;
+      background:#fbfffc;
+      padding:12px;
+    }
+
+    .cover-toolbar {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+
+    .cover-tips {
+      font-size:12px;
+      color:var(--text-muted);
+      line-height:1.7;
+      margin-top:6px;
+    }
+
     .preview-grid {
       display:grid;
-      grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));
-      gap:10px;
+      grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+      gap:12px;
       margin-top:10px;
     }
+
     .preview-item {
       border:1px solid #e5e7eb;
-      border-radius:12px;
+      border-radius:14px;
       overflow:hidden;
       background:#fff;
+      box-shadow:0 4px 10px rgba(15,23,42,.04);
     }
+
     .preview-item img {
       width:100%;
-      height:90px;
+      height:120px;
       object-fit:cover;
       display:block;
+      background:#f3f4f6;
     }
+
     .preview-caption {
-      padding:6px 8px;
+      padding:8px 10px;
       font-size:12px;
       color:#6b7280;
       text-align:center;
+      border-top:1px solid #f3f4f6;
+    }
+
+    .preview-empty {
+      padding:14px;
+      border-radius:12px;
+      border:1px dashed #d1d5db;
+      text-align:center;
+      color:#9ca3af;
+      font-size:13px;
+      background:#fff;
     }
 
     .action-row {
@@ -328,35 +414,42 @@
       overflow:auto;
       padding-right:4px;
     }
+
     .item {
       border-radius:12px;
       border:1px solid #e5e7eb;
       padding:10px 12px;
       background:#fcfcfc;
     }
+
     .item + .item { margin-top:10px; }
+
     .item-top {
       display:flex;
       justify-content:space-between;
       align-items:flex-start;
       gap:10px;
     }
+
     .item-title {
       font-size:14px;
       font-weight:700;
       margin-bottom:3px;
     }
+
     .item-meta {
       font-size:12px;
       color:var(--text-muted);
       line-height:1.6;
     }
+
     .item-images {
       display:flex;
       gap:6px;
       flex-wrap:wrap;
       margin-top:8px;
     }
+
     .item-images img {
       width:86px;
       height:64px;
@@ -364,6 +457,7 @@
       border-radius:8px;
       border:1px solid #e5e7eb;
     }
+
     .item-actions {
       display:flex;
       gap:8px;
@@ -388,14 +482,14 @@
 
   <main class="shell">
     <h1 class="section-title">发布 / 管理 本地新闻</h1>
-    <p class="section-desc">像 Word 一样写新闻：支持富文本、随意插图、修改文章、删除文章。</p>
+    <p class="section-desc">像微信公众号一样编辑：封面单独设置，正文图片单独插入，避免首图重复。</p>
 
     <div class="grid">
       <section class="card">
         <div class="card-header">
           <div>
             <div class="card-title">新闻编辑器</div>
-            <div class="card-sub">图片将上传到 Supabase Storage；文章内容写入 Supabase 数据表 <code>news</code>。</div>
+            <div class="card-sub">封面图与正文插图分开保存；数据写入 Supabase 的 <code>news</code> 表。</div>
           </div>
           <div id="editorMode" class="mode-badge">新建文章</div>
         </div>
@@ -403,19 +497,34 @@
         <div class="tips-box">
           <h4>使用说明</h4>
           <p>
-            先写标题和摘要，再在正文里像 Word 一样直接编辑。点击“插入图片”后，选中的图片会自动上传并插入到当前光标位置。<br>
-            右侧新闻列表可直接编辑旧文章，不需要因为改一个字就整篇重写。
+            先填标题和摘要，再写正文。<br>
+            “封面图”只用于列表页和文章顶部展示；“正文插图”只出现在正文里。<br>
+            如果正文最前面第一张图和封面图是同一张，系统会自动去重，更接近微信公众号的发布逻辑。
           </p>
         </div>
 
         <div class="field">
           <label for="newsTitle">标题</label>
-          <input id="newsTitle" type="text" placeholder="例如：3月6日凯瑟琳洪水升级，医院学校关闭">
+          <input id="newsTitle" type="text" placeholder="例如：达尔文洪水缓解，主要道路逐步恢复通行">
         </div>
 
         <div class="field">
           <label for="newsSummary">摘要 / 导语</label>
           <textarea id="newsSummary" rows="3" placeholder="用于列表页和文章页开头的简短导语"></textarea>
+        </div>
+
+        <div class="field">
+          <label>封面图（单独设置）</label>
+          <div class="cover-panel">
+            <div class="cover-toolbar">
+              <input id="coverImageFiles" type="file" accept="image/*">
+              <button id="clearCoverBtn" class="btn btn-light" type="button">清空封面</button>
+            </div>
+            <div class="cover-tips">
+              这里选择的图片才会作为封面。正文里插入的图片不会自动变成封面。
+            </div>
+            <div id="coverPreview" class="preview-grid"></div>
+          </div>
         </div>
 
         <div class="field">
@@ -428,19 +537,12 @@
             <button type="button" class="tool-btn" data-cmd="insertUnorderedList">项目符号</button>
             <button type="button" class="tool-btn" data-cmd="blockquote">引用</button>
             <button type="button" class="tool-btn" id="insertHrBtn">分隔线</button>
-            <button type="button" class="tool-btn" id="insertImageBtn">插入图片</button>
+            <button type="button" class="tool-btn" id="insertImageBtn">插入正文图片</button>
             <input id="inlineImageInput" type="file" accept="image/*" multiple hidden>
           </div>
           <div class="editor-wrap">
-            <div id="newsEditor" class="editor" contenteditable="true" data-placeholder="在这里输入正文，支持直接插入图片、标题、段落、引用。"></div>
+            <div id="newsEditor" class="editor" contenteditable="true" data-placeholder="在这里输入正文内容，支持标题、段落、引用、插图。"></div>
           </div>
-        </div>
-
-        <div class="field">
-          <label for="coverImageFiles">额外封面图 / 图集（可选，多选）</label>
-          <input id="coverImageFiles" type="file" accept="image/*" multiple>
-          <div class="card-sub" style="margin-top:6px;">这里上传的图片会作为首图 / 附加图集使用；正文里插入过的图片也会自动保存。</div>
-          <div id="coverPreview" class="preview-grid"></div>
         </div>
 
         <div class="action-row">

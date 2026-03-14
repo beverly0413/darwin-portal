@@ -6,6 +6,7 @@ const editorEl = document.getElementById("newsEditor");
 
 const coverImageFilesEl = document.getElementById("coverImageFiles");
 const coverPreviewEl = document.getElementById("coverPreview");
+const clearCoverBtn = document.getElementById("clearCoverBtn");
 
 const inlineImageInput = document.getElementById("inlineImageInput");
 const insertImageBtn = document.getElementById("insertImageBtn");
@@ -24,7 +25,10 @@ let editingId = null;
 let savedRange = null;
 
 // 当前文章已有封面（编辑旧文章时使用）
-let existingCoverImages = [];
+let existingCoverImage = null;
+
+// 用户本次新选中的封面（只允许一张，更像公众号）
+let selectedNewCoverImageFile = null;
 
 function setStatus(el, msg, ok = false) {
   el.textContent = msg || "";
@@ -47,14 +51,15 @@ function setMode(isEditing) {
 
 function clearForm() {
   editingId = null;
-  existingCoverImages = [];
+  existingCoverImage = null;
+  selectedNewCoverImageFile = null;
 
   titleEl.value = "";
   summaryEl.value = "";
   editorEl.innerHTML = "";
 
   coverImageFilesEl.value = "";
-  coverPreviewEl.innerHTML = "";
+  renderCoverPreview();
 
   setStatus(publishStatus, "");
   setMode(false);
@@ -131,65 +136,73 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-function renderPreviewFromUrls(urls = [], prefix = "封面") {
-  coverPreviewEl.innerHTML = "";
-
-  urls.forEach((url, index) => {
-    const item = document.createElement("div");
-    item.className = "preview-item";
-
-    const img = document.createElement("img");
-    img.src = url;
-
-    const caption = document.createElement("div");
-    caption.className = "preview-caption";
-    caption.textContent = `${prefix} ${index + 1}`;
-
-    item.appendChild(img);
-    item.appendChild(caption);
-    coverPreviewEl.appendChild(item);
-  });
+function normalizeUrl(url) {
+  return String(url || "")
+    .trim()
+    .replace(/&amp;/g, "&");
 }
 
 function renderCoverPreview() {
   coverPreviewEl.innerHTML = "";
 
-  const files = Array.from(coverImageFilesEl.files || []);
+  if (selectedNewCoverImageFile) {
+    const item = document.createElement("div");
+    item.className = "preview-item";
 
-  // 如果用户重新选择了新封面，就只显示新封面预览
-  if (files.length > 0) {
-    files.forEach((file, index) => {
-      const item = document.createElement("div");
-      item.className = "preview-item";
+    const img = document.createElement("img");
+    const reader = new FileReader();
 
-      const img = document.createElement("img");
-      const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
 
-      reader.onload = (e) => {
-        img.src = e.target.result;
-      };
+    reader.readAsDataURL(selectedNewCoverImageFile);
 
-      reader.readAsDataURL(file);
+    const caption = document.createElement("div");
+    caption.className = "preview-caption";
+    caption.textContent = "新封面（待保存）";
 
-      const caption = document.createElement("div");
-      caption.className = "preview-caption";
-      caption.textContent = `新封面 ${index + 1}`;
-
-      item.appendChild(img);
-      item.appendChild(caption);
-      coverPreviewEl.appendChild(item);
-    });
-
+    item.appendChild(img);
+    item.appendChild(caption);
+    coverPreviewEl.appendChild(item);
     return;
   }
 
-  // 否则显示旧封面
-  if (existingCoverImages.length > 0) {
-    renderPreviewFromUrls(existingCoverImages, "当前封面");
+  if (existingCoverImage) {
+    const item = document.createElement("div");
+    item.className = "preview-item";
+
+    const img = document.createElement("img");
+    img.src = existingCoverImage;
+
+    const caption = document.createElement("div");
+    caption.className = "preview-caption";
+    caption.textContent = "当前封面";
+
+    item.appendChild(img);
+    item.appendChild(caption);
+    coverPreviewEl.appendChild(item);
+    return;
   }
+
+  const empty = document.createElement("div");
+  empty.className = "preview-empty";
+  empty.textContent = "暂未设置封面图";
+  coverPreviewEl.appendChild(empty);
 }
 
-coverImageFilesEl?.addEventListener("change", renderCoverPreview);
+coverImageFilesEl?.addEventListener("change", () => {
+  const file = (coverImageFilesEl.files || [])[0] || null;
+  selectedNewCoverImageFile = file;
+  renderCoverPreview();
+});
+
+clearCoverBtn?.addEventListener("click", () => {
+  selectedNewCoverImageFile = null;
+  existingCoverImage = null;
+  coverImageFilesEl.value = "";
+  renderCoverPreview();
+});
 
 async function uploadImages(files) {
   const urls = [];
@@ -284,10 +297,81 @@ inlineImageInput?.addEventListener("change", async () => {
   }
 });
 
+function removeLeadingDuplicateCoverFigure(html, coverUrl) {
+  if (!html || !coverUrl) return html;
+
+  const normalizedCover = normalizeUrl(coverUrl);
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = html;
+
+  const children = Array.from(wrapper.childNodes);
+
+  for (const node of children) {
+    // 跳过空白文本
+    if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
+      continue;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      break;
+    }
+
+    const tag = node.tagName.toLowerCase();
+
+    // 如果开头先出现正文文字，就不再删图
+    if (tag === "p") {
+      const text = (node.textContent || "").replace(/\u00a0/g, "").trim();
+      const hasImg = node.querySelector && node.querySelector("img");
+      if (text && !hasImg) break;
+    }
+
+    let img = null;
+
+    if (tag === "figure") {
+      img = node.querySelector("img");
+    } else if (tag === "img") {
+      img = node;
+    } else if (tag === "p" && node.querySelector("img")) {
+      img = node.querySelector("img");
+    } else if (tag === "div" && node.querySelector("img")) {
+      img = node.querySelector("img");
+    } else if (tag === "br" || tag === "hr") {
+      continue;
+    } else {
+      break;
+    }
+
+    if (!img) break;
+
+    const imgSrc = normalizeUrl(img.getAttribute("src"));
+    if (imgSrc === normalizedCover) {
+      node.remove();
+
+      // 如果后面紧跟一个空段落，也顺手删掉
+      const firstAfterRemove = wrapper.firstChild;
+      if (
+        firstAfterRemove &&
+        firstAfterRemove.nodeType === Node.ELEMENT_NODE &&
+        firstAfterRemove.tagName.toLowerCase() === "p" &&
+        !(firstAfterRemove.textContent || "").trim() &&
+        !firstAfterRemove.querySelector("img")
+      ) {
+        firstAfterRemove.remove();
+      }
+
+      return wrapper.innerHTML.trim();
+    }
+
+    break;
+  }
+
+  return wrapper.innerHTML.trim();
+}
+
 async function saveArticle() {
   const title = titleEl.value.trim();
   const summary = summaryEl.value.trim();
-  const htmlBody = editorEl.innerHTML.trim();
+  let htmlBody = editorEl.innerHTML.trim();
   const plainBody = stripHtml(htmlBody);
 
   if (!title || !summary || !plainBody) {
@@ -298,26 +382,15 @@ async function saveArticle() {
   setStatus(publishStatus, editingId ? "正在更新…" : "正在发布…", true);
 
   try {
-    let uploadedCoverImages = [];
-    const coverFiles = Array.from(coverImageFilesEl.files || []);
+    let finalCoverImage = existingCoverImage || null;
 
-    if (coverFiles.length > 0) {
-      uploadedCoverImages = await uploadImages(coverFiles);
+    if (selectedNewCoverImageFile) {
+      const uploaded = await uploadImages([selectedNewCoverImageFile]);
+      finalCoverImage = uploaded[0] || null;
     }
 
-    // 只认“封面上传区域”的图片作为封面
-    // 如果编辑旧文章时没有重新上传封面，则保留原封面
-    const finalCoverImages =
-      uploadedCoverImages.length > 0
-        ? uploadedCoverImages.filter(
-            (src, index, arr) => src && arr.indexOf(src) === index
-          )
-        : existingCoverImages.filter(
-            (src, index, arr) => src && arr.indexOf(src) === index
-          );
-
-    const primaryCoverImage =
-      finalCoverImages.length > 0 ? finalCoverImages[0] : null;
+    // 自动去掉“封面图和正文开头第一张图相同”的重复问题
+    htmlBody = removeLeadingDuplicateCoverFigure(htmlBody, finalCoverImage);
 
     const payload = {
       title,
@@ -325,12 +398,11 @@ async function saveArticle() {
       summary,
       content: htmlBody,
       html_body: htmlBody,
-      body: plainBody,
+      body: stripHtml(htmlBody),
 
-      // 封面字段
-      cover_image: primaryCoverImage,
-      image_url: primaryCoverImage,
-      cover_images: finalCoverImages,
+      cover_image: finalCoverImage,
+      image_url: finalCoverImage,
+      cover_images: finalCoverImage ? [finalCoverImage] : [],
 
       updated_at: new Date().toISOString(),
       published: true,
@@ -400,15 +472,16 @@ async function startEdit(id) {
     summaryEl.value = data.summary || "";
     editorEl.innerHTML = data.html_body || data.content || "";
 
-    // 读取旧封面
-    if (Array.isArray(data.cover_images) && data.cover_images.length > 0) {
-      existingCoverImages = data.cover_images.filter(Boolean);
-    } else if (data.cover_image) {
-      existingCoverImages = [data.cover_image];
+    selectedNewCoverImageFile = null;
+
+    if (data.cover_image) {
+      existingCoverImage = data.cover_image;
     } else if (data.image_url) {
-      existingCoverImages = [data.image_url];
+      existingCoverImage = data.image_url;
+    } else if (Array.isArray(data.cover_images) && data.cover_images.length > 0) {
+      existingCoverImage = data.cover_images[0];
     } else {
-      existingCoverImages = [];
+      existingCoverImage = null;
     }
 
     coverImageFilesEl.value = "";
@@ -477,24 +550,21 @@ async function loadNews() {
         summaryText.slice(0, 90) + (summaryText.length > 90 ? "…" : "");
       item.appendChild(summaryDiv);
 
-      const images = Array.isArray(row.cover_images)
-        ? row.cover_images
-        : row.cover_image
-        ? [row.cover_image]
-        : row.image_url
-        ? [row.image_url]
-        : [];
+      const cover =
+        row.cover_image ||
+        row.image_url ||
+        (Array.isArray(row.cover_images) && row.cover_images.length > 0
+          ? row.cover_images[0]
+          : null);
 
-      if (images.length > 0) {
+      if (cover) {
         const imgs = document.createElement("div");
         imgs.className = "item-images";
 
-        images.slice(0, 3).forEach((src) => {
-          const img = document.createElement("img");
-          img.src = src;
-          img.alt = "封面图";
-          imgs.appendChild(img);
-        });
+        const img = document.createElement("img");
+        img.src = cover;
+        img.alt = "封面图";
+        imgs.appendChild(img);
 
         item.appendChild(imgs);
       }
@@ -545,4 +615,5 @@ async function loadNews() {
 refreshBtn?.addEventListener("click", loadNews);
 
 setMode(false);
+renderCoverPreview();
 loadNews();
