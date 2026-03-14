@@ -1,16 +1,4 @@
-import { db } from "./firebase.js";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  orderBy,
-  where,
-  serverTimestamp,
-  doc,
-  updateDoc,
-  increment,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { supabase } from "./supabase.js";
 
 const listEl = document.getElementById("newsList");
 
@@ -39,7 +27,9 @@ let newsItems = [];
 let currentNewsId = null;
 
 function setListLoading(msg) {
-  listEl.innerHTML = `<p>${msg}</p>`;
+  if (listEl) {
+    listEl.innerHTML = `<p>${msg}</p>`;
+  }
 }
 
 function escapeHtml(text) {
@@ -144,154 +134,13 @@ function renderDivider() {
   modalBody.appendChild(hr);
 }
 
-function wrapImageElement(img) {
-  if (!img || img.closest(".article-inline-image")) return;
-
-  const wrap = document.createElement("div");
-  wrap.className = "article-inline-image";
-
-  if (img.parentNode) {
-    img.parentNode.insertBefore(wrap, img);
-    wrap.appendChild(img);
-  }
-}
-
-function upgradeRenderedHtml(container, paragraphCounterRef) {
-  container.querySelectorAll("p").forEach((p) => {
-    if (!p.classList.contains("article-paragraph")) {
-      p.classList.add("article-paragraph");
-    }
-    paragraphCounterRef.count += 1;
-    if (paragraphCounterRef.count === 1) {
-      p.classList.add("article-first-paragraph");
-    }
-  });
-
-  container.querySelectorAll("h2, h3").forEach((el) => {
-    el.classList.add("article-subheading");
-  });
-
-  container.querySelectorAll("blockquote").forEach((el) => {
-    el.classList.add("article-quote");
-  });
-
-  container.querySelectorAll("ul, ol").forEach((el) => {
-    el.classList.add("article-list");
-  });
-
-  container.querySelectorAll("hr").forEach((el) => {
-    el.classList.add("article-divider");
-  });
-
-  container.querySelectorAll("img").forEach((img) => {
-    img.loading = "lazy";
-    wrapImageElement(img);
-  });
-}
-
-function htmlToBlocks(html) {
-  const blocks = [];
-  const temp = document.createElement("div");
-  temp.innerHTML = html;
-
-  let textBuffer = "";
-
-  function flushTextBuffer() {
-    const normalized = normalizeNewlines(textBuffer).trim();
-    if (!normalized) {
-      textBuffer = "";
-      return;
-    }
-
-    let paragraphs = normalized
-      .split(/\n\s*\n+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (paragraphs.length <= 1) {
-      paragraphs = normalized
-        .split(/\n+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
-
-    paragraphs.forEach((text) => {
-      blocks.push({ type: "paragraph", text });
-    });
-
-    textBuffer = "";
-  }
-
-  Array.from(temp.childNodes).forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      textBuffer += node.textContent || "";
-      return;
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-    const tag = node.tagName.toLowerCase();
-
-    if (tag === "br") {
-      textBuffer += "\n";
-      return;
-    }
-
-    if (tag === "img") {
-      flushTextBuffer();
-      blocks.push({
-        type: "image",
-        url: node.getAttribute("src") || "",
-      });
-      return;
-    }
-
-    if (["p", "h2", "h3", "blockquote", "ul", "ol", "hr", "figure", "div", "section", "article"].includes(tag)) {
-      flushTextBuffer();
-
-      if (
-        ["div", "section", "article"].includes(tag) &&
-        !node.querySelector("p, h2, h3, blockquote, ul, ol, hr, img, figure")
-      ) {
-        const text = normalizeNewlines(node.textContent || "").trim();
-        if (text) {
-          let paragraphs = text
-            .split(/\n\s*\n+/)
-            .map((s) => s.trim())
-            .filter(Boolean);
-
-          if (paragraphs.length <= 1) {
-            paragraphs = text
-              .split(/\n+/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-          }
-
-          paragraphs.forEach((p) => blocks.push({ type: "paragraph", text: p }));
-        }
-      } else {
-        blocks.push({
-          type: "html",
-          html: node.outerHTML,
-        });
-      }
-      return;
-    }
-
-    textBuffer += "\n" + (node.textContent || "") + "\n";
-  });
-
-  flushTextBuffer();
-  return blocks;
-}
-
 function buildLegacyBlocks(item) {
   const blocks = [];
   const body = String(item.body || "").trim();
 
   if (body) {
     if (isHtmlContent(body)) {
-      blocks.push(...htmlToBlocks(body));
+      blocks.push({ type: "html", html: body });
     } else {
       const normalized = normalizeNewlines(body);
 
@@ -322,46 +171,34 @@ function buildLegacyBlocks(item) {
 }
 
 function renderArticleBody(item) {
-  // 先清空弹窗正文
   modalBody.innerHTML = "";
 
-  // =========================
-  // 1. 优先使用 htmlBody
-  // =========================
   if (item.htmlBody && item.htmlBody.trim()) {
     const wrapper = document.createElement("div");
     wrapper.innerHTML = item.htmlBody;
 
-    // 给 p 加段落样式
     const paragraphs = wrapper.querySelectorAll("p");
     paragraphs.forEach((p, index) => {
       p.classList.add("article-paragraph");
-      if (index === 0) {
-        p.classList.add("article-first-paragraph");
-      }
+      if (index === 0) p.classList.add("article-first-paragraph");
     });
 
-    // 给 h2 / h3 加小标题样式
     wrapper.querySelectorAll("h2, h3").forEach((el) => {
       el.classList.add("article-subheading");
     });
 
-    // 给引用加样式
     wrapper.querySelectorAll("blockquote").forEach((el) => {
       el.classList.add("article-quote");
     });
 
-    // 给列表加样式
     wrapper.querySelectorAll("ul, ol").forEach((el) => {
       el.classList.add("article-list");
     });
 
-    // 给分割线加样式
     wrapper.querySelectorAll("hr").forEach((el) => {
       el.classList.add("article-divider");
     });
 
-    // 图片外面包一层，方便居中显示
     wrapper.querySelectorAll("img").forEach((img) => {
       if (!img.closest(".article-inline-image")) {
         const figure = document.createElement("figure");
@@ -369,7 +206,6 @@ function renderArticleBody(item) {
         img.parentNode.insertBefore(figure, img);
         figure.appendChild(img);
       }
-
       img.loading = "lazy";
     });
 
@@ -377,9 +213,6 @@ function renderArticleBody(item) {
     return;
   }
 
-  // =========================
-  // 2. 没有 htmlBody 时，走旧逻辑兼容
-  // =========================
   const blocks =
     Array.isArray(item.bodyBlocks) && item.bodyBlocks.length > 0
       ? item.bodyBlocks
@@ -388,7 +221,6 @@ function renderArticleBody(item) {
   let paragraphCount = 0;
 
   blocks.forEach((block) => {
-    // 2.1 HTML block
     if (block.type === "html" && block.html) {
       const wrapper = document.createElement("div");
       wrapper.innerHTML = block.html;
@@ -424,7 +256,6 @@ function renderArticleBody(item) {
           img.parentNode.insertBefore(figure, img);
           figure.appendChild(img);
         }
-
         img.loading = "lazy";
       });
 
@@ -432,42 +263,35 @@ function renderArticleBody(item) {
       return;
     }
 
-    // 2.2 普通段落
     if (block.type === "paragraph") {
       const text = (block.text || "").trim();
       if (!text) return;
 
-      // 分隔线
       if (/^[-—–]{3,}$/.test(text) || /^_{3,}$/.test(text) || /^={3,}$/.test(text)) {
         renderDivider();
         return;
       }
 
-      // 列表
       if (isLikelyList(text)) {
         renderListBlock(text);
         return;
       }
 
-      // 小标题
       if (isLikelySubheading(text)) {
         renderSubheading(text);
         return;
       }
 
-      // 引用
       if (isLikelyQuote(text)) {
         renderQuote(text);
         return;
       }
 
-      // 普通正文
       paragraphCount += 1;
       renderParagraph(text, paragraphCount === 1);
       return;
     }
 
-    // 2.3 单图
     if (block.type === "image" && block.url) {
       const wrap = document.createElement("div");
       wrap.className = "article-inline-image";
@@ -482,7 +306,6 @@ function renderArticleBody(item) {
       return;
     }
 
-    // 2.4 图库
     if (block.type === "gallery" && Array.isArray(block.images) && block.images.length) {
       const gallery = document.createElement("div");
       gallery.className = "article-gallery";
@@ -500,48 +323,8 @@ function renderArticleBody(item) {
   });
 }
 
-async function increaseView(newsId) {
-  if (!newsId) return;
-
-  try {
-    const ref = doc(db, "news", newsId);
-    await updateDoc(ref, {
-      views: increment(1),
-    });
-
-    const current = newsItems.find((n) => n.id === newsId);
-    if (current) {
-      current.views = (current.views || 0) + 1;
-      modalViews.textContent = current.views;
-      refreshListStats(newsId);
-    }
-  } catch (e) {
-    console.error("view update fail", e);
-  }
-}
-
-async function increaseLike(newsId) {
-  if (!newsId) return;
-
-  try {
-    const ref = doc(db, "news", newsId);
-    await updateDoc(ref, {
-      likes: increment(1),
-    });
-
-    const current = newsItems.find((n) => n.id === newsId);
-    if (current) {
-      current.likes = (current.likes || 0) + 1;
-      modalLikes.textContent = current.likes;
-      refreshListStats(newsId);
-    }
-  } catch (e) {
-    console.error("like update fail", e);
-  }
-}
-
 function refreshListStats(newsId) {
-  const item = newsItems.find((n) => n.id === newsId);
+  const item = newsItems.find((n) => String(n.id) === String(newsId));
   if (!item) return;
 
   const row = document.querySelector(`.news-item[data-id="${newsId}"]`);
@@ -554,6 +337,56 @@ function refreshListStats(newsId) {
   if (viewsEl) viewsEl.textContent = item.views || 0;
   if (likesEl) likesEl.textContent = item.likes || 0;
   if (commentsEl) commentsEl.textContent = item.commentsCount || 0;
+}
+
+async function increaseView(newsId) {
+  if (!newsId) return;
+
+  try {
+    const current = newsItems.find((n) => String(n.id) === String(newsId));
+    const currentViews = Number(current?.views || 0);
+    const nextViews = currentViews + 1;
+
+    const { error } = await supabase
+      .from("news")
+      .update({ views: nextViews })
+      .eq("id", newsId);
+
+    if (error) throw error;
+
+    if (current) {
+      current.views = nextViews;
+      modalViews.textContent = current.views;
+      refreshListStats(newsId);
+    }
+  } catch (e) {
+    console.error("view update fail", e);
+  }
+}
+
+async function increaseLike(newsId) {
+  if (!newsId) return;
+
+  try {
+    const current = newsItems.find((n) => String(n.id) === String(newsId));
+    const currentLikes = Number(current?.likes || 0);
+    const nextLikes = currentLikes + 1;
+
+    const { error } = await supabase
+      .from("news")
+      .update({ likes: nextLikes })
+      .eq("id", newsId);
+
+    if (error) throw error;
+
+    if (current) {
+      current.likes = nextLikes;
+      modalLikes.textContent = current.likes;
+      refreshListStats(newsId);
+    }
+  } catch (e) {
+    console.error("like update fail", e);
+  }
 }
 
 function openModal(item) {
@@ -623,15 +456,15 @@ async function loadNewsComments(newsId) {
   commentsInfo.textContent = "";
 
   try {
-    const qComments = query(
-      collection(db, "news_comments"),
-      where("newsId", "==", newsId),
-      orderBy("createdAt", "asc")
-    );
+    const { data, error } = await supabase
+      .from("news_comments")
+      .select("*")
+      .eq("news_id", newsId)
+      .order("created_at", { ascending: true });
 
-    const snap = await getDocs(qComments);
+    if (error) throw error;
 
-    if (snap.empty) {
+    if (!data || data.length === 0) {
       commentsList.innerHTML =
         '<p style="font-size:13px;color:#9c9387;">还没有评论，欢迎第一个留言。</p>';
       commentsInfo.textContent = "";
@@ -640,16 +473,13 @@ async function loadNewsComments(newsId) {
     }
 
     commentsList.innerHTML = "";
-    let count = 0;
+    const count = data.length;
 
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      count += 1;
-
-      const name = data.name || "匿名";
-      const content = data.content || "";
-      const createdAt = data.createdAt?.toDate
-        ? data.createdAt.toDate().toLocaleString()
+    data.forEach((row) => {
+      const name = row.name || "匿名";
+      const content = row.content || "";
+      const createdAt = row.created_at
+        ? new Date(row.created_at).toLocaleString()
         : "";
 
       const itemEl = document.createElement("div");
@@ -671,7 +501,7 @@ async function loadNewsComments(newsId) {
     commentsInfo.textContent = `共 ${count} 条评论`;
     modalCommentsCount.textContent = count;
 
-    const current = newsItems.find((n) => n.id === newsId);
+    const current = newsItems.find((n) => String(n.id) === String(newsId));
     if (current) {
       current.commentsCount = count;
       refreshListStats(newsId);
@@ -704,20 +534,19 @@ async function submitNewsComment() {
   commentStatus.style.color = "#6b7280";
 
   try {
-    await addDoc(collection(db, "news_comments"), {
-      newsId: currentNewsId,
-      content,
-      name,
-      createdAt: serverTimestamp(),
-    });
+    const { error } = await supabase.from("news_comments").insert([
+      {
+        news_id: currentNewsId,
+        content,
+        name,
+      },
+    ]);
 
-    await updateDoc(doc(db, "news", currentNewsId), {
-      commentsCount: increment(1),
-    });
+    if (error) throw error;
 
-    const current = newsItems.find((n) => n.id === currentNewsId);
+    const current = newsItems.find((n) => String(n.id) === String(currentNewsId));
     if (current) {
-      current.commentsCount = (current.commentsCount || 0) + 1;
+      current.commentsCount = Number(current.commentsCount || 0) + 1;
       modalCommentsCount.textContent = current.commentsCount;
       refreshListStats(currentNewsId);
     }
@@ -749,7 +578,7 @@ function handleNewsDeepLink() {
     const id = params.get("news");
     if (!id) return;
 
-    const item = newsItems.find((n) => n.id === id);
+    const item = newsItems.find((n) => String(n.id) === String(id));
     if (!item) return;
 
     setTimeout(() => openModal(item), 0);
@@ -768,7 +597,7 @@ async function shareNews(newsId, newsTitle) {
   const safeTitle =
     newsTitle && newsTitle.trim() ? newsTitle.trim() : "达尔文本地新闻";
 
-  const shareText = `【新闻】${safeTitle}\nDarwin BBS 新闻详情：`;
+  const shareText = `【新闻】${safeTitle}\nDarwin Life Hub 新闻详情：`;
 
   if (navigator.share) {
     try {
@@ -831,10 +660,15 @@ async function loadNews() {
   try {
     setListLoading("加载中…");
 
-    const qNews = query(collection(db, "news"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(qNews);
+    const { data, error } = await supabase
+      .from("news")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false });
 
-    if (snap.empty) {
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
       setListLoading("暂时还没有新闻。");
       return;
     }
@@ -842,39 +676,43 @@ async function loadNews() {
     listEl.innerHTML = "";
     newsItems = [];
 
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const id = docSnap.id;
+    data.forEach((row) => {
+      const id = row.id;
 
-      const title = data.title || "未命名新闻";
-      const htmlBody = data.htmlBody || "";
-      const body = data.body || "";
-      const summary = buildSummary(data.summary || "", body);
-      const coverImages = Array.isArray(data.coverImages) ? data.coverImages : [];
-      const imageUrl = data.imageUrl || coverImages[0] || null;
-      const bodyBlocks = Array.isArray(data.bodyBlocks) ? data.bodyBlocks : [];
-      const createdText = data.createdAt?.toDate
-        ? data.createdAt.toDate().toLocaleString()
+      const title = row.title || "未命名新闻";
+      const htmlBody = row.html_body || row.content || "";
+      const body = row.body || row.content || "";
+      const summary = buildSummary(row.summary || "", body);
+      const coverImages = Array.isArray(row.cover_images)
+        ? row.cover_images
+        : row.cover_image
+        ? [row.cover_image]
+        : [];
+      const imageUrl = row.image_url || row.cover_image || coverImages[0] || null;
+      const bodyBlocks = Array.isArray(row.body_blocks) ? row.body_blocks : [];
+      const createdText = row.created_at
+        ? new Date(row.created_at).toLocaleString()
         : "时间未知";
 
-      const views = data.views || 0;
-      const likes = data.likes || 0;
-      const commentsCount = data.commentsCount || 0;
+      const views = Number(row.views || 0);
+      const likes = Number(row.likes || 0);
+      const commentsCount = Number(row.comments_count || 0);
 
-const itemData = {
-  id,
-  title,
-  summary,
-  htmlBody,
-  body,
-  coverImages,
-  imageUrl,
-  bodyBlocks,
-  createdText,
-  views,
-  likes,
-  commentsCount,
-};
+      const itemData = {
+        id,
+        title,
+        summary,
+        htmlBody,
+        body,
+        coverImages,
+        imageUrl,
+        bodyBlocks,
+        createdText,
+        views,
+        likes,
+        commentsCount,
+      };
+
       newsItems.push(itemData);
 
       const itemEl = document.createElement("div");
