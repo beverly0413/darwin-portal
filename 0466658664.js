@@ -1,19 +1,4 @@
-import { db } from "./firebase.js";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  serverTimestamp,
-  deleteDoc,
-  updateDoc,
-  doc,
-  getDoc,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const supabase = window.supabaseClient;
+import { supabase } from "./supabase.js";
 
 const titleEl = document.getElementById("newsTitle");
 const summaryEl = document.getElementById("newsSummary");
@@ -37,7 +22,6 @@ const emptyHint = document.getElementById("emptyHint");
 
 let editingId = null;
 let savedRange = null;
-let loadedNews = [];
 
 function setStatus(el, msg, ok = false) {
   el.textContent = msg || "";
@@ -120,15 +104,24 @@ function stripHtml(html) {
   return (tmp.textContent || tmp.innerText || "").trim();
 }
 
+function slugify(text) {
+  return String(text || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\u4e00-\u9fa5-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
 function collectImagesFromHtml(html) {
   const temp = document.createElement("div");
   temp.innerHTML = html;
   const urls = [];
   temp.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src");
-    if (src && !urls.includes(src)) {
-      urls.push(src);
-    }
+    if (src && !urls.includes(src)) urls.push(src);
   });
   return urls;
 }
@@ -167,11 +160,11 @@ async function uploadImages(files) {
     const safeName = file.name.replace(/[^\w.\-]/g, "_");
     const filePath = `news/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
 
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("news-images")
       .upload(filePath, file);
 
-    if (error) throw error;
+    if (uploadError) throw uploadError;
 
     const { data } = supabase.storage
       .from("news-images")
@@ -274,22 +267,45 @@ async function saveArticle() {
 
     const payload = {
       title,
+      slug: slugify(title),
       summary,
-      htmlBody,
+      content: htmlBody,
+      html_body: htmlBody,
       body: plainBody,
-      coverImages,
-      imageUrl: coverImages[0] || null,
-      updatedAt: serverTimestamp(),
+      cover_image: coverImages[0] || null,
+      image_url: coverImages[0] || null,
+      cover_images: coverImages,
+      updated_at: new Date().toISOString(),
+      published: true,
+      author: "Darwin Life Hub",
+      category: "local",
     };
 
     if (editingId) {
-      await updateDoc(doc(db, "news", editingId), payload);
+      const { error } = await supabase
+        .from("news")
+        .update(payload)
+        .eq("id", editingId);
+
+      if (error) throw error;
+
       setStatus(publishStatus, "文章已更新。", true);
     } else {
-      await addDoc(collection(db, "news"), {
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
+      const { error } = await supabase
+        .from("news")
+        .insert([
+          {
+            ...payload,
+            created_at: new Date().toISOString(),
+            views: 0,
+            likes: 0,
+            comments_count: 0,
+            featured: false,
+          },
+        ]);
+
+      if (error) throw error;
+
       setStatus(publishStatus, "发布成功。", true);
     }
 
@@ -309,20 +325,22 @@ cancelEditBtn.addEventListener("click", () => {
 
 async function startEdit(id) {
   try {
-    const ref = doc(db, "news", id);
-    const snap = await getDoc(ref);
+    const { data, error } = await supabase
+      .from("news")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!snap.exists()) {
+    if (error) throw error;
+    if (!data) {
       alert("这篇文章不存在。");
       return;
     }
 
-    const data = snap.data();
     editingId = id;
-
     titleEl.value = data.title || "";
     summaryEl.value = data.summary || "";
-    editorEl.innerHTML = data.htmlBody || "";
+    editorEl.innerHTML = data.html_body || data.content || "";
 
     coverImageFilesEl.value = "";
     coverPreviewEl.innerHTML = "";
@@ -342,28 +360,24 @@ async function loadNews() {
   emptyHint.style.display = "none";
 
   try {
-    const q = query(
-      collection(db, "news"),
-      orderBy("createdAt", "desc"),
-      limit(30)
-    );
+    const { data, error } = await supabase
+      .from("news")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30);
 
-    const snap = await getDocs(q);
-    loadedNews = [];
+    if (error) throw error;
 
-    if (snap.empty) {
+    if (!data || data.length === 0) {
       emptyHint.style.display = "block";
       emptyHint.textContent = "暂无新闻。";
       return;
     }
 
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      loadedNews.push({ id, ...data });
-
-      const createdText = data.createdAt?.toDate
-        ? data.createdAt.toDate().toLocaleString()
+    data.forEach((row) => {
+      const id = row.id;
+      const createdText = row.created_at
+        ? new Date(row.created_at).toLocaleString()
         : "时间未知";
 
       const item = document.createElement("div");
@@ -375,7 +389,7 @@ async function loadNews() {
       const left = document.createElement("div");
       const titleDiv = document.createElement("div");
       titleDiv.className = "item-title";
-      titleDiv.textContent = data.title || "(无标题)";
+      titleDiv.textContent = row.title || "(无标题)";
 
       const metaDiv = document.createElement("div");
       metaDiv.className = "item-meta";
@@ -383,18 +397,17 @@ async function loadNews() {
 
       left.appendChild(titleDiv);
       left.appendChild(metaDiv);
-
       top.appendChild(left);
       item.appendChild(top);
 
       const summaryDiv = document.createElement("div");
       summaryDiv.className = "item-meta";
+      const summaryText = row.summary || "";
       summaryDiv.textContent =
-        (data.summary || "").slice(0, 90) +
-        ((data.summary || "").length > 90 ? "…" : "");
+        summaryText.slice(0, 90) + (summaryText.length > 90 ? "…" : "");
       item.appendChild(summaryDiv);
 
-      const images = Array.isArray(data.coverImages) ? data.coverImages : [];
+      const images = Array.isArray(row.cover_images) ? row.cover_images : [];
       if (images.length > 0) {
         const imgs = document.createElement("div");
         imgs.className = "item-images";
@@ -421,7 +434,9 @@ async function loadNews() {
         if (!confirm("确定删除这条新闻吗？")) return;
 
         try {
-          await deleteDoc(doc(db, "news", id));
+          const { error } = await supabase.from("news").delete().eq("id", id);
+          if (error) throw error;
+
           item.remove();
           if (!listEl.children.length) {
             emptyHint.style.display = "block";
