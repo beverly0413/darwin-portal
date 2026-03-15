@@ -1,19 +1,7 @@
-// supabase.js
-(function () {
-  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
-  const SUPABASE_ANON_KEY = "YOUR_REAL_ANON_KEY";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-  if (window.supabaseClient) return;
+const SUPABASE_URL = "https://lhmvgvvqxunjllncyvke.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxobXZndnZxeHVuamxsbmN5dmtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDg0MTksImV4cCI6MjA3OTE4NDQxOX0.V2QZi0Ijas1Gtu3P4paHxhmsNq8sRPjwU-b3S9o3mKw";
 
-  if (!window.supabase || typeof window.supabase.createClient !== "function") {
-    console.error("Supabase CDN not loaded. Please load it before supabase.js");
-    return;
-  }
-
-  window.supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
-
-  console.log("Supabase client initialized successfully.");
-})();
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
