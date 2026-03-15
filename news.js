@@ -1,4 +1,8 @@
-import { supabase } from "./supabase.js";
+const supabaseClient = window.supabaseClient;
+
+if (!supabaseClient) {
+  console.error("supabaseClient 未初始化，请检查公共 supabase 配置脚本。");
+}
 
 const listEl = document.getElementById("newsList");
 
@@ -340,14 +344,14 @@ function refreshListStats(newsId) {
 }
 
 async function increaseView(newsId) {
-  if (!newsId) return;
+  if (!newsId || !supabaseClient) return;
 
   try {
     const current = newsItems.find((n) => String(n.id) === String(newsId));
     const currentViews = Number(current?.views || 0);
     const nextViews = currentViews + 1;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("news")
       .update({ views: nextViews })
       .eq("id", newsId);
@@ -365,14 +369,14 @@ async function increaseView(newsId) {
 }
 
 async function increaseLike(newsId) {
-  if (!newsId) return;
+  if (!newsId || !supabaseClient) return;
 
   try {
     const current = newsItems.find((n) => String(n.id) === String(newsId));
     const currentLikes = Number(current?.likes || 0);
     const nextLikes = currentLikes + 1;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("news")
       .update({ likes: nextLikes })
       .eq("id", newsId);
@@ -450,13 +454,13 @@ if (likeBtn) {
 }
 
 async function loadNewsComments(newsId) {
-  if (!commentsList || !commentsInfo) return;
+  if (!commentsList || !commentsInfo || !supabaseClient) return;
 
   commentsList.innerHTML = "<p>评论加载中...</p>";
   commentsInfo.textContent = "";
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("news_comments")
       .select("*")
       .eq("news_id", newsId)
@@ -520,6 +524,12 @@ async function submitNewsComment() {
     return;
   }
 
+  if (!supabaseClient) {
+    commentStatus.textContent = "系统未初始化，请刷新页面后重试。";
+    commentStatus.style.color = "red";
+    return;
+  }
+
   const content = commentContentInput.value.trim();
   const name = "匿名";
 
@@ -534,7 +544,7 @@ async function submitNewsComment() {
   commentStatus.style.color = "#6b7280";
 
   try {
-    const { error } = await supabase.from("news_comments").insert([
+    const { error } = await supabaseClient.from("news_comments").insert([
       {
         news_id: currentNewsId,
         content,
@@ -657,10 +667,15 @@ function buildSummary(summary, body) {
 }
 
 async function loadNews() {
+  if (!supabaseClient) {
+    setListLoading("系统未初始化，请刷新后重试。");
+    return;
+  }
+
   try {
     setListLoading("加载中…");
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("news")
       .select("*")
       .eq("published", true)
