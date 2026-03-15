@@ -1,17 +1,12 @@
-// js/supabase.js
-
+// supabase.js
 (function () {
-  const SUPABASE_URL = "https://你的项目ID.supabase.co";
-  const SUPABASE_ANON_KEY = "你的anon key";
+  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_REAL_ANON_KEY";
 
-  // 防止重复初始化
-  if (window.supabaseClient) {
-    return;
-  }
+  if (window.supabaseClient) return;
 
-  // 检查 CDN 是否已加载
   if (!window.supabase || typeof window.supabase.createClient !== "function") {
-    console.error("Supabase CDN not loaded. Please include the Supabase script before supabase.js");
+    console.error("Supabase CDN not loaded. Please load it before supabase.js");
     return;
   }
 
