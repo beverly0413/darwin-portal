@@ -1,4 +1,8 @@
-import { supabase } from "./supabase.js";
+const supabase = window.supabaseClient;
+
+if (!supabase) {
+  console.error("supabaseClient 未初始化，请检查 supabase.js 是否先加载");
+}
 
 const titleEl = document.getElementById("newsTitle");
 const summaryEl = document.getElementById("newsSummary");
