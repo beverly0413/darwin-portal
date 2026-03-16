@@ -7,7 +7,7 @@
     return;
   }
 
-  async function checkAuth() {
+  async function isLoggedIn() {
     try {
       const {
         data: { session },
@@ -16,34 +16,28 @@
 
       if (error) {
         console.error("获取 session 失败：", error.message);
-        return;
+        return false;
       }
 
-      const currentPath = window.location.pathname.toLowerCase();
-
-      // 不需要拦截的页面
-      const publicPages = [
-        "/login.html",
-        "/register.html",
-        "/index.html",
-        "/",
-      ];
-
-      const isPublicPage = publicPages.some((page) =>
-        currentPath.endsWith(page)
-      );
-
-      if (!session && !isPublicPage) {
-        // 未登录，跳转到登录页
-        window.location.href = "login.html";
-        return;
-      }
-
-      console.log("Auth guard 检查完成");
+      return !!session;
     } catch (err) {
-      console.error("auth-guard 执行出错：", err);
+      console.error("检查登录状态出错：", err);
+      return false;
     }
   }
 
-  checkAuth();
+  async function requireLogin(redirectUrl = "login.html") {
+    const loggedIn = await isLoggedIn();
+    if (!loggedIn) {
+      alert("请先登录后再发帖。");
+      window.location.href = redirectUrl;
+      return false;
+    }
+    return true;
+  }
+
+  window.authGuard = {
+    isLoggedIn,
+    requireLogin
+  };
 })();
