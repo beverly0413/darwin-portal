@@ -1,26 +1,49 @@
 // auth-guard.js
-// 统一的“必须登录”检查
+(function () {
+  const supabaseClient = window.supabaseClient;
 
-const supabase = window.supabaseClient || null;
-
-/**
- * requireLogin:
- * - 成功：返回当前用户对象 user
- * - 未登录：弹窗并跳转到 login.html，然后抛出异常终止后续逻辑
- */
-async function requireLogin() {
-  if (!supabase) {
-    alert("登录模块加载失败，请稍后刷新重试。");
-    throw new Error("Supabase not initialized");
+  if (!supabaseClient) {
+    console.error("supabaseClient 未初始化，请检查 supabase.js 是否先加载。");
+    return;
   }
 
-  const { data, error } = await supabase.auth.getUser();
+  async function checkAuth() {
+    try {
+      const {
+        data: { session },
+        error
+      } = await supabaseClient.auth.getSession();
 
-  if (error || !data || !data.user) {
-    alert("请先登录后再使用发帖功能。");
-    window.location.href = "login.html";
-    throw new Error("Not logged in");
+      if (error) {
+        console.error("获取 session 失败：", error.message);
+        return;
+      }
+
+      const currentPath = window.location.pathname.toLowerCase();
+
+      // 不需要拦截的页面
+      const publicPages = [
+        "/login.html",
+        "/register.html",
+        "/index.html",
+        "/",
+      ];
+
+      const isPublicPage = publicPages.some((page) =>
+        currentPath.endsWith(page)
+      );
+
+      if (!session && !isPublicPage) {
+        // 未登录，跳转到登录页
+        window.location.href = "login.html";
+        return;
+      }
+
+      console.log("Auth guard 检查完成");
+    } catch (err) {
+      console.error("auth-guard 执行出错：", err);
+    }
   }
 
-  return data.user; // 已登录用户
-}
+  checkAuth();
+})();
