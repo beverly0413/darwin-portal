@@ -1,7 +1,19 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+// supabase.js
+(function () {
+  const SUPABASE_URL = "https://lhmvgvvqxunjllncyvke.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "你的 anon key";
 
-const SUPABASE_URL = "https://lhmvgvvqxunjllncyvke.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxobXZndnZxeHVuamxsbmN5dmtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDg0MTksImV4cCI6MjA3OTE4NDQxOX0.V2QZi0Ijas1Gtu3P4paHxhmsNq8sRPjwU-b3S9o3mKw";
+  if (!window.supabase || !window.supabase.createClient) {
+    console.error("Supabase CDN 未正确加载，请先引入 supabase-js UMD 脚本。");
+    return;
+  }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!window.supabaseClient) {
+    window.supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+    console.log("Supabase client 初始化成功");
+  }
+})();
