@@ -91,8 +91,8 @@ function updateDetailStats(job) {
 async function increaseJobView(jobId) {
   if (!ensureSupabase() || !jobId) return;
 
-  const { error } = await supabaseClient.rpc('increment_job_views', {
-    post_id: jobId
+  const { error } = await supabaseClient.rpc("increment_job_views", {
+    post_id: Number(jobId)
   });
 
   if (error) {
@@ -100,7 +100,6 @@ async function increaseJobView(jobId) {
     return;
   }
 
-  // 本地也同步 +1（用于UI）
   const job = findJobInCache(jobId);
   if (job) {
     job.views = (job.views || 0) + 1;
@@ -109,18 +108,6 @@ async function increaseJobView(jobId) {
     if (String(currentJobDetailId) === String(jobId)) {
       updateDetailStats(job);
     }
-  }
-
-  if (error) {
-    console.error("更新阅读量失败：", error);
-    return;
-  }
-
-  updateJobInCache(jobId, { views: nextViews });
-  refreshJobCardStats(jobId);
-
-  if (String(currentJobDetailId) === String(jobId)) {
-    updateDetailStats(findJobInCache(jobId));
   }
 }
 
@@ -770,9 +757,8 @@ async function shareJob(jobId, jobTitle) {
     "?job=" +
     encodeURIComponent(jobId);
 
-  const safeTitle = jobTitle && jobTitle.trim()
-    ? jobTitle.trim()
-    : "达尔文招聘信息";
+  const safeTitle =
+    jobTitle && jobTitle.trim() ? jobTitle.trim() : "达尔文招聘信息";
 
   const shareText = `【招聘】${safeTitle}\n达尔文BBS 职位详情：`;
 
