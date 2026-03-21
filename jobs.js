@@ -110,7 +110,6 @@ async function increaseJobView(jobId) {
       updateDetailStats(job);
     }
   }
-}
 
   if (error) {
     console.error("更新阅读量失败：", error);
