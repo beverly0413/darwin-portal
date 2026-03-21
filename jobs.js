@@ -91,15 +91,26 @@ function updateDetailStats(job) {
 async function increaseJobView(jobId) {
   if (!ensureSupabase() || !jobId) return;
 
+  const { error } = await supabaseClient.rpc('increment_job_views', {
+    post_id: jobId
+  });
+
+  if (error) {
+    console.error("更新阅读量失败：", error);
+    return;
+  }
+
+  // 本地也同步 +1（用于UI）
   const job = findJobInCache(jobId);
-  if (!job) return;
+  if (job) {
+    job.views = (job.views || 0) + 1;
+    refreshJobCardStats(jobId);
 
-  const nextViews = (job.views || 0) + 1;
-
-  const { error } = await supabaseClient
-    .from("jobs_posts")
-    .update({ views: nextViews })
-    .eq("id", jobId);
+    if (String(currentJobDetailId) === String(jobId)) {
+      updateDetailStats(job);
+    }
+  }
+}
 
   if (error) {
     console.error("更新阅读量失败：", error);
