@@ -5,120 +5,174 @@
   <title>登录 · Darwin Life Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
-      margin:0;
-      padding:40px 16px 60px;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:#f5f6f7;
-      color:#0f172a;
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f7f2;
+      color: #0f172a;
     }
-    h1 {
-      text-align:center;
-      margin-bottom:6px;
-      font-size:28px;
+    .page {
+      width: min(1040px, calc(100% - 32px));
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 420px;
+      align-items: center;
+      gap: 56px;
+      padding: 48px 0;
     }
-    .subtitle {
-      text-align:center;
-      color:#6b7280;
-      margin-bottom:20px;
-      font-size:14px;
+    .brand h1 {
+      margin: 0 0 8px;
+      font-size: 48px;
+      line-height: 1.05;
+      color: #15803d;
+      letter-spacing: 0;
     }
-    .box {
-      max-width:420px;
-      margin:0 auto;
-      background:white;
-      padding:24px 20px 22px;
-      border-radius:14px;
-      border:1px solid #d1e5d4;
-      box-shadow:0 10px 28px rgba(15,23,42,0.08);
+    .brand p {
+      margin: 0;
+      max-width: 520px;
+      font-size: 22px;
+      line-height: 1.35;
+      color: #1f2937;
     }
-    label {
-      display:block;
-      font-size:14px;
-      margin-bottom:4px;
-      color:#374151;
+    .card {
+      background: #ffffff;
+      border: 1px solid #d1e5d4;
+      border-radius: 8px;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+      padding: 18px;
     }
     input {
-      width:100%;
-      padding:10px;
-      border-radius:8px;
-      border:1px solid #d1e5d4;
-      font-size:14px;
-      margin-bottom:10px;
-      font-family:inherit;
+      width: 100%;
+      height: 48px;
+      padding: 0 14px;
+      border: 1px solid #cbd5d1;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 16px;
+      margin-bottom: 12px;
+      background: #ffffff;
+    }
+    input:focus {
+      outline: 2px solid rgba(22, 163, 74, 0.18);
+      border-color: #16a34a;
     }
     button {
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
-      font-size:14px;
-      font-family:inherit;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
     }
     #loginBtn {
-      width:100%;
-      padding:11px;
-      margin-top:12px;
-      background:#16a34a;
-      color:white;
-      font-size:15px;
+      width: 100%;
+      height: 48px;
+      background: #16a34a;
+      color: #ffffff;
+      font-size: 18px;
     }
-    #loginBtn:hover {
-      background:#15803d;
+    #loginBtn:hover:not(:disabled) {
+      background: #15803d;
+    }
+    .link-button {
+      display: block;
+      margin: 14px auto 0;
+      padding: 0;
+      background: transparent;
+      color: #15803d;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 18px 0;
+    }
+    .create-account {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 13px 18px;
+      background: #22c55e;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+    .create-account:hover {
+      background: #16a34a;
     }
     #msg {
-      margin-top:10px;
-      font-size:13px;
-      color:#6b7280;
-      min-height:18px;
-    }
-    .tip {
-      margin-top:8px;
-      font-size:12px;
-      color:#9ca3af;
-      line-height:1.4;
-    }
-    .tip a {
-      color:#16a34a;
-      text-decoration:none;
+      min-height: 22px;
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.45;
+      text-align: center;
+      color: #6b7280;
     }
     .back-link {
-      text-align:center;
-      margin-top:16px;
-      font-size:14px;
+      margin-top: 18px;
+      text-align: center;
+      font-size: 14px;
     }
     .back-link a {
-      color:#16a34a;
-      text-decoration:none;
+      color: #15803d;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    @media (max-width: 820px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        align-items: start;
+        padding-top: 40px;
+      }
+      .brand {
+        text-align: center;
+      }
+      .brand h1 {
+        font-size: 36px;
+      }
+      .brand p {
+        margin: 0 auto;
+        font-size: 18px;
+      }
     }
   </style>
 </head>
-
 <body>
-  <h1>Darwin Life Hub</h1>
-  <div class="subtitle">使用邮箱登录你的账户</div>
+  <main class="page">
+    <section class="brand">
+      <h1>Darwin Life Hub</h1>
+      <p>登录达尔文华人生活门户，管理招聘、求职、租房和论坛内容。</p>
+    </section>
 
-  <div class="box">
-    <form id="loginForm">
-      <label for="email">邮箱 Email</label>
-      <input id="email" type="email" placeholder="example@email.com" required />
-
-      <label for="password">密码 Password</label>
-      <input id="password" type="password" placeholder="至少 6 位密码" required />
-
-      <button type="submit" id="loginBtn">登录</button>
-      <div id="msg"></div>
-      <div class="tip">
-        · 已有账户：请输入注册时的邮箱和密码登录。<br/>
-        · 还没有账户？<a href="register.html">点击这里去注册</a>。
+    <section>
+      <div class="card">
+        <form id="loginForm">
+          <input id="email" type="email" placeholder="邮箱 Email" autocomplete="email" required />
+          <input id="password" type="password" placeholder="密码 Password" autocomplete="current-password" required />
+          <button type="submit" id="loginBtn">登录</button>
+          <button type="button" id="forgotPasswordBtn" class="link-button">忘记密码？发送重置邮件</button>
+          <div id="msg" role="status" aria-live="polite"></div>
+          <div class="divider"></div>
+          <a class="create-account" href="register.html">创建新账户</a>
+        </form>
       </div>
-    </form>
-  </div>
+      <div class="back-link">
+        <a href="index.html">返回首页</a>
+      </div>
+    </section>
+  </main>
 
-  <div class="back-link">
-    <a href="index.html">返回首页</a>
-  </div>
-
-  <!-- 顺序：Supabase CDN → supabase.js → login.js -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="login.js"></script>
