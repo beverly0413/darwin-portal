@@ -1,4 +1,5 @@
 // register.js - create account, confirm password, and check a simple captcha.
+(function () {
 const supabase = window.supabaseClient;
 
 const form = document.getElementById("registerForm");
@@ -121,3 +122,4 @@ if (form) {
     generateCaptcha();
   });
 }
+})();
