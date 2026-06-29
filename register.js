@@ -11,7 +11,11 @@ const refreshCaptchaBtn = document.getElementById("refreshCaptchaBtn");
 const registerBtn = document.getElementById("registerBtn");
 const msgEl = document.getElementById("msg");
 
-const EMAIL_REDIRECT_URL = new URL("verify.html", window.location.href).href;
+const SITE_URL =
+  window.location.protocol === "file:"
+    ? "https://darwin-portal.vercel.app/"
+    : window.location.href;
+const EMAIL_REDIRECT_URL = new URL("verify.html", SITE_URL).href;
 
 let currentCaptcha = "";
 

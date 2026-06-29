@@ -1,4 +1,5 @@
 // supabase.js
+// SUPABASE_URL must be the project base URL. Do not include "/rest/v1/".
 const SUPABASE_URL = 'https://lhmvgvvqxunjllncyvke.supabase.co';  // 注意这里是两个 v
 
 const SUPABASE_ANON_KEY =
