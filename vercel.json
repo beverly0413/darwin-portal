@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/auto-news?limit=3",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/auto-jobs?limit=5",
+      "schedule": "20 22 * * *"
+    },
+    {
+      "path": "/api/auto-events?limit=8",
+      "schedule": "40 22 * * *"
+    }
+  ]
+}
