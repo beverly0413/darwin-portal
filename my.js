@@ -1,376 +1,441 @@
-// my.js —— 从 Supabase 四张表加载“我发布的帖子”，并支持点击查看详情 & 删除
+// my.js —— 用户资料、帖子、评论、私信管理
 
 const sb = window.supabaseClient || null;
 
-const TABLES = {
-  jobs:  { name: "jobs_posts",  label: "招聘" },
-  cv:    { name: "cv_posts",    label: "求职" },
-  rent:  { name: "rent_posts",  label: "租房" },
-  forum: { name: "forum_posts", label: "论坛" },
+const POST_TABLES = {
+  jobs: { name: "jobs_posts", label: "招聘", titleFallback: "未命名职位" },
+  cv: { name: "cv_posts", label: "求职", titleFallback: "未命名求职" },
+  rent: { name: "rent_posts", label: "租房", titleFallback: "未命名房源" },
+  forum: { name: "forum_posts", label: "论坛", titleFallback: "Biu一下" },
+};
+
+const COMMENT_TABLES = {
+  jobs: { name: "jobs_comments", label: "招聘评论" },
+  cv: { name: "cv_comments", label: "求职评论" },
+  rent: { name: "rent_comments", label: "租房评论" },
+  forum: { name: "forum_comments", label: "论坛评论" },
 };
 
 let currentUser = null;
+let currentProfile = null;
 let myPosts = [];
+let myComments = [];
+let myMessages = [];
 
-// 格式化时间
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function showPostDetail(post) {
-  const old = document.getElementById("myDetailOverlay");
-  if (old) old.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "myDetailOverlay";
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.background = "rgba(15,23,42,0.45)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.zIndex = "1000";
-
-  const card = document.createElement("div");
-  card.style.maxWidth = "720px";
-  card.style.width = "90%";
-  card.style.maxHeight = "85vh";
-  card.style.overflowY = "auto";
-  card.style.background = "#ffffff";
-  card.style.borderRadius = "16px";
-  card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
-  card.style.padding = "20px 24px 24px";
-  card.style.position = "relative";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "×";
-  closeBtn.style.border = "none";
-  closeBtn.style.background = "transparent";
-  closeBtn.style.fontSize = "22px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "10px";
-  closeBtn.style.right = "16px";
-  closeBtn.onclick = () => overlay.remove();
-
-  const titleEl = document.createElement("h2");
-  titleEl.textContent = `[${post.typeLabel}] ${post.title || "未命名"}`;
-  titleEl.style.margin = "0 0 6px 0";
-  titleEl.style.fontSize = "18px";
-
-  const createdAtStr = formatDate(post.createdAt);
-  const metaEl = document.createElement("p");
-  metaEl.style.margin = "0 0 8px 0";
-  metaEl.style.fontSize = "12px";
-  metaEl.style.color = "#6b7280";
-  metaEl.textContent = createdAtStr ? `发布于：${createdAtStr}` : "";
-
-  const infoEl = document.createElement("div");
-  infoEl.style.fontSize = "14px";
-  infoEl.style.color = "#374151";
-  infoEl.style.lineHeight = "1.6";
-
-  if (post.company) {
-    const p = document.createElement("p");
-    p.innerHTML = `<strong>公司：</strong>${post.company}`;
-    infoEl.appendChild(p);
-  }
-  if (post.contact) {
-    const p = document.createElement("p");
-    p.innerHTML = `<strong>联系方式：</strong>${post.contact}`;
-    infoEl.appendChild(p);
-  }
-  if (post.content) {
-    const p = document.createElement("p");
-    p.style.marginTop = "8px";
-    p.textContent = post.content;
-    infoEl.appendChild(p);
-  }
-
-  const imagesWrapper = document.createElement("div");
-  imagesWrapper.style.marginTop = "12px";
-  imagesWrapper.style.display = "grid";
-  imagesWrapper.style.gridTemplateColumns = "minmax(0,1fr)";
-  imagesWrapper.style.gap = "10px";
-
-  if (Array.isArray(post.images) && post.images.length > 0) {
-    post.images.forEach((src) => {
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = "图片";
-      img.style.width = "100%";
-      img.style.borderRadius = "10px";
-      img.style.objectFit = "cover";
-      img.loading = "lazy";
-      imagesWrapper.appendChild(img);
-    });
-  }
-
-  card.appendChild(closeBtn);
-  card.appendChild(titleEl);
-  card.appendChild(metaEl);
-  card.appendChild(infoEl);
-  if (imagesWrapper.childElementCount > 0) {
-    card.appendChild(imagesWrapper);
-  }
-
-  overlay.appendChild(card);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
-async function deletePost(post) {
-  if (!sb) {
-    alert("系统错误：未找到 supabaseClient。");
-    return;
-  }
-  if (!currentUser) {
-    alert("当前用户信息丢失，请刷新页面后重试。");
-    return;
-  }
+function displayName(profile = currentProfile, user = currentUser) {
+  const nickname = String(profile?.nickname || "").trim();
+  if (nickname) return nickname;
+  const emailName = String(user?.email || "Darwin用户").split("@")[0];
+  return emailName || "Darwin用户";
+}
 
-  const ok = confirm("确认删除这条信息吗？删除后不可恢复。");
-  if (!ok) return;
+function initials(name) {
+  return String(name || "D").trim().slice(0, 2).toUpperCase();
+}
 
-  const tableCfg = TABLES[post.typeKey];
-  if (!tableCfg) {
-    alert("未知的帖子类型，无法删除。");
-    return;
-  }
+function getEl(id) {
+  return document.getElementById(id);
+}
 
-  try {
-    const { data, error } = await sb
-      .from(tableCfg.name)
-      .delete()
-      .eq("id", post.id)
-      .eq("user_id", currentUser.id)
-      .select();
+function setText(id, text) {
+  const el = getEl(id);
+  if (el) el.textContent = text;
+}
 
-    if (error) {
-      console.error("删除失败：", error);
-      alert("删除失败：请稍后重试，或检查 Supabase 的删除权限策略。");
-      return;
+function profilePayloadFromForm() {
+  const ageRaw = getEl("profileAge")?.value.trim();
+  const age = ageRaw ? Number(ageRaw) : null;
+  return {
+    id: currentUser.id,
+    email: currentUser.email,
+    nickname: getEl("profileNickname")?.value.trim() || null,
+    age: Number.isFinite(age) ? age : null,
+    gender: getEl("profileGender")?.value || "private",
+    avatar_url: getEl("profileAvatar")?.value.trim() || null,
+    bio: getEl("profileBio")?.value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function ensureProfile() {
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id, email, nickname, age, gender, avatar_url, bio")
+    .eq("id", currentUser.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (data) return data;
+
+  const fallbackName = "Darwin" + String(currentUser.email || "user").split("@")[0].slice(0, 6);
+  const payload = {
+    id: currentUser.id,
+    email: currentUser.email,
+    nickname: fallbackName,
+    gender: "private",
+  };
+  const { data: created, error: createError } = await sb
+    .from("profiles")
+    .upsert(payload)
+    .select("id, email, nickname, age, gender, avatar_url, bio")
+    .single();
+
+  if (createError) throw createError;
+  return created;
+}
+
+function renderProfile() {
+  const name = displayName();
+  setText("profileName", name);
+  setText("profileEmail", currentUser?.email || "");
+  setText("userInfo", `当前登录：${currentUser?.email || ""}`);
+
+  const avatarImg = getEl("profileAvatarImg");
+  const avatarInitials = getEl("profileAvatarInitials");
+  const avatarUrl = String(currentProfile?.avatar_url || "").trim();
+
+  if (avatarImg && avatarInitials) {
+    if (avatarUrl) {
+      avatarImg.src = avatarUrl;
+      avatarImg.style.display = "block";
+      avatarInitials.style.display = "none";
+    } else {
+      avatarImg.removeAttribute("src");
+      avatarImg.style.display = "none";
+      avatarInitials.style.display = "grid";
+      avatarInitials.textContent = initials(name);
     }
-
-    if (!data || data.length === 0) {
-      alert("删除失败：可能没有权限删除这条记录。");
-      return;
-    }
-
-    myPosts = myPosts.filter(
-      (p) => !(p.id === post.id && p.typeKey === post.typeKey)
-    );
-    renderMyPosts();
-  } catch (err) {
-    console.error("删除异常：", err);
-    alert("删除时发生异常，请稍后重试。");
   }
+
+  if (getEl("profileNickname")) getEl("profileNickname").value = currentProfile?.nickname || "";
+  if (getEl("profileAge")) getEl("profileAge").value = currentProfile?.age || "";
+  if (getEl("profileGender")) getEl("profileGender").value = currentProfile?.gender || "private";
+  if (getEl("profileAvatar")) getEl("profileAvatar").value = currentProfile?.avatar_url || "";
+  if (getEl("profileBio")) getEl("profileBio").value = currentProfile?.bio || "";
+}
+
+async function saveProfile() {
+  if (!currentUser) return;
+  const statusEl = getEl("profileStatus");
+  const payload = profilePayloadFromForm();
+
+  if (payload.age !== null && (payload.age < 13 || payload.age > 120)) {
+    statusEl.textContent = "年龄请填写 13 到 120 之间的数字。";
+    statusEl.style.color = "red";
+    return;
+  }
+
+  statusEl.textContent = "正在保存资料...";
+  statusEl.style.color = "#6b7280";
+
+  const { data, error } = await sb
+    .from("profiles")
+    .upsert(payload)
+    .select("id, email, nickname, age, gender, avatar_url, bio")
+    .single();
+
+  if (error) {
+    console.error("保存资料失败：", error);
+    statusEl.textContent = "保存失败。请确认 Supabase 已运行 supabase-user-system.sql。";
+    statusEl.style.color = "red";
+    return;
+  }
+
+  currentProfile = data;
+  localStorage.setItem("dlh_nickname", data.nickname || "");
+  renderProfile();
+  statusEl.textContent = "资料已保存。";
+  statusEl.style.color = "#15803d";
 }
 
 function renderMyPosts() {
-  const listEl = document.getElementById("myJobsList");
-  const statusEl = document.getElementById("myJobsStatus");
-
+  const listEl = getEl("myPostsList");
+  const statusEl = getEl("myPostsStatus");
   if (!listEl || !statusEl) return;
 
   listEl.innerHTML = "";
-
-  if (!currentUser) {
-    statusEl.textContent = "未检测到用户登录信息，请刷新页面重试。";
-    return;
-  }
-
-  if (!myPosts || myPosts.length === 0) {
-    statusEl.textContent = "你在招聘、求职、租房、论坛中还没有发布任何信息。";
+  if (!myPosts.length) {
+    statusEl.textContent = "你还没有发布任何信息。";
     return;
   }
 
   statusEl.textContent = `你共发布了 ${myPosts.length} 条信息。`;
-
   myPosts.forEach((post) => {
-    const div = document.createElement("div");
-    div.className = "job-item";
-    div.style.cursor = "pointer";
-
-    const createdAtStr = formatDate(post.createdAt);
-
-    let imagesThumbHtml = "";
-    if (Array.isArray(post.images) && post.images.length > 0) {
-      imagesThumbHtml = `
-        <div style="margin-top:8px;">
-          <img src="${post.images[0]}" alt="图片预览"
-               style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid #d1e5d4;" />
-          ${
-            post.images.length > 1
-              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${post.images.length - 1} 张</span>`
-              : ""
-          }
-        </div>
-      `;
-    }
-
-    let summary = post.content || "";
-    if (summary.length > 80) summary = summary.slice(0, 80) + "…";
-
-    div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="flex:1;">
-          <h3 style="margin:0 0 4px 0;font-size:16px;">
-            [${post.typeLabel}] ${post.title || "未命名"}
-          </h3>
-          ${post.company ? `<p style="margin:0 0 2px 0;"><strong>公司：</strong>${post.company}</p>` : ""}
-          ${post.contact ? `<p style="margin:0 0 2px 0;"><strong>联系方式：</strong>${post.contact}</p>` : ""}
-          ${summary ? `<p style="margin:4px 0 0 0;color:#4b5563;font-size:14px;">${summary}</p>` : ""}
-          ${createdAtStr ? `<p style="margin:6px 0 0 0;font-size:12px;color:#9ca3af;">发布于：${createdAtStr}</p>` : ""}
-          ${imagesThumbHtml}
-        </div>
-        <div class="job-actions" style="margin-left:8px;">
-          <button class="delete-btn"
-                  style="border:none;border-radius:999px;padding:6px 12px;font-size:13px;
-                         background:#fecaca;color:#b91c1c;cursor:pointer;">
-            删除
-          </button>
-        </div>
+    const title = post.title || POST_TABLES[post.typeKey].titleFallback;
+    const summary = post.content ? String(post.content).slice(0, 100) : "";
+    const item = document.createElement("article");
+    item.className = "manage-item";
+    item.innerHTML = `
+      <div>
+        <div class="item-kicker">${post.typeLabel} · ${formatDate(post.createdAt)}</div>
+        <h3>${escapeHtml(title)}</h3>
+        ${summary ? `<p>${escapeHtml(summary)}${post.content.length > 100 ? "..." : ""}</p>` : ""}
       </div>
+      <button class="danger-btn" type="button">删除</button>
     `;
-
-    div.addEventListener("click", (e) => {
-      if (e.target.closest(".delete-btn")) return;
-      showPostDetail(post);
-    });
-
-    const delBtn = div.querySelector(".delete-btn");
-    if (delBtn) {
-      delBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deletePost(post);
-      });
-    }
-
-    listEl.appendChild(div);
+    item.querySelector("button").addEventListener("click", () => deletePost(post));
+    listEl.appendChild(item);
   });
 }
 
 async function loadMyPosts() {
-  if (!sb) {
-    console.error("supabaseClient 未初始化。");
-    return;
-  }
-  if (!currentUser) return;
-
   const uid = currentUser.id;
-
-  const queries = Object.entries(TABLES).map(([key, info]) =>
-    sb
-      .from(info.name)
-      .select("*")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error(`加载 ${info.name} 失败:`, error);
-          return [];
-        }
-        if (!data) return [];
-        return data.map((row) => ({
-          id: row.id,
-          typeKey: key,
-          typeLabel: info.label,
-          table: info.name,
-          title: row.title || "",
-          company: row.company || "",
-          contact: row.contact || "",
-          content: row.content || "",
-          images: Array.isArray(row.images) ? row.images : [],
-          createdAt: row.created_at,
-        }));
-      })
+  const results = await Promise.all(
+    Object.entries(POST_TABLES).map(([key, info]) =>
+      sb
+        .from(info.name)
+        .select("id, title, company, contact, content, images, created_at")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error(`加载 ${info.name} 失败：`, error);
+            return [];
+          }
+          return (data || []).map((row) => ({
+            id: row.id,
+            typeKey: key,
+            typeLabel: info.label,
+            title: row.title || "",
+            content: row.content || "",
+            createdAt: row.created_at,
+          }));
+        })
+    )
   );
 
-  const results = await Promise.all(queries);
-  myPosts = results.flat().sort((a, b) => {
-    const t1 = new Date(a.createdAt || 0).getTime();
-    const t2 = new Date(b.createdAt || 0).getTime();
-    return t2 - t1;
-  });
-
+  myPosts = results.flat().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   renderMyPosts();
 }
 
-async function initMyPage() {
-  const userInfoEl = document.getElementById("userInfo");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const nicknameInput = document.getElementById("nicknameInput");
-  const saveNicknameBtn = document.getElementById("saveNicknameBtn");
-  const nicknameStatusEl = document.getElementById("nicknameStatus");
+async function deletePost(post) {
+  if (!confirm("确认删除这条发布吗？删除后不可恢复。")) return;
+  const table = POST_TABLES[post.typeKey]?.name;
+  if (!table) return;
 
-  if (!sb) {
-    alert("系统错误：未找到 supabaseClient。");
-    if (userInfoEl) userInfoEl.textContent = "系统错误：登录模块未初始化。";
+  const { data, error } = await sb
+    .from(table)
+    .delete()
+    .eq("id", post.id)
+    .eq("user_id", currentUser.id)
+    .select("id");
+
+  if (error || !data?.length) {
+    console.error("删除发布失败：", error);
+    alert("删除失败，请确认你有删除权限。");
     return;
   }
 
-  try {
-    const { data, error } = await sb.auth.getUser();
-    if (error || !data?.user) {
-      alert("请先登录后再访问“我的”页面。");
-      window.location.href = "login.html";
-      return;
-    }
-
-    currentUser = data.user;
-
-    const applyUserInfo = () => {
-      const nick = (localStorage.getItem("dlh_nickname") || "").trim();
-      if (userInfoEl) {
-        userInfoEl.textContent =
-          `当前登录：${currentUser.email}` + (nick ? `（昵称：${nick}）` : "");
-      }
-    };
-
-    const savedNickname = (localStorage.getItem("dlh_nickname") || "").trim();
-    if (nicknameInput) nicknameInput.value = savedNickname;
-    applyUserInfo();
-
-    if (saveNicknameBtn) {
-      saveNicknameBtn.addEventListener("click", () => {
-        const value = (nicknameInput?.value || "").trim();
-        if (!value) {
-          localStorage.removeItem("dlh_nickname");
-          if (nicknameStatusEl) nicknameStatusEl.textContent = "已清空昵称，将继续使用邮箱显示。";
-        } else {
-          localStorage.setItem("dlh_nickname", value);
-          if (nicknameStatusEl) nicknameStatusEl.textContent = "昵称已保存，在评论区将显示这个名字。";
-        }
-        applyUserInfo();
-      });
-    }
-
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", async () => {
-        await sb.auth.signOut();
-        window.location.href = "index.html";
-      });
-    }
-
-    await loadMyPosts();
-  } catch (err) {
-    console.error("初始化“我的”页面失败：", err);
-    if (userInfoEl) userInfoEl.textContent = "初始化失败，请刷新页面重试。";
-  }
+  myPosts = myPosts.filter((p) => !(p.id === post.id && p.typeKey === post.typeKey));
+  renderMyPosts();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initMyPage();
-});
+function renderMyComments() {
+  const listEl = getEl("myCommentsList");
+  const statusEl = getEl("myCommentsStatus");
+  if (!listEl || !statusEl) return;
+
+  listEl.innerHTML = "";
+  if (!myComments.length) {
+    statusEl.textContent = "你还没有发表过评论。";
+    return;
+  }
+
+  statusEl.textContent = `你共发表了 ${myComments.length} 条评论。`;
+  myComments.forEach((comment) => {
+    const item = document.createElement("article");
+    item.className = "manage-item";
+    item.innerHTML = `
+      <div>
+        <div class="item-kicker">${comment.typeLabel} · ${formatDate(comment.createdAt)}</div>
+        <p>${escapeHtml(comment.content)}</p>
+      </div>
+      <button class="danger-btn" type="button">删除</button>
+    `;
+    item.querySelector("button").addEventListener("click", () => deleteComment(comment));
+    listEl.appendChild(item);
+  });
+}
+
+async function loadMyComments() {
+  const uid = currentUser.id;
+  const results = await Promise.all(
+    Object.entries(COMMENT_TABLES).map(([key, info]) =>
+      sb
+        .from(info.name)
+        .select("id, content, created_at")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error(`加载 ${info.name} 失败：`, error);
+            return [];
+          }
+          return (data || []).map((row) => ({
+            id: row.id,
+            typeKey: key,
+            typeLabel: info.label,
+            content: row.content || "",
+            createdAt: row.created_at,
+          }));
+        })
+    )
+  );
+
+  myComments = results.flat().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  renderMyComments();
+}
+
+async function deleteComment(comment) {
+  if (!confirm("确认删除这条评论吗？")) return;
+  const table = COMMENT_TABLES[comment.typeKey]?.name;
+  if (!table) return;
+
+  const { data, error } = await sb
+    .from(table)
+    .delete()
+    .eq("id", comment.id)
+    .eq("user_id", currentUser.id)
+    .select("id");
+
+  if (error || !data?.length) {
+    console.error("删除评论失败：", error);
+    alert("删除失败，请确认你有删除权限。");
+    return;
+  }
+
+  myComments = myComments.filter((c) => !(c.id === comment.id && c.typeKey === comment.typeKey));
+  renderMyComments();
+}
+
+function renderMessages() {
+  const listEl = getEl("myMessagesList");
+  const statusEl = getEl("myMessagesStatus");
+  if (!listEl || !statusEl) return;
+
+  listEl.innerHTML = "";
+  if (!myMessages.length) {
+    statusEl.textContent = "暂时没有私信。";
+    return;
+  }
+
+  statusEl.textContent = `共有 ${myMessages.length} 条私信。`;
+  myMessages.forEach((message) => {
+    const isInbox = message.receiver_id === currentUser.id;
+    const name = isInbox
+      ? message.sender_profile?.nickname || "对方"
+      : message.receiver_profile?.nickname || "对方";
+    const item = document.createElement("article");
+    item.className = "manage-item";
+    item.innerHTML = `
+      <div>
+        <div class="item-kicker">${isInbox ? "收到" : "发出"} · ${escapeHtml(name)} · ${formatDate(message.created_at)}</div>
+        <p>${escapeHtml(message.content)}</p>
+      </div>
+      <button class="danger-btn" type="button">删除</button>
+    `;
+    item.querySelector("button").addEventListener("click", () => deleteMessage(message.id));
+    listEl.appendChild(item);
+  });
+}
+
+async function loadMessages() {
+  const statusEl = getEl("myMessagesStatus");
+  const { data, error } = await sb
+    .from("user_messages")
+    .select(`
+      id, sender_id, receiver_id, content, is_read, created_at,
+      sender_profile:profiles!user_messages_sender_id_fkey(nickname, avatar_url),
+      receiver_profile:profiles!user_messages_receiver_id_fkey(nickname, avatar_url)
+    `)
+    .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("加载私信失败：", error);
+    if (statusEl) statusEl.textContent = "私信表还未启用。请先在 Supabase 运行 supabase-user-system.sql。";
+    return;
+  }
+
+  myMessages = data || [];
+  renderMessages();
+}
+
+async function deleteMessage(id) {
+  if (!confirm("确认删除这条私信吗？")) return;
+  const { error } = await sb.from("user_messages").delete().eq("id", id);
+  if (error) {
+    console.error("删除私信失败：", error);
+    alert("删除失败，请稍后再试。");
+    return;
+  }
+  myMessages = myMessages.filter((m) => m.id !== id);
+  renderMessages();
+}
+
+function setupTabs() {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.remove("active"));
+      btn.classList.add("active");
+      getEl(btn.dataset.tab)?.classList.add("active");
+    });
+  });
+}
+
+async function initMyPage() {
+  const logoutBtn = getEl("logoutBtn");
+  const saveBtn = getEl("saveProfileBtn");
+
+  if (!sb) {
+    alert("系统错误：未找到 Supabase 登录模块。");
+    return;
+  }
+
+  const { data, error } = await sb.auth.getUser();
+  if (error || !data?.user) {
+    alert("请先登录后再访问“我的”页面。");
+    window.location.href = "login.html";
+    return;
+  }
+
+  currentUser = data.user;
+
+  try {
+    currentProfile = await ensureProfile();
+  } catch (err) {
+    console.error("读取资料失败：", err);
+    currentProfile = { nickname: localStorage.getItem("dlh_nickname") || "" };
+    setText("profileStatus", "资料表未启用。请先运行 supabase-user-system.sql。");
+  }
+
+  renderProfile();
+  setupTabs();
+
+  saveBtn?.addEventListener("click", saveProfile);
+  logoutBtn?.addEventListener("click", async () => {
+    await sb.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  await Promise.all([loadMyPosts(), loadMyComments(), loadMessages()]);
+}
+
+document.addEventListener("DOMContentLoaded", initMyPage);

@@ -42,6 +42,25 @@ function cvFormatDate(iso) {
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
 
+async function loadCommentProfiles(userIds) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, nickname")
+    .in("id", ids);
+
+  if (error) {
+    console.error("加载评论用户资料失败：", error);
+    return {};
+  }
+
+  return Object.fromEntries(
+    (data || []).map((profile) => [profile.id, profile])
+  );
+}
+
 /* ============ 评论相关：cv_comments ============ */
 
 async function loadCvComments(postId, listEl, infoEl) {
@@ -51,7 +70,7 @@ async function loadCvComments(postId, listEl, infoEl) {
 
   const { data, error } = await supabaseClient
     .from("cv_comments")
-    .select("id, content, user_email, created_at")
+    .select("id, content, user_id, created_at")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -71,6 +90,7 @@ async function loadCvComments(postId, listEl, infoEl) {
 
   listEl.innerHTML = "";
   infoEl.textContent = `共 ${data.length} 条评论`;
+  const profiles = await loadCommentProfiles(data.map((c) => c.user_id));
 
   data.forEach((c) => {
     const item = document.createElement("div");
@@ -80,9 +100,8 @@ async function loadCvComments(postId, listEl, infoEl) {
     const meta = document.createElement("div");
     meta.style.fontSize = "12px";
     meta.style.color = "#6b7280";
-    meta.textContent = `${c.user_email || "匿名"} · ${cvFormatDate(
-      c.created_at
-    )}`;
+    const nickname = profiles[c.user_id]?.nickname || "Darwin用户";
+    meta.textContent = `${nickname} · ${cvFormatDate(c.created_at)}`;
 
     const body = document.createElement("div");
     body.style.fontSize = "14px";
