@@ -2,233 +2,154 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · Home</title>
+  <title>Darwin Life Hub · 达尔文新闻、工作、活动</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Darwin Life Hub 汇总达尔文本地新闻、工作机会和全网活动事项。">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="67dea801-bdca-419c-9296-1a45848bf145"></script>
-<style>
-    :root {
-      --bg:#f5f9f5;
-      --card-bg:#ffffff;
-      --primary:#16a34a;     /* 绿色主色 */
-      --text-main:#0f172a;
-      --text-muted:#6b7280;
-      --border-soft:#d1e5d4;
-    }
-    * { box-sizing:border-box; }
-
-    body {
-      margin:0;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:radial-gradient(circle at top left,#bbf7d0,#f5f9f5);
-      color:var(--text-main);
-    }
-
-    /* 顶部导航（统一模板） */
-    .top-nav {
-      width:100%;
-      background:#e8f5ec;
-      padding:10px 0;
-      border-bottom:1px solid #cfe8d8;
-      position:sticky;
-      top:0;
-      z-index:30;
-      box-shadow:0 2px 4px rgba(15,23,42,0.06);
-    }
-    .nav-inner {
-      max-width:1100px;
-      margin:0 auto;
-      padding:0 16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .brand {
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-
-    /* —— 圆形 LOGO 样式 —— */
-    .brand-logo{
-      width:48px;
-      height:48px;
-      border-radius:50%;
-      overflow:hidden;
-      background:#ffffff;
-      box-shadow:0 4px 14px rgba(0,0,0,0.15);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .brand-logo img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-    }
-
-    .brand-text-main {
-      font-size:18px;
-      font-weight:600;
-      color:#022c22;
-    }
-    .brand-text-sub {
-      font-size:13px;
-      color:var(--text-muted);
-      margin-top:-2px;
-    }
-
-    nav.nav-links {
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      font-size:15px;
-    }
-    nav.nav-links a {
-      padding:6px 12px;
-      border-radius:6px;
-      color:#0f172a;
-      text-decoration:none;
-      transition:0.15s ease;
-    }
-    nav.nav-links a:hover {
-      background:#d9fbe5;
-    }
-    nav.nav-links a.active {
-      background:var(--primary);
-      color:#f0fdf4;
-    }
-
-    .page {
-      max-width:900px;
-      margin:0 auto;
-      padding:24px 16px 60px;
-    }
-    .page h1 {
-      margin-top:0;
-      font-size:26px;
-      color:#064e3b;
-      letter-spacing:0.06em;
-    }
-    .lead {
-      font-size:15px;
-      color:var(--text-muted);
-      margin-top:4px;
-    }
-
-    /* 卡片网格 */
-    .grid {
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-      gap:16px;
-      margin-top:20px;
-    }
-    .card {
-      background:var(--card-bg);
-      border-radius:12px;
-      padding:14px 16px;
-      border:1px solid var(--border-soft);
-      box-shadow:0 8px 24px rgba(15,23,42,0.08);
-      transition:0.15s ease;
-    }
-    .card:hover {
-      transform:translateY(-2px);
-      border-color:#16a34a;
-      box-shadow:0 10px 28px rgba(22,101,52,0.2);
-    }
-    .card h3 {
-      margin:0 0 6px;
-      font-size:17px;
-      color:#064e3b;
-    }
-    .card p {
-      margin:0 0 10px;
-      font-size:14px;
-      color:var(--text-muted);
-    }
-    .card a {
-      color:#16a34a;
-      font-size:14px;
-      text-decoration:none;
-    }
-    .card a:hover {
-      text-decoration:underline;
-    }
-</style>
+  <link rel="stylesheet" href="portal.css">
 </head>
-
 <body>
-  <!-- 顶部导航 -->
-  <header class="top-nav">
-    <div class="nav-inner">
-      <div class="brand">
-        <div class="brand-logo">
-          <img src="darwin-logo.png" alt="logo">
-        </div>
-        <div>
-          <div class="brand-text-main">Darwin Life Hub</div>
-          <div class="brand-text-sub">达尔文华人生活门户</div>
-        </div>
-      </div>
-
+  <header class="site-header">
+    <div class="nav">
+      <a class="brand" href="index.html" aria-label="Darwin Life Hub 首页">
+        <span class="brand-mark"><img src="darwin-logo.png" alt="Darwin Life Hub"></span>
+        <span>
+          <span class="brand-title">Darwin Life Hub</span>
+          <span class="brand-subtitle">新闻 · 工作 · 活动</span>
+        </span>
+      </a>
       <nav class="nav-links">
         <a href="index.html" class="active">首页</a>
         <a href="news.html">新闻</a>
         <a href="jobs.html">工作</a>
-       <a href="cv.html">Marketplace</a>
-        <a href="rent.html">租房</a>
-        <a href="forum.html">广场</a>
+        <a href="events.html">活动</a>
         <a href="my.html">我的</a>
-     <a href="about.html">关于</a>
+        <a href="jobs.html#jobFormSection" class="publish-link">发布工作</a>
       </nav>
     </div>
   </header>
 
-  <main class="page">
-    <h1>Darwin Life Hub</h1>
-    <p class="lead">简单的华人生活门户：新闻、招聘、求职、租房、论坛。</p>
-
-    <div class="grid">
-      <div class="card">
-        <h3>本地新闻</h3>
-        <p>达尔文 & 北领地本地消息，由管理员整理发布。</p>
-        <a href="news.html">进入 News →</a>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-main">
+        <span class="eyebrow">Darwin today</span>
+        <h1>达尔文新闻、工作、活动，一站看全。</h1>
+        <p>为达尔文华人、留学生、新移民和本地商家整理每天最重要的信息：今天发生什么、哪里有工作、周末去哪玩。</p>
       </div>
 
-      <div class="card">
-        <h3>招聘</h3>
-        <p>发布达尔文本地招工信息，适合工地、餐饮、仓库、IT 等。</p>
-        <a href="jobs.html">进入 Jobs →</a>
-      </div>
+      <aside class="search-panel">
+        <div>
+          <div class="search-box">
+            <input id="homeSearch" type="search" placeholder="搜索新闻、工作、活动..." aria-label="搜索">
+            <button id="homeSearchBtn" type="button">搜索</button>
+          </div>
+          <p style="margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.6;">先从三个高频场景开始，信息更集中，用户更容易回来。</p>
+        </div>
 
-      <div class="card">
-        <h3>Marketplace</h3>
-        <p>NT居民可以发布二手商品，联系交易。</p>
-        <a href="cv.html">进入 CV →</a>
-      </div>
+        <div class="quick-grid">
+          <a class="quick-card" href="news.html">
+            <strong>今日新闻</strong>
+            <span>达尔文本地动态、政策、安全、交通、商业消息。</span>
+          </a>
+          <a class="quick-card" href="jobs.html">
+            <strong>最新工作</strong>
+            <span>餐饮、清洁、建筑、仓库、办公室、兼职机会。</span>
+          </a>
+          <a class="quick-card" href="events.html">
+            <strong>全网活动</strong>
+            <span>市集、音乐、亲子、免费活动、夜生活和社区活动。</span>
+          </a>
+        </div>
+      </aside>
+    </section>
 
-      <div class="card">
-        <h3>租房</h3>
-        <p>简单展示整租、合租、短租信息。</p>
-        <a href="rent.html">进入 Rent →</a>
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>三个核心入口</h2>
+          <p>砍掉低频板块后，首页只服务最常用的本地需求。</p>
+        </div>
       </div>
+      <div class="content-grid">
+        <a class="feature-card" href="news.html">
+          <span class="feature-tag">News</span>
+          <div>
+            <h3>AI 达尔文日报</h3>
+            <p>每天整理本地最值得看的新闻，中文摘要、来源链接、重点提醒。</p>
+          </div>
+          <span class="ghost-btn" style="width:max-content;">看新闻</span>
+        </a>
+        <a class="feature-card" href="jobs.html">
+          <span class="feature-tag">Jobs</span>
+          <div>
+            <h3>达尔文工作板</h3>
+            <p>把本地招聘集中展示，适合商家发布，也适合求职者快速筛选。</p>
+          </div>
+          <span class="ghost-btn" style="width:max-content;">找工作</span>
+        </a>
+        <a class="feature-card" href="events.html">
+          <span class="feature-tag">Events</span>
+          <div>
+            <h3>全网活动日历</h3>
+            <p>本周末去哪、免费活动、亲子活动、夜生活，一页扫清楚。</p>
+          </div>
+          <span class="ghost-btn" style="width:max-content;">看活动</span>
+        </a>
+      </div>
+    </section>
 
-      <div class="card">
-        <h3>论坛</h3>
-        <p>交流、提问、经验分享，都可以发在这里。</p>
-        <a href="forum.html">进入 Forum →</a>
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>本周达尔文</h2>
+          <p>活动页会逐步接入自动采集，这里先给用户一个明确的内容期待。</p>
+        </div>
+        <a class="primary-btn" href="events.html">查看全部活动</a>
       </div>
-
-      <div class="card">
-        <h3>关于本站</h3>
-        <p>了解 Darwin Life Hub 是什么、如何使用、未来计划。</p>
-        <a href="about.html">进入 About →</a>
+      <div class="feed-list">
+        <a class="feed-row" href="events.html">
+          <span class="date-chip">FRI<span>Night</span></span>
+          <div>
+            <h3>夜市、酒吧、Live music</h3>
+            <p>适合周五下班后快速找地方。</p>
+          </div>
+          <span class="ghost-btn">活动</span>
+        </a>
+        <a class="feed-row" href="events.html">
+          <span class="date-chip">SAT<span>Market</span></span>
+          <div>
+            <h3>周末市集和亲子活动</h3>
+            <p>面向家庭、学生和刚到达尔文的新朋友。</p>
+          </div>
+          <span class="ghost-btn">活动</span>
+        </a>
+        <a class="feed-row" href="jobs.html">
+          <span class="date-chip">NOW<span>Hiring</span></span>
+          <div>
+            <h3>本地招聘持续更新</h3>
+            <p>餐饮、清洁、建筑、仓库类职位优先展示。</p>
+          </div>
+          <span class="ghost-btn">工作</span>
+        </a>
       </div>
-    </div>
+    </section>
   </main>
 
-  <!-- Supabase -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script>
+    const searchInput = document.getElementById("homeSearch");
+    const searchBtn = document.getElementById("homeSearchBtn");
+    function runHomeSearch() {
+      const value = (searchInput.value || "").trim();
+      if (!value) {
+        window.location.href = "events.html";
+        return;
+      }
+      window.location.href = "events.html?q=" + encodeURIComponent(value);
+    }
+    searchBtn.addEventListener("click", runHomeSearch);
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") runHomeSearch();
+    });
+  </script>
 </body>
 </html>

@@ -13,6 +13,40 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists nickname text;
+alter table public.profiles add column if not exists age integer;
+alter table public.profiles add column if not exists gender text;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_age_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_age_check
+      check (age is null or (age >= 13 and age <= 120));
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_gender_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_gender_check
+      check (gender is null or gender in ('private', 'female', 'male', 'other'));
+  end if;
+end $$;
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Profiles are readable by everyone" on public.profiles;

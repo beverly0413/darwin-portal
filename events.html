@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>达尔文活动 · Darwin Life Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="达尔文本周活动、市集、音乐、亲子、免费活动和夜生活。">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="nav">
+      <a class="brand" href="index.html" aria-label="Darwin Life Hub 首页">
+        <span class="brand-mark"><img src="darwin-logo.png" alt="Darwin Life Hub"></span>
+        <span>
+          <span class="brand-title">Darwin Life Hub</span>
+          <span class="brand-subtitle">新闻 · 工作 · 活动</span>
+        </span>
+      </a>
+      <nav class="nav-links">
+        <a href="index.html">首页</a>
+        <a href="news.html">新闻</a>
+        <a href="jobs.html">工作</a>
+        <a href="events.html" class="active">活动</a>
+        <a href="my.html">我的</a>
+        <a href="jobs.html#jobFormSection" class="publish-link">发布工作</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="page-title">
+      <div>
+        <span class="eyebrow" style="background:#e8f7f6;color:var(--teal-dark);">Events around Darwin</span>
+        <h1>全网活动事项</h1>
+        <p>市集、音乐、亲子、免费活动、夜生活和社区活动，整理给真正住在达尔文的人。</p>
+      </div>
+      <a class="primary-btn" href="mailto:hello@darwinbbs.com?subject=提交达尔文活动">提交活动</a>
+    </div>
+
+    <div class="search-box" style="max-width:720px;">
+      <input id="eventSearch" type="search" placeholder="搜索活动名称、地点、类型..." aria-label="搜索活动">
+      <button id="eventSearchBtn" type="button">搜索</button>
+    </div>
+
+    <div class="filter-bar" id="eventFilters">
+      <button class="active" type="button" data-filter="all">全部</button>
+      <button type="button" data-filter="free">免费</button>
+      <button type="button" data-filter="family">亲子</button>
+      <button type="button" data-filter="market">市集</button>
+      <button type="button" data-filter="music">音乐</button>
+      <button type="button" data-filter="nightlife">夜生活</button>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>近期推荐</h2>
+          <p id="eventsStatus">正在加载活动...</p>
+        </div>
+      </div>
+      <div id="eventsGrid" class="content-grid"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="events.js"></script>
+</body>
+</html>
