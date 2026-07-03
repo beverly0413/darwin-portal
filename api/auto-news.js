@@ -24,11 +24,11 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function buildArticleHtml(item, source) {
+function buildArticleHtml(item, source, imageUrl = "") {
   const paragraphs = Array.isArray(item.paragraphs) ? item.paragraphs : [];
   const sourceTime = source.pubDate ? new Date(source.pubDate).toLocaleString("en-AU", { timeZone: "Australia/Darwin" }) : "";
-  const imageHtml = source.imageUrl
-    ? `<figure class="article-inline-image"><img src="${escapeHtml(source.imageUrl)}" alt="${escapeHtml(item.title_zh || item.title || source.title)}" loading="lazy"></figure>`
+  const imageHtml = imageUrl
+    ? `<figure class="article-inline-image"><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title_zh || item.title || source.title)}" loading="lazy"></figure>`
     : "";
 
   const bodyHtml = paragraphs
@@ -133,7 +133,7 @@ export default async function handler(req, res) {
         slug: slugify(title),
         summary: item.summary_zh || item.summary || source.description || "",
         content: body,
-        html_body: buildArticleHtml(item, source),
+        html_body: buildArticleHtml(item, source, imageUrl),
         body,
         source_url: source.link,
         source_hash: sourceHash(source.link),

@@ -383,6 +383,39 @@ function refreshListStats(newsId) {
   if (commentsEl) commentsEl.textContent = item.commentsCount || 0;
 }
 
+async function backfillNewsImage(item, itemEl) {
+  if (!item || item.imageUrl || !item.sourceUrl) return;
+
+  try {
+    const response = await fetch(
+      `/api/news-image?id=${encodeURIComponent(item.id)}&source_url=${encodeURIComponent(item.sourceUrl)}`
+    );
+    const payload = await response.json();
+    if (!response.ok || !payload.imageUrl) return;
+
+    const imageUrl = sourceImageOnly(payload.imageUrl);
+    if (!imageUrl) return;
+
+    item.imageUrl = imageUrl;
+    item.coverImages = [imageUrl];
+
+    if (!itemEl.querySelector(".news-image")) {
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "news-image";
+
+      const img = document.createElement("img");
+      img.src = imageUrl;
+      img.alt = item.title || "新闻图片";
+      img.loading = "lazy";
+
+      imgWrap.appendChild(img);
+      itemEl.appendChild(imgWrap);
+    }
+  } catch (err) {
+    console.error("source image backfill failed", err);
+  }
+}
+
 async function increaseView(newsId) {
   if (!newsId || !supabaseClient) return;
 
@@ -859,6 +892,8 @@ async function loadNews() {
 
         imgWrap.appendChild(img);
         itemEl.appendChild(imgWrap);
+      } else if (itemData.sourceUrl) {
+        backfillNewsImage(itemData, itemEl);
       }
 
       itemEl.addEventListener("click", () => {

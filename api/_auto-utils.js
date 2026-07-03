@@ -125,7 +125,14 @@ export function extractPageImage(html, baseUrl = "") {
 export async function fetchSourceImage(url) {
   if (!url) return "";
   try {
-    return extractPageImage(await fetchText(url), url);
+    const response = await fetch(url, {
+      headers: {
+        "user-agent": "DarwinLifeHubBot/1.0 (+https://darwinbbs.com)"
+      }
+    });
+    if (!response.ok) return "";
+    const html = await response.text();
+    return extractPageImage(html, response.url || url);
   } catch (error) {
     console.error("source image lookup failed", error);
     return "";
