@@ -125,7 +125,10 @@ export default async function handler(req, res) {
       if (!source) continue;
 
       const category = item.category || "local";
-      const imageUrl = source.imageUrl || await fetchSourceImage(source.link);
+      const imageUrl =
+        source.imageUrl ||
+        (await fetchSourceImage(source.link)) ||
+        (await fetchSourceImage(source.publisherUrl));
       const body = buildPlainBody(item, source);
       const title = item.title_zh || item.title || source.title;
       const payload = {

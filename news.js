@@ -62,7 +62,7 @@ function formatDarwinDate(value) {
 }
 
 function isStockFallbackImage(url) {
-  return /images\.unsplash\.com/i.test(String(url || ""));
+  return /(images\.unsplash\.com|news\.google\.com|gstatic\.com|googleusercontent\.com|google_news|googlenews|googlelogo|favicon|placeholder)/i.test(String(url || ""));
 }
 
 function sourceImageOnly(url) {

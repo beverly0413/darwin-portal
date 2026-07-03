@@ -111,7 +111,7 @@ export function extractPageImage(html, baseUrl = "") {
 
   for (const pattern of patterns) {
     const value = decodeEntities(raw.match(pattern)?.[1] || "").trim();
-    if (!value) continue;
+    if (!value || isBadNewsImage(value)) continue;
     try {
       return new URL(value, baseUrl).href;
     } catch {
@@ -119,7 +119,44 @@ export function extractPageImage(html, baseUrl = "") {
     }
   }
 
+  const jsonLdImage = raw.match(/"image"\s*:\s*(?:"([^"]+)"|\[\s*"([^"]+)")/i);
+  const jsonLdValue = decodeEntities(jsonLdImage?.[1] || jsonLdImage?.[2] || "").trim();
+  if (jsonLdValue && !isBadNewsImage(jsonLdValue)) {
+    try {
+      return new URL(jsonLdValue, baseUrl).href;
+    } catch {
+      return jsonLdValue;
+    }
+  }
+
+  const firstImg = raw.match(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/i);
+  const firstImgValue = decodeEntities(firstImg?.[1] || "").trim();
+  if (firstImgValue && !isBadNewsImage(firstImgValue)) {
+    try {
+      return new URL(firstImgValue, baseUrl).href;
+    } catch {
+      return firstImgValue;
+    }
+  }
+
   return "";
+}
+
+export function isBadNewsImage(url) {
+  const value = String(url || "").toLowerCase();
+  if (!value) return true;
+  return (
+    value.includes("google_news") ||
+    value.includes("googlenews") ||
+    value.includes("news.google.com") ||
+    value.includes("gstatic.com") ||
+    value.includes("googleusercontent.com") ||
+    value.includes("googlelogo") ||
+    value.includes("/logos/") ||
+    value.includes("favicon") ||
+    value.includes("sprite") ||
+    value.includes("placeholder")
+  );
 }
 
 export async function fetchSourceImage(url) {
@@ -155,6 +192,8 @@ export function parseRssItems(xml, sourceUrl) {
     const description = stripHtml(pick("description"));
     const link = stripHtml(pick("link"));
     const pubDate = stripHtml(pick("pubDate"));
+    const sourceName = stripHtml(pick("source"));
+    const publisherUrl = pickAttr("source", "url");
     const imageUrl =
       pickAttr("media:content", "url") ||
       pickAttr("media:thumbnail", "url") ||
@@ -166,7 +205,9 @@ export function parseRssItems(xml, sourceUrl) {
       description,
       link,
       pubDate,
-      imageUrl,
+      imageUrl: isBadNewsImage(imageUrl) ? "" : imageUrl,
+      sourceName,
+      publisherUrl,
       sourceFeed: sourceUrl
     };
   }).filter((item) => item.title && item.link);
