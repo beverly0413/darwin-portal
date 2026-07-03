@@ -14,6 +14,18 @@ import {
 
 const TYPE = "news";
 
+function getFallbackNewsImage(category = "local") {
+  const images = {
+    weather: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    transport: "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=1400&q=80",
+    business: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=80",
+    safety: "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?auto=format&fit=crop&w=1400&q=80",
+    policy: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1400&q=80",
+    local: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80"
+  };
+  return images[category] || images.local;
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -123,6 +135,8 @@ export default async function handler(req, res) {
       const source = candidates.find((candidate) => candidate.link === item.source_url) || candidates.find((candidate) => candidate.title === item.source_title);
       if (!source) continue;
 
+      const category = item.category || "local";
+      const imageUrl = source.imageUrl || getFallbackNewsImage(category);
       const body = buildPlainBody(item, source);
       const title = item.title_zh || item.title || source.title;
       const payload = {
@@ -134,7 +148,10 @@ export default async function handler(req, res) {
         body,
         source_url: source.link,
         source_hash: sourceHash(source.link),
-        category: item.category || "local",
+        category,
+        image_url: imageUrl,
+        cover_image: imageUrl,
+        cover_images: [imageUrl],
         author: "Darwin Life Hub AI",
         published: true,
         ai_generated: true,

@@ -769,11 +769,12 @@ async function loadNews() {
         : row.cover_image
         ? [row.cover_image]
         : [];
-      const imageUrl = row.image_url || row.cover_image || coverImages[0] || null;
       const bodyBlocks = Array.isArray(row.body_blocks) ? row.body_blocks : [];
       const createdText = row.created_at
         ? formatDarwinDate(row.created_at)
         : "时间未知";
+      const category = row.category || "local";
+      const imageUrl = row.image_url || row.cover_image || coverImages[0] || getFallbackNewsImage(category);
 
       const views = Number(row.views || 0);
       const likes = Number(row.likes || 0);
@@ -791,7 +792,7 @@ async function loadNews() {
         createdText,
         sourceUrl: row.source_url || "",
         sourceTitle: row.source_title || row.author || "",
-        category: row.category || "local",
+        category,
         views,
         likes,
         commentsCount,
