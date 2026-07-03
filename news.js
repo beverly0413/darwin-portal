@@ -61,16 +61,13 @@ function formatDarwinDate(value) {
   });
 }
 
-function getFallbackNewsImage(category = "") {
-  const images = {
-    weather: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
-    transport: "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=1400&q=80",
-    business: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=80",
-    safety: "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?auto=format&fit=crop&w=1400&q=80",
-    policy: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1400&q=80",
-    local: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
-  };
-  return images[category] || images.local;
+function isStockFallbackImage(url) {
+  return /images\.unsplash\.com/i.test(String(url || ""));
+}
+
+function sourceImageOnly(url) {
+  const value = String(url || "").trim();
+  return value && !isStockFallbackImage(value) ? value : null;
 }
 
 function isHtmlContent(text) {
@@ -471,8 +468,8 @@ function openModal(item) {
 
   const heroImage =
     Array.isArray(item.coverImages) && item.coverImages.length
-      ? item.coverImages[0]
-      : item.imageUrl || getFallbackNewsImage(item.category);
+      ? sourceImageOnly(item.coverImages[0])
+      : sourceImageOnly(item.imageUrl);
 
   if (heroImage) {
     modalHero.style.display = "block";
@@ -774,7 +771,7 @@ async function loadNews() {
         ? formatDarwinDate(row.created_at)
         : "时间未知";
       const category = row.category || "local";
-      const imageUrl = row.image_url || row.cover_image || coverImages[0] || getFallbackNewsImage(category);
+      const imageUrl = sourceImageOnly(row.image_url || row.cover_image || coverImages[0]);
 
       const views = Number(row.views || 0);
       const likes = Number(row.likes || 0);

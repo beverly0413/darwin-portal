@@ -100,6 +100,38 @@ export async function fetchText(url) {
   return response.text();
 }
 
+export function extractPageImage(html, baseUrl = "") {
+  const raw = String(html || "");
+  const patterns = [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["'][^>]*>/i,
+    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["'][^>]*>/i
+  ];
+
+  for (const pattern of patterns) {
+    const value = decodeEntities(raw.match(pattern)?.[1] || "").trim();
+    if (!value) continue;
+    try {
+      return new URL(value, baseUrl).href;
+    } catch {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+export async function fetchSourceImage(url) {
+  if (!url) return "";
+  try {
+    return extractPageImage(await fetchText(url), url);
+  } catch (error) {
+    console.error("source image lookup failed", error);
+    return "";
+  }
+}
+
 export function parseRssItems(xml, sourceUrl) {
   const itemBlocks = [...String(xml || "").matchAll(/<item\b[\s\S]*?<\/item>/gi)].map((m) => m[0]);
   return itemBlocks.map((block) => {
