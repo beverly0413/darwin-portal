@@ -77,6 +77,21 @@ function isHtmlContent(text) {
   return /<([a-z][a-z0-9]*)\b[^>]*>/i.test(String(text || ""));
 }
 
+function isSourceOnlyText(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return false;
+  return /^(来源|source)\s*[:：]\s*https?:\/\//i.test(clean) || /^https?:\/\/news\.google\.com\/rss\/articles\//i.test(clean);
+}
+
+function removeSourceOnlyElements(root) {
+  root.querySelectorAll(".article-source-box").forEach((el) => el.remove());
+  root.querySelectorAll("p, div, section").forEach((el) => {
+    if (el.children.length === 0 && isSourceOnlyText(el.textContent)) {
+      el.remove();
+    }
+  });
+}
+
 function isLikelySubheading(text) {
   if (!text) return false;
   const clean = text.trim();
@@ -185,6 +200,7 @@ function buildLegacyBlocks(item) {
       }
 
       paragraphs.forEach((text) => {
+        if (isSourceOnlyText(text)) return;
         blocks.push({ type: "paragraph", text });
       });
     }
@@ -204,6 +220,7 @@ function renderArticleBody(item) {
   if (item.htmlBody && item.htmlBody.trim()) {
     const wrapper = document.createElement("div");
     wrapper.innerHTML = item.htmlBody;
+    removeSourceOnlyElements(wrapper);
 
     const paragraphs = wrapper.querySelectorAll("p");
     paragraphs.forEach((p, index) => {
@@ -252,6 +269,7 @@ function renderArticleBody(item) {
     if (block.type === "html" && block.html) {
       const wrapper = document.createElement("div");
       wrapper.innerHTML = block.html;
+      removeSourceOnlyElements(wrapper);
 
       wrapper.querySelectorAll("p").forEach((p) => {
         p.classList.add("article-paragraph");
@@ -294,6 +312,7 @@ function renderArticleBody(item) {
     if (block.type === "paragraph") {
       const text = (block.text || "").trim();
       if (!text) return;
+      if (isSourceOnlyText(text)) return;
 
       if (/^[-—–]{3,}$/.test(text) || /^_{3,}$/.test(text) || /^={3,}$/.test(text)) {
         renderDivider();
@@ -503,19 +522,16 @@ if (likeBtn) {
 }
 
 async function loadNewsComments(newsId) {
-  if (!commentsList || !commentsInfo || !supabaseClient) return;
+  if (!commentsList || !commentsInfo) return;
 
   commentsList.innerHTML = "<p>评论加载中...</p>";
   commentsInfo.textContent = "";
 
   try {
-    const { data, error } = await supabaseClient
-      .from("news_comments")
-      .select("*")
-      .eq("news_id", newsId)
-      .order("created_at", { ascending: true });
-
-    if (error) throw error;
+    const response = await fetch(`/api/news-comment?news_id=${encodeURIComponent(newsId)}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Comment load failed");
+    const data = payload.data || [];
 
     if (!data || data.length === 0) {
       commentsList.innerHTML =
@@ -578,12 +594,6 @@ async function submitNewsComment() {
     return;
   }
 
-  if (!supabaseClient) {
-    commentStatus.textContent = "系统未初始化，请刷新页面后重试。";
-    commentStatus.style.color = "red";
-    return;
-  }
-
   const content = commentContentInput.value.trim();
   const name = "匿名";
 
@@ -598,22 +608,23 @@ async function submitNewsComment() {
   commentStatus.style.color = "#6b7280";
 
   try {
-    const { error } = await supabaseClient.from("news_comments").insert([
-      {
+    const response = await fetch("/api/news-comment", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
         news_id: currentNewsId,
         content,
         name,
-      },
-    ]);
-
-    if (error) throw error;
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Comment submit failed");
 
     const current = newsItems.find((n) => String(n.id) === String(currentNewsId));
     if (current) {
-      current.commentsCount = Number(current.commentsCount || 0) + 1;
+      current.commentsCount = Number(payload.count ?? current.commentsCount ?? 0);
       modalCommentsCount.textContent = current.commentsCount;
       refreshListStats(currentNewsId);
-      updateNewsCommentsCount(currentNewsId, current.commentsCount);
     }
 
     commentContentInput.value = "";
@@ -623,7 +634,7 @@ async function submitNewsComment() {
     await loadNewsComments(currentNewsId);
   } catch (err) {
     console.error("发表评论失败：", err);
-    commentStatus.textContent = "发表评论失败，请先确认新闻评论 SQL 已执行，并检查 Supabase 权限。";
+    commentStatus.textContent = "发表评论失败，请确认 Vercel 已配置 SUPABASE_SERVICE_ROLE_KEY，并已执行新闻评论 SQL。";
     commentStatus.style.color = "red";
   } finally {
     commentSubmitBtn.disabled = false;
