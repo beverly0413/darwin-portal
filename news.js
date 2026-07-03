@@ -427,6 +427,7 @@ function openModal(item) {
   }
 
   modalEl.classList.add("show");
+  modalEl.querySelector(".modal-dialog")?.scrollTo({ top: 0 });
   document.body.style.overflow = "hidden";
 }
 

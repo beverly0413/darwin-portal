@@ -736,6 +736,36 @@
     }
   </style>
   <link rel="stylesheet" href="portal.css">
+  <style>
+    .modal {
+      z-index: 1000;
+      padding-top: max(18px, env(safe-area-inset-top));
+      padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+
+    .modal-dialog {
+      margin-top: 0;
+      margin-bottom: 0;
+      max-height: calc(100vh - max(36px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 36px)));
+    }
+
+    .modal-close {
+      z-index: 1001;
+    }
+
+    @media (max-width: 560px) {
+      .modal {
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+
+      .modal-dialog {
+        margin-top: 0;
+        margin-bottom: 0;
+        max-height: calc(100vh - max(24px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px)));
+      }
+    }
+  </style>
 </head>
 
 <body>
