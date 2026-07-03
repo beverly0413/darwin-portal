@@ -11,6 +11,7 @@ const modalBackdrop = document.getElementById("modalBackdrop");
 const modalClose = document.getElementById("modalClose");
 const modalTitle = document.getElementById("modalTitle");
 const modalMeta = document.getElementById("modalMeta");
+const modalSource = document.getElementById("modalSource");
 const modalLead = document.getElementById("modalLead");
 const modalHero = document.getElementById("modalHero");
 const modalHeroImage = document.getElementById("modalHeroImage");
@@ -47,6 +48,29 @@ function escapeHtml(text) {
 
 function normalizeNewlines(text) {
   return String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function formatDarwinDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("en-AU", {
+    timeZone: "Australia/Darwin",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getFallbackNewsImage(category = "") {
+  const images = {
+    weather: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    transport: "https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=1400&q=80",
+    business: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=80",
+    safety: "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?auto=format&fit=crop&w=1400&q=80",
+    policy: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1400&q=80",
+    local: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+  };
+  return images[category] || images.local;
 }
 
 function isHtmlContent(text) {
@@ -393,11 +417,34 @@ async function increaseLike(newsId) {
   }
 }
 
+async function updateNewsCommentsCount(newsId, nextCount) {
+  if (!newsId || !supabaseClient) return false;
+
+  try {
+    const { error } = await supabaseClient
+      .from("news")
+      .update({ comments_count: nextCount })
+      .eq("id", newsId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("update news comments_count fail", err);
+    return false;
+  }
+}
+
 function openModal(item) {
   currentNewsId = item.id || null;
 
   modalTitle.textContent = item.title || "";
   modalMeta.textContent = item.createdText || item.meta || "";
+  if (modalSource) {
+    const sourceLabel = item.sourceTitle || item.sourceUrl || "";
+    modalSource.innerHTML = item.sourceUrl
+      ? `<span>Source / 来源：<a href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(sourceLabel)}</a></span>`
+      : "";
+  }
   modalLead.textContent = item.summary || "";
   modalViews.textContent = item.views || 0;
   modalLikes.textContent = item.likes || 0;
@@ -406,7 +453,7 @@ function openModal(item) {
   const heroImage =
     Array.isArray(item.coverImages) && item.coverImages.length
       ? item.coverImages[0]
-      : item.imageUrl || null;
+      : item.imageUrl || getFallbackNewsImage(item.category);
 
   if (heroImage) {
     modalHero.style.display = "block";
@@ -475,6 +522,11 @@ async function loadNewsComments(newsId) {
         '<p style="font-size:13px;color:#9c9387;">还没有评论，欢迎第一个留言。</p>';
       commentsInfo.textContent = "";
       modalCommentsCount.textContent = "0";
+      const current = newsItems.find((n) => String(n.id) === String(newsId));
+      if (current) {
+        current.commentsCount = 0;
+        refreshListStats(newsId);
+      }
       return;
     }
 
@@ -561,6 +613,7 @@ async function submitNewsComment() {
       current.commentsCount = Number(current.commentsCount || 0) + 1;
       modalCommentsCount.textContent = current.commentsCount;
       refreshListStats(currentNewsId);
+      updateNewsCommentsCount(currentNewsId, current.commentsCount);
     }
 
     commentContentInput.value = "";
@@ -570,7 +623,7 @@ async function submitNewsComment() {
     await loadNewsComments(currentNewsId);
   } catch (err) {
     console.error("发表评论失败：", err);
-    commentStatus.textContent = "发表评论失败，请稍后重试。";
+    commentStatus.textContent = "发表评论失败，请先确认新闻评论 SQL 已执行，并检查 Supabase 权限。";
     commentStatus.style.color = "red";
   } finally {
     commentSubmitBtn.disabled = false;
@@ -708,7 +761,7 @@ async function loadNews() {
       const imageUrl = row.image_url || row.cover_image || coverImages[0] || null;
       const bodyBlocks = Array.isArray(row.body_blocks) ? row.body_blocks : [];
       const createdText = row.created_at
-        ? new Date(row.created_at).toLocaleString()
+        ? formatDarwinDate(row.created_at)
         : "时间未知";
 
       const views = Number(row.views || 0);
@@ -725,6 +778,9 @@ async function loadNews() {
         imageUrl,
         bodyBlocks,
         createdText,
+        sourceUrl: row.source_url || "",
+        sourceTitle: row.source_title || row.author || "",
+        category: row.category || "local",
         views,
         likes,
         commentsCount,

@@ -367,6 +367,22 @@
       letter-spacing: 0.02em;
     }
 
+    .article-source {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin: -4px 0 16px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #475467;
+    }
+
+    .article-source a {
+      color: var(--primary-dark);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     .article-stats-bar {
       display: flex;
       flex-wrap: wrap;
@@ -429,6 +445,55 @@
       line-height: 1.95;
       color: #1c1c1c;
       word-break: break-word;
+    }
+
+    .article-source-box {
+      margin: 0 0 26px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--primary);
+      background: #f3fbfa;
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.8;
+      color: #344054;
+    }
+
+    .article-source-box a {
+      color: var(--primary-dark);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .bilingual-news {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .bilingual-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 22px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .bilingual-pair .article-subheading {
+      grid-column: 1 / -1;
+      margin: 0 0 -2px;
+    }
+
+    .bilingual-pair .article-paragraph {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.85;
+    }
+
+    .bilingual-pair .article-paragraph.en {
+      font-family: var(--sans);
+      color: #344054;
+      font-size: 17px;
+      line-height: 1.75;
     }
 
     .article-paragraph {
@@ -671,6 +736,11 @@
         line-height: 1.9;
       }
 
+      .bilingual-pair {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
       .article-paragraph.article-first-paragraph {
         font-size: 21px;
       }
@@ -812,6 +882,7 @@
           <div class="article-accent"></div>
           <h2 id="modalTitle" class="modal-title"></h2>
           <div id="modalMeta" class="modal-meta"></div>
+          <div id="modalSource" class="article-source"></div>
 
           <div class="article-stats-bar">
             <span class="article-stat">👁 阅读 <strong id="modalViews">0</strong></span>
