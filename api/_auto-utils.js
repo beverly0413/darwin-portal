@@ -107,17 +107,27 @@ export function parseRssItems(xml, sourceUrl) {
       const match = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
       return decodeEntities(match?.[1] || "");
     };
+    const pickAttr = (tag, attr) => {
+      const match = block.match(new RegExp(`<${tag}[^>]*\\s${attr}=["']([^"']+)["'][^>]*>`, "i"));
+      return decodeEntities(match?.[1] || "");
+    };
 
     const title = stripHtml(pick("title"));
     const description = stripHtml(pick("description"));
     const link = stripHtml(pick("link"));
     const pubDate = stripHtml(pick("pubDate"));
+    const imageUrl =
+      pickAttr("media:content", "url") ||
+      pickAttr("media:thumbnail", "url") ||
+      pickAttr("enclosure", "url") ||
+      (pick("description").match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] || "");
 
     return {
       title,
       description,
       link,
       pubDate,
+      imageUrl,
       sourceFeed: sourceUrl
     };
   }).filter((item) => item.title && item.link);
