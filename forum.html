@@ -2,14 +2,14 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>Darwin Life Hub · 广场吐槽</title>
+  <title>Darwin Life Hub · 北领地社区讨论</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Darwin Life Hub · 达尔文广场吐槽">
-  <meta property="og:description" content="随手发一句、吐槽一下、分享生活碎片，达尔文本地轻松交流广场。">
+  <meta property="og:title" content="Darwin Life Hub · 北领地社区讨论">
+  <meta property="og:description" content="北领地社区讨论：生活问答、出行经验、邻里互助和本地信息交流。">
   <meta property="og:image" content="https://darwinbbs.com/darwin-logo.png">
   <meta property="og:url" content="https://darwinbbs.com/forum.html">
-  <meta name="description" content="达尔文广场吐槽区，支持随手发布文字和图片，记录生活、吐槽日常、分享瞬间。">
+  <meta name="description" content="北领地社区讨论区，真实用户登录后发布话题与评论，分享生活经验、出行信息和互助需求。">
 
   <style>
     :root {
@@ -135,7 +135,7 @@
       box-shadow:0 6px 16px rgba(15,23,42,0.06);
       font-size:14px;
     }
-    .post-card h3{display:none;}
+    .post-card h3{margin-bottom:8px;}
 
     .fab{
       position:fixed; right:18px; bottom:18px;
@@ -225,6 +225,29 @@
       font-weight:600;
     }
 
+    button:disabled{opacity:.65;cursor:wait;}
+    :focus-visible{outline:3px solid #166534;outline-offset:3px;}
+    .forum-post-title{padding:0;border-radius:3px;background:none;color:#166534;text-align:left;font-size:17px;font-weight:700;overflow-wrap:anywhere;}
+    .forum-post-title:hover{background:none;text-decoration:underline;}
+    .forum-text{white-space:pre-wrap;line-height:1.75;overflow-wrap:anywhere;}
+    .forum-meta{font-size:12px;color:#64748b;margin:8px 0;}
+    .forum-help{font-size:13px;color:#475569;line-height:1.7;margin:8px 0;}
+    .forum-help a,.forum-login-link,.forum-detail-photos a{color:#166534;text-decoration:underline;}
+    .forum-login-link{display:inline-block;margin:10px;font-size:13px;}
+    .forum-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:1000;}
+    .forum-dialog{position:relative;max-width:800px;width:92%;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 20px 45px rgba(15,23,42,.25);}
+    .forum-dialog h2{padding-right:32px;font-size:21px;overflow-wrap:anywhere;}
+    .forum-close{position:absolute;right:10px;top:6px;background:transparent;color:#334155;padding:4px 10px;font-size:26px;}
+    .forum-close:hover{background:#e8f5ec;}
+    .forum-comments{border-top:1px solid #d1e5d4;margin-top:20px;padding-top:16px;}
+    .forum-comments label{margin-top:16px;}
+    .forum-comment{padding:8px 0;border-bottom:1px dashed #d1e5d4;}
+    .forum-detail-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:16px;}
+    .forum-detail-photos img{display:block;width:100%;border-radius:8px;}
+    .forum-detail-photos a{display:inline-block;font-size:12px;margin:6px 10px 0 0;}
+    .preview-remove{padding:0;}
+    [hidden]{display:none !important;}
+
     @media (max-width: 700px) {
       .biu-editor-row {
         flex-direction:column;
@@ -244,11 +267,11 @@
   <div class="nav-inner">
     <div class="brand">
       <div class="brand-logo">
-        <img src="darwin-logo.png" />
+        <img src="darwin-logo.png" alt="Darwin Life Hub" />
       </div>
       <div>
         <div class="brand-text-main">Darwin Life Hub</div>
-        <div class="brand-text-sub">达尔文华人生活门户 · 广场</div>
+        <div class="brand-text-sub">达尔文华人生活门户 · 社区</div>
       </div>
     </div>
 
@@ -258,7 +281,7 @@
       <a href="jobs.html">工作</a>
       <a href="cv.html">Marketplace</a>
       <a href="rent.html">租房</a>
-      <a href="forum.html" class="active">广场</a>
+      <a href="forum.html" class="active" aria-current="page">社区</a>
       <a href="my.html">我的</a>
       <a href="about.html">关于</a>
     </nav>
@@ -267,49 +290,62 @@
 
 <div class="shell">
   <main>
-<div class="page-title">匿名吐槽</div>
-<div class="page-subtitle">随心吐槽，前台不会显示是谁发的。每人每天最多可以发 3 条。</div>
+<h1 class="page-title">北领地社区讨论</h1>
+<p class="page-subtitle">生活问答、出行经验、邻里互助和本地见闻。阅读无需登录，登录后可发帖与评论。</p>
 
     <div class="layout">
 
       <section class="card" id="forumFormSection">
-        <div class="section-title">Biu一下</div>
+        <h2 class="section-title">发起讨论</h2>
 
         <form id="forumForm">
+<label for="forumTitle">话题标题（必填，最多 80 字）</label>
+<input id="forumTitle" name="title" type="text" maxlength="80" required placeholder="例如：刚搬到 Katherine，有哪些生活经验可以分享？" />
+<label for="content">正文（必填，最多 5000 字）</label>
 <div class="biu-editor-row" style="margin-top:10px;">
-  <textarea id="content" placeholder="这一刻想吐槽点什么？"></textarea>
+  <textarea id="content" name="content" maxlength="5000" required placeholder="写清地点、时间、你的问题或经验；引用信息时附上来源"></textarea>
 
   <div class="biu-side">
-    <button type="submit" class="biu-btn">Biu一下</button>
-    <div id="forumStatus" style="font-size:13px;color:#6b7280;"></div>
+    <button type="submit" class="biu-btn">发布讨论</button>
+    <div id="forumStatus" role="status" aria-live="polite" style="font-size:13px;color:#6b7280;"></div>
   </div>
 </div>
 
 <div class="biu-form-bottom" style="margin-top:10px;">
-  <label for="forumImages">配图（可选，最多 5 张）</label>
-  <input id="forumImages" type="file" multiple />
+  <label for="forumImages">配图（可选，最多 5 张，每张 5MB 内）</label>
+  <input id="forumImages" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp" multiple />
 </div>
 
 <div id="forumPreview" class="forum-photos"></div>
 <button type="button" id="forumClearImages" class="clear-images-btn">清空图片</button>
+<p class="forum-help">请先阅读 <a href="community-guidelines.html" target="_blank" rel="noopener noreferrer">社区交流与隐私提醒</a>。帖子正文与图片公开展示，请勿上传证件、住址或他人隐私。</p>
+<p class="forum-help">帖子列表不展示作者资料，但这不代表匿名服务；评论可能显示昵称。当前表单每日最多提交 3 条（达尔文时间）。</p>
+<a class="forum-login-link" href="login.html" target="_blank" rel="noopener noreferrer">登录 / 注册（新窗口）</a>
         </form>
       </section>
 
       <section class="card">
-        <div class="section-title">广场动态</div>
-        <div id="posts" class="posts-empty">暂时还没有内容</div>
+        <h2 class="section-title">社区话题</h2>
+        <label for="forumSearch">搜索话题标题与正文</label>
+        <input id="forumSearch" type="search" maxlength="200" placeholder="例如：Darwin、Alice Springs、交通、生活经验" aria-describedby="forumSearchHelp" />
+        <p id="forumSearchHelp" class="forum-help">搜索已加载的公开讨论，不含评论；多个关键词用空格分隔。时间均为达尔文时间。</p>
+        <p id="forumListStatus" role="status" aria-live="polite" class="forum-help">正在加载社区讨论…</p>
+        <button id="forumRetry" type="button" hidden>重试</button>
+        <div id="posts"></div>
+        <noscript><p>需要启用 JavaScript 才能读取社区讨论。这里不会显示模拟帖子。</p></noscript>
       </section>
 
     </div>
   </main>
 </div>
 
-<button class="fab" id="fabForum">+</button>
+<button class="fab" id="fabForum" type="button" aria-label="跳转到发起讨论">+</button>
 
 <script>
 document.getElementById("fabForum").addEventListener("click", () => {
   document.getElementById("forumFormSection")
     .scrollIntoView({ behavior: "smooth" });
+  document.getElementById("forumTitle").focus({ preventScroll: true });
 });
 </script>
 
