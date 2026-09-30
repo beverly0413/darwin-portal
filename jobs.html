@@ -425,9 +425,11 @@
       <section class="card">
         <div class="page-header" style="text-align:left;margin-bottom:12px;">
           <h1>招聘信息 · Jobs</h1>
-          <p>发布您的招聘需求</p>
+          <p>本地招聘与社区发布。自动采集职位按来源发布日期展示，申请前请到原始页面确认。</p>
         </div>
 
+        <p id="jobsListStatus" role="status" aria-live="polite">正在加载招聘信息...</p>
+        <button id="jobsRetry" class="ghost-btn" type="button" style="margin-top:8px;">刷新招聘</button>
         <div id="jobList"></div>
 
         <div class="form-section" id="jobFormSection">
@@ -468,3 +470,4 @@
   </script>
 </body>
 </html>
+

@@ -6,6 +6,81 @@ const MAX_IMAGES = 5;
 let jobImagesList = [];
 let allJobsCache = [];
 let currentJobDetailId = null;
+let jobsRequestId = 0;
+const JOB_METADATA_PREFIX = "<!--darwinbbs:metadata ";
+const JOB_MAX_SOURCE_AGE = 30 * 24 * 60 * 60 * 1000;
+const JOB_MAX_VERIFICATION_AGE = 36 * 60 * 60 * 1000;
+
+function safeJobSourceUrl(value) {
+  if (typeof value !== "string" || /[\u0000-\u001f\u007f]/.test(value)) return "";
+  try {
+    const url = new URL(value.trim());
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password
+      ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function jobMetadataTimestamp(value) {
+  if (typeof value !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+  const dateOnly = new Date(`${value.slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(dateOnly.getTime()) || dateOnly.toISOString().slice(0, 10) !== value.slice(0, 10)) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function parseJobMetadata(content) {
+  const text = typeof content === "string" ? content : "";
+  if (!text.startsWith(JOB_METADATA_PREFIX)) return { marked: false, text, metadata: null };
+  const end = text.indexOf(" -->", JOB_METADATA_PREFIX.length);
+  const result = { marked: true, text: end < 0 ? "" : text.slice(end + 4).trimStart(), metadata: null };
+  if (end < 0) return result;
+  try {
+    const data = JSON.parse(text.slice(JOB_METADATA_PREFIX.length, end));
+    if (!data || data.version !== 1 || data.type !== "jobs" ||
+        jobMetadataTimestamp(data.sourcePublishedAt) === null ||
+        jobMetadataTimestamp(data.verifiedAt) === null || !safeJobSourceUrl(data.sourceUrl) ||
+        (data.expiresAt !== null && jobMetadataTimestamp(data.expiresAt) === null)) return result;
+    result.metadata = data;
+  } catch {
+    // Invalid metadata must not make an imported vacancy appear current.
+  }
+  return result;
+}
+
+function normalizeJobForDisplay(job, now = Date.now()) {
+  const parsed = parseJobMetadata(job.content);
+  if (parsed.marked && !parsed.metadata) return null;
+  // Old AI imports were hiring-news summaries, not verified vacancies.
+  // Keep the stored records, but do not present them as community recruitment posts.
+  if (job.ai_generated === true && !parsed.metadata) return null;
+  const metadata = parsed.metadata;
+  if (metadata) {
+    const publishedAt = jobMetadataTimestamp(metadata.sourcePublishedAt);
+    const verifiedAt = jobMetadataTimestamp(metadata.verifiedAt);
+    const expiresAt = metadata.expiresAt === null ? null : jobMetadataTimestamp(metadata.expiresAt);
+    if (publishedAt > now || now - publishedAt > JOB_MAX_SOURCE_AGE ||
+        verifiedAt > now + 5 * 60 * 1000 || now - verifiedAt > JOB_MAX_VERIFICATION_AGE ||
+        (expiresAt !== null && expiresAt <= now)) return null;
+  }
+  return {
+    ...job,
+    content: parsed.text,
+    sourceMetadata: metadata,
+    views: job.views || 0,
+    likes: job.likes || 0,
+    comments_count: job.comments_count || 0,
+  };
+}
+
+function jobDateLabel(job, short = false) {
+  const metadata = job.sourceMetadata;
+  const date = formatDate(metadata ? metadata.sourcePublishedAt : job.created_at);
+  const label = metadata ? "来源发布于" : "社区帖子发布于";
+  return date ? `${label}：${short ? date.slice(0, 10) : date}（达尔文时间）` : "社区帖子发布日期未提供";
+}
 
 function ensureSupabase() {
   if (!window.supabaseClient) {
@@ -20,12 +95,12 @@ function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Australia/Darwin", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(d);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}`;
 }
 
 function jobFilesToBase64(files) {
@@ -328,8 +403,7 @@ function showJobDetail(job) {
   metaEl.style.fontSize = "13px";
   metaEl.style.color = "#6b7280";
   metaEl.style.marginBottom = "6px";
-  const dateStr = formatDate(job.created_at);
-  metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
+  metaEl.textContent = jobDateLabel(job);
 
   const statsBar = document.createElement("div");
   statsBar.className = "job-detail-stats";
@@ -355,6 +429,23 @@ function showJobDetail(job) {
     infoHtml += `<p style="margin-top:10px;white-space:pre-wrap;">${escapeHtml(job.content)}</p>`;
   }
   infoEl.innerHTML = infoHtml || "<p>暂无详细描述。</p>";
+  const sourceUrl = safeJobSourceUrl(job.sourceMetadata?.sourceUrl);
+  if (sourceUrl) {
+    const sourceLink = document.createElement("a");
+    sourceLink.href = sourceUrl;
+    sourceLink.target = "_blank";
+    sourceLink.rel = "noopener noreferrer";
+    sourceLink.textContent = "查看原始职位及申请方式 ↗";
+    sourceLink.style.color = "#087b77";
+    infoEl.appendChild(sourceLink);
+    const note = document.createElement("p");
+    note.textContent = "职位可能随时关闭，请以招聘方页面为准。";
+    infoEl.appendChild(note);
+  } else if (!job.sourceMetadata) {
+    const note = document.createElement("p");
+    note.textContent = "社区发布；招聘状态未核实，请联系发布者确认。";
+    infoEl.appendChild(note);
+  }
 
   const imagesWrapper = document.createElement("div");
   if (Array.isArray(job.images) && job.images.length > 0) {
@@ -530,36 +621,47 @@ async function loadJobs() {
   const listEl = document.getElementById("jobList");
   if (!listEl) return;
 
-  listEl.innerHTML = "加载中...";
+  const requestId = ++jobsRequestId;
+  const retry = document.getElementById("jobsRetry");
+  const status = document.getElementById("jobsListStatus");
+  allJobsCache = [];
+  listEl.innerHTML = "";
+  listEl.setAttribute("aria-busy", "true");
+  if (status) status.textContent = "正在加载招聘信息...";
+  if (retry) retry.disabled = true;
 
-  if (!ensureSupabase()) {
-    listEl.textContent = "系统配置错误，无法加载数据。";
-    return;
-  }
-
-  const { data, error } = await supabaseClient
-    .from("jobs_posts")
-    .select("id, title, company, contact, content, images, created_at, views, likes, comments_count")
-    .order("created_at", { ascending: false });
-
-  if (error) {
+  let rows;
+  try {
+    if (!window.supabaseClient) throw new Error("招聘数据服务尚未连接");
+    const { data, error } = await window.supabaseClient
+      .from("jobs_posts")
+      .select("id, title, company, contact, content, images, created_at, views, likes, comments_count, ai_generated, source_url")
+      .order("created_at", { ascending: false });
+    if (requestId !== jobsRequestId) return;
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error("招聘数据返回格式错误");
+    rows = data;
+  } catch (error) {
+    if (requestId !== jobsRequestId) return;
     console.error("加载招聘信息失败：", error);
-    listEl.textContent = "加载失败，请稍后再试。";
+    if (status) status.textContent = "招聘信息暂时无法加载，请点击重试。当前无法确认是否有新职位。";
+    else listEl.textContent = "招聘信息暂时无法加载，请稍后重试。";
+    listEl.setAttribute("aria-busy", "false");
+    if (retry) { retry.disabled = false; retry.textContent = "重试"; }
     return;
   }
 
-  if (!data || data.length === 0) {
-    listEl.innerHTML =
-      '<p style="color:#6b7280;font-size:13px;">目前还没有招聘信息，欢迎发布第一条。</p>';
+  const now = Date.now();
+  allJobsCache = rows.map((job) => normalizeJobForDisplay(job, now)).filter(Boolean);
+  listEl.setAttribute("aria-busy", "false");
+  if (retry) { retry.disabled = false; retry.textContent = "刷新招聘"; }
+  if (!allJobsCache.length) {
+    if (status) status.textContent = rows.length
+      ? "暂无可展示的招聘信息。已过期、来源状态未及时更新或未经核实的旧自动采集内容不会展示。"
+      : "目前还没有招聘信息，欢迎发布第一条。";
     return;
   }
-
-  allJobsCache = data.map((job) => ({
-    ...job,
-    views: job.views || 0,
-    likes: job.likes || 0,
-    comments_count: job.comments_count || 0,
-  }));
+  if (status) status.textContent = `当前显示 ${allJobsCache.length} 条招聘信息。自动采集职位显示来源发布日期；社区帖子请向发布者确认是否仍在招聘。`;
 
   listEl.innerHTML = "";
 
@@ -568,8 +670,7 @@ async function loadJobs() {
     div.className = "job-card";
     div.dataset.id = job.id;
 
-    const createdAt = job.created_at ? new Date(job.created_at) : new Date();
-    const dateStr = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
+    const dateStr = jobDateLabel(job, true);
 
     let imagesHtml = "";
     if (Array.isArray(job.images) && job.images.length > 0) {
@@ -605,7 +706,8 @@ async function loadJobs() {
       ${imagesHtml}
       <div class="job-meta-row">
         <div class="job-meta-left">
-          <small style="font-size:12px;color:#6b7280;">发布于：${dateStr}</small>
+          <small style="font-size:12px;color:#6b7280;">${escapeHtml(dateStr)}</small>
+          ${!job.sourceMetadata ? '<small style="font-size:12px;color:#6b7280;">招聘状态待确认</small>' : ""}
           <div class="job-stats">
             <span class="job-stat">👁 <span class="job-stat-views">${job.views || 0}</span></span>
             <span class="job-stat">👍 <span class="job-stat-likes">${job.likes || 0}</span></span>
@@ -824,6 +926,8 @@ document.addEventListener("click", (e) => {
 /* ============= 初始化 ============= */
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("jobsRetry")?.addEventListener("click", loadJobs);
   loadJobs();
   setupJobForm();
 });
+
