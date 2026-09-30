@@ -32,22 +32,17 @@ export function getSupabaseAdmin() {
   });
 }
 
-export function requireAutomationAuth(req) {
-  const userAgent = String(req.headers["user-agent"] || "").toLowerCase();
-  if (req.headers["x-vercel-cron"] || userAgent.includes("vercel-cron")) {
-    return true;
-  }
-
-  const configuredKey = process.env.AUTO_POST_KEY || process.env.CRON_SECRET || "";
-  if (!configuredKey) return true;
-
-  const headerKey = req.headers["x-auto-post-key"];
-  const auth = req.headers.authorization || "";
-  const queryKey = req.query?.key;
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-
-  if ([headerKey, queryKey, bearer].includes(configuredKey)) return true;
-
+export function requireAutomationAuth(req, env = process.env) {
+  // A client-controlled user agent/header does not prove that Vercel sent a request.
+  const secrets = [env.CRON_SECRET, env.AUTO_POST_KEY].filter(value => typeof value === "string" && value.length > 0);
+  if (!secrets.length) throw Object.assign(new Error("Automation authentication is not configured"), { statusCode: 503 });
+  const auth = req.headers?.authorization || "";
+  const presented = [req.headers?.["x-auto-post-key"], typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice(7) : ""].filter(value => typeof value === "string" && value.length > 0);
+  const matches = presented.some(value => secrets.some(secret => {
+    const a = Buffer.from(value), b = Buffer.from(secret);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }));
+  if (matches) return true;
   throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
 }
 

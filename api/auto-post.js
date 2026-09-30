@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   const key = req.headers["x-auto-post-key"];
 
-  if (key !== process.env.AUTO_POST_KEY) {
+  if (!process.env.AUTO_POST_KEY || !key || key !== process.env.AUTO_POST_KEY) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

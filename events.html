@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>达尔文活动 · Darwin Life Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="达尔文本周活动、市集、音乐、亲子、免费活动和夜生活。">
+  <meta name="description" content="达尔文活动信息：市集、音乐、亲子、免费活动和夜生活。日期与详情请查看活动来源。">
   <link rel="stylesheet" href="portal.css">
 </head>
 <body>
@@ -32,8 +32,8 @@
     <div class="page-title">
       <div>
         <span class="eyebrow" style="background:#e8f7f6;color:var(--teal-dark);">Events around Darwin</span>
-        <h1>全网活动事项</h1>
-        <p>市集、音乐、亲子、免费活动、夜生活和社区活动，整理给真正住在达尔文的人。</p>
+        <h1>达尔文活动</h1>
+        <p>市集、音乐、亲子和社区活动。日期按达尔文时间显示，出发前请查看来源确认安排。</p>
       </div>
       <a class="primary-btn" href="mailto:hello@darwinbbs.com?subject=提交达尔文活动">提交活动</a>
     </div>
@@ -44,20 +44,21 @@
     </div>
 
     <div class="filter-bar" id="eventFilters">
-      <button class="active" type="button" data-filter="all">全部</button>
-      <button type="button" data-filter="free">免费</button>
-      <button type="button" data-filter="family">亲子</button>
-      <button type="button" data-filter="market">市集</button>
-      <button type="button" data-filter="music">音乐</button>
-      <button type="button" data-filter="nightlife">夜生活</button>
+      <button class="active" type="button" data-filter="all" aria-pressed="true">全部</button>
+      <button type="button" data-filter="free" aria-pressed="false">免费</button>
+      <button type="button" data-filter="family" aria-pressed="false">亲子</button>
+      <button type="button" data-filter="market" aria-pressed="false">市集</button>
+      <button type="button" data-filter="music" aria-pressed="false">音乐</button>
+      <button type="button" data-filter="nightlife" aria-pressed="false">夜生活</button>
     </div>
 
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>近期推荐</h2>
-          <p id="eventsStatus">正在加载活动...</p>
+          <h2>活动信息</h2>
+          <p id="eventsStatus" role="status" aria-live="polite">正在加载活动...</p>
         </div>
+        <button id="eventsRetry" class="ghost-btn" type="button" hidden>重试</button>
       </div>
       <div id="eventsGrid" class="content-grid"></div>
     </section>
@@ -68,3 +69,4 @@
   <script src="events.js"></script>
 </body>
 </html>
+

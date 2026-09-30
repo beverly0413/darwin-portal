@@ -893,7 +893,7 @@ async function loadNews() {
         imgWrap.appendChild(img);
         itemEl.appendChild(imgWrap);
       } else if (itemData.sourceUrl) {
-        backfillNewsImage(itemData, itemEl);
+        // Do not fetch/copy publisher images or mutate news while a visitor reads.
       }
 
       itemEl.addEventListener("click", () => {

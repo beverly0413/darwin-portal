@@ -1,582 +1,435 @@
-// forum.js —— Supabase 广场吐槽：列表 + 详情弹窗（大图/保存）+ 评论
-// 帖子表：forum_posts
-// 评论表：forum_comments
-
+// 真实社区讨论：沿用 forum_posts / forum_comments；不创建用户或模拟互动。
 const FORUM_MAX_IMAGES = 5;
+const FORUM_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const FORUM_MAX_TITLE = 80;
+const FORUM_MAX_CONTENT = 5000;
+const FORUM_MAX_COMMENT = 1000;
+const FORUM_PAGE_SIZE = 100;
 let forumImagesList = [];
+let forumPosts = [];
+let forumSearchTerm = "";
+let forumLoadState = "idle";
+let forumLoadVersion = 0;
+let forumPosting = false;
 
-// 检查 supabaseClient
 function ensureSupabase() {
-  if (!window.supabaseClient) {
-    console.error("supabaseClient 未初始化，请检查公共配置脚本。");
-    alert("系统配置错误：未找到 supabaseClient。");
-    return false;
-  }
-  return true;
+  return Boolean(window.supabaseClient);
 }
 
-// 小工具：格式化日期
 function formatDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return "日期未提供";
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Australia/Darwin", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).format(new Date(iso));
+}
+
+function forumPostTitle(post) {
+  const title = typeof post.title === "string" ? post.title.trim() : "";
+  if (title && title !== "Biu一下") return title;
+  const firstLine = String(post.content || "").trim().split(/\r?\n/)[0];
+  return firstLine ? firstLine.slice(0, 48) + (firstLine.length > 48 ? "…" : "") : "未命名讨论";
+}
+
+// Only raster image data and ordinary web URLs can be displayed or opened.
+function safeForumImage(value) {
+  if (typeof value !== "string" || !value || /[\u0000-\u0020\u007f]/.test(value)) return "";
+  if (/^data:image\/(?:png|jpeg|gif|webp|avif|bmp);base64,[a-zA-Z0-9+/]+={0,2}$/.test(value)) return value;
+  try {
+    const url = new URL(value);
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : "";
+  } catch { return ""; }
+}
+
+function forumPostImages(post) {
+  return Array.isArray(post.images) ? post.images.map(safeForumImage).filter(Boolean) : [];
+}
+
+function forumNode(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+
+function forumSetStatus(node, text, error = false) {
+  node.textContent = text;
+  node.style.color = error ? "#b91c1c" : "#475569";
 }
 
 async function loadCommentProfiles(userIds) {
   const ids = [...new Set((userIds || []).filter(Boolean))];
   if (!ids.length) return {};
-
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("id, nickname")
-    .in("id", ids);
-
-  if (error) {
+  try {
+    const { data, error } = await window.supabaseClient.from("profiles").select("id, nickname").in("id", ids);
+    if (error) throw error;
+    return Object.fromEntries((data || []).map((profile) => [profile.id, profile]));
+  } catch (error) {
     console.error("加载评论用户资料失败：", error);
     return {};
   }
-
-  return Object.fromEntries(
-    (data || []).map((profile) => [profile.id, profile])
-  );
 }
 
-// File[] -> base64[]
 function forumFilesToBase64(files) {
-  return Promise.all(
-    files.map(
-      (file) =>
-        new Promise((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = (e) => resolve(e.target.result);
-          r.onerror = reject;
-          r.readAsDataURL(file);
-        })
-    )
-  );
+  return Promise.all(files.map((file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  })));
 }
 
-/* ============= 评论相关 ============= */
-
+/* ============= 评论 ============= */
 async function loadComments(postId, listEl, infoEl) {
-  if (!ensureSupabase()) return;
-
-  listEl.innerHTML = "评论加载中...";
-
-  const { data, error } = await supabaseClient
-    .from("forum_comments")
-    .select("id, content, user_id, created_at")
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true });
-
-  if (error) {
+  const version = (listEl.forumLoadVersion || 0) + 1;
+  listEl.forumLoadVersion = version;
+  listEl.textContent = "评论加载中…";
+  infoEl.textContent = "";
+  try {
+    if (!ensureSupabase()) throw new Error("Forum service unavailable");
+    const { data, error } = await window.supabaseClient.from("forum_comments")
+      .select("id, content, user_id, created_at").eq("post_id", postId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error("Invalid comment response");
+    const profiles = await loadCommentProfiles(data.map((comment) => comment.user_id));
+    if (listEl.forumLoadVersion !== version) return;
+    listEl.innerHTML = "";
+    if (!data.length) {
+      listEl.textContent = "还没有评论，欢迎分享你的经验。";
+      return;
+    }
+    infoEl.textContent = `共 ${data.length} 条评论`;
+    data.forEach((comment) => {
+      const item = forumNode("div", undefined, "forum-comment");
+      const nickname = profiles[comment.user_id]?.nickname || "Darwin用户";
+      item.appendChild(forumNode("p", `${nickname} · ${formatDate(comment.created_at)}`, "forum-meta"));
+      item.appendChild(forumNode("p", comment.content || "", "forum-text"));
+      listEl.appendChild(item);
+    });
+  } catch (error) {
+    if (listEl.forumLoadVersion !== version) return;
     console.error("加载评论失败：", error);
-    listEl.textContent = "评论加载失败。";
-    return;
+    listEl.innerHTML = "";
+    listEl.appendChild(forumNode("p", "评论暂时无法加载，请重试。"));
+    const retry = forumNode("button", "重试评论");
+    retry.type = "button";
+    retry.addEventListener("click", () => loadComments(postId, listEl, infoEl));
+    listEl.appendChild(retry);
   }
-
-  if (!data || data.length === 0) {
-    listEl.innerHTML =
-      '<p style="font-size:13px;color:#9ca3af;">还没有评论，欢迎抢沙发。</p>';
-    infoEl.textContent = "";
-    return;
-  }
-
-  listEl.innerHTML = "";
-  infoEl.textContent = `共 ${data.length} 条评论`;
-  const profiles = await loadCommentProfiles(data.map((c) => c.user_id));
-
-  data.forEach((c) => {
-    const item = document.createElement("div");
-    item.style.padding = "6px 0";
-    item.style.borderBottom = "1px dashed #e5e7eb";
-
-    const meta = document.createElement("div");
-    meta.style.fontSize = "12px";
-    meta.style.color = "#6b7280";
-    const nickname = profiles[c.user_id]?.nickname || "Darwin用户";
-    meta.textContent = `${nickname} · ${formatDate(c.created_at)}`;
-
-    const body = document.createElement("div");
-    body.style.fontSize = "14px";
-    body.style.color = "#111827";
-    body.style.whiteSpace = "pre-wrap";
-    body.textContent = c.content;
-
-    item.appendChild(meta);
-    item.appendChild(body);
-    listEl.appendChild(item);
-  });
 }
 
-async function submitComment(postId, textarea, statusEl, listEl, infoEl) {
+async function submitComment(postId, textarea, statusEl, listEl, infoEl, submitBtn) {
+  if (textarea.forumSubmitting) return;
   const content = textarea.value.trim();
-  if (!content) {
-    statusEl.textContent = "评论内容不能为空。";
-    statusEl.style.color = "red";
+  if (!content || content.length > FORUM_MAX_COMMENT) {
+    forumSetStatus(statusEl, `请填写 1–${FORUM_MAX_COMMENT} 字的评论。`, true);
     return;
   }
-
-  statusEl.textContent = "正在提交评论...";
-  statusEl.style.color = "#6b7280";
-
-  if (!ensureSupabase()) return;
-
-  const { data: userData, error: userErr } = await supabaseClient.auth.getUser();
-  if (userErr || !userData?.user) {
-    alert("请先登录后再发表评论。");
-    window.location.href = "login.html";
-    return;
-  }
-  const user = userData.user;
-
-  const { error } = await supabaseClient.from("forum_comments").insert({
-    post_id: postId,
-    content,
-    user_id: user.id,
-    user_email: user.email,
-  });
-
-  if (error) {
+  textarea.forumSubmitting = true;
+  textarea.disabled = true;
+  if (submitBtn) submitBtn.disabled = true;
+  forumSetStatus(statusEl, "正在提交评论…");
+  try {
+    if (!ensureSupabase()) throw new Error("Forum service unavailable");
+    const client = window.supabaseClient;
+    const { data: userData, error: userError } = await client.auth.getUser();
+    if (userError || !userData?.user) {
+      forumSetStatus(statusEl, "请先登录，再返回这里发表评论。草稿仍保留。", true);
+      return;
+    }
+    const user = userData.user;
+    const { error } = await client.from("forum_comments").insert({
+      post_id: postId, content, user_id: user.id, user_email: user.email,
+    });
+    if (error) throw error;
+    textarea.value = "";
+    forumSetStatus(statusEl, "评论已发表。");
+    await loadComments(postId, listEl, infoEl);
+  } catch (error) {
     console.error("发表评论失败：", error);
-    statusEl.textContent = "发表评论失败，请稍后再试。";
-    statusEl.style.color = "red";
-    return;
+    forumSetStatus(statusEl, "未能确认评论是否发表。请刷新评论确认后再试，避免重复提交。草稿仍保留。", true);
+  } finally {
+    textarea.forumSubmitting = false;
+    textarea.disabled = false;
+    if (submitBtn) submitBtn.disabled = false;
   }
-
-  textarea.value = "";
-  statusEl.textContent = "评论已发表。";
-  statusEl.style.color = "green";
-
-  await loadComments(postId, listEl, infoEl);
 }
 
 /* ============= 详情弹窗 ============= */
-
 function showForumDetail(post) {
   const old = document.getElementById("forumDetailOverlay");
-  if (old) old.remove();
-
-  const overlay = document.createElement("div");
+  if (old) old.forumClose();
+  const previousFocus = document.activeElement;
+  const overlay = forumNode("div", undefined, "forum-overlay");
   overlay.id = "forumDetailOverlay";
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.background = "rgba(15,23,42,0.45)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.zIndex = "1000";
-
-  const card = document.createElement("div");
-  card.style.maxWidth = "800px";
-  card.style.width = "92%";
-  card.style.maxHeight = "90vh";
-  card.style.overflowY = "auto";
-  card.style.background = "#ffffff";
-  card.style.borderRadius = "16px";
-  card.style.boxShadow = "0 20px 45px rgba(15,23,42,0.25)";
-  card.style.padding = "20px 24px 24px";
-  card.style.position = "relative";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "×";
-  closeBtn.style.border = "none";
-  closeBtn.style.background = "transparent";
-  closeBtn.style.fontSize = "22px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.position = "absolute";
-  closeBtn.style.top = "8px";
-  closeBtn.style.right = "14px";
-  closeBtn.onclick = () => overlay.remove();
-
-  const metaEl = document.createElement("div");
-  metaEl.style.fontSize = "13px";
-  metaEl.style.color = "#6b7280";
-  metaEl.style.marginBottom = "10px";
-  const dateStr = formatDate(post.created_at);
-  metaEl.textContent = dateStr ? `发布于：${dateStr}` : "";
-
-  const contentEl = document.createElement("div");
-  contentEl.style.fontSize = "15px";
-  contentEl.style.color = "#111827";
-  contentEl.style.lineHeight = "1.8";
-  contentEl.style.whiteSpace = "pre-wrap";
-  contentEl.textContent = post.content || "";
-
-  const imagesWrapper = document.createElement("div");
-  if (Array.isArray(post.images) && post.images.length > 0) {
-    imagesWrapper.style.marginTop = "14px";
-    imagesWrapper.style.display = "grid";
-    imagesWrapper.style.gridTemplateColumns =
-      "repeat(auto-fill,minmax(160px,1fr))";
-    imagesWrapper.style.gap = "10px";
-
-    post.images.forEach((src, idx) => {
-      const box = document.createElement("div");
-      box.style.borderRadius = "12px";
-      box.style.border = "1px solid #e5e7eb";
-      box.style.padding = "6px";
-      box.style.background = "#f9fafb";
-      box.style.display = "flex";
-      box.style.flexDirection = "column";
-      box.style.gap = "6px";
-
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = "帖子图片";
-      img.style.width = "100%";
-      img.style.borderRadius = "8px";
-      img.style.objectFit = "cover";
-      img.loading = "lazy";
-
-      const btnRow = document.createElement("div");
-      btnRow.style.display = "flex";
-      btnRow.style.justifyContent = "space-between";
-      btnRow.style.gap = "4px";
-
-      const viewLink = document.createElement("a");
-      viewLink.textContent = "查看大图";
-      viewLink.href = src;
-      viewLink.target = "_blank";
-      viewLink.style.fontSize = "12px";
-      viewLink.style.color = "#2563eb";
-      viewLink.style.textDecoration = "none";
-
-      const saveLink = document.createElement("a");
-      saveLink.textContent = "保存图片";
-      saveLink.href = src;
-      saveLink.download = `forum-image-${post.id || "p"}-${idx + 1}.png`;
-      saveLink.style.fontSize = "12px";
-      saveLink.style.color = "#16a34a";
-      saveLink.style.textDecoration = "none";
-
-      btnRow.appendChild(viewLink);
-      btnRow.appendChild(saveLink);
-
-      box.appendChild(img);
-      box.appendChild(btnRow);
-      imagesWrapper.appendChild(box);
-    });
-  }
-
-  const commentBlock = document.createElement("div");
-  commentBlock.style.marginTop = "18px";
-  commentBlock.style.paddingTop = "12px";
-  commentBlock.style.borderTop = "1px solid #e5e7eb";
-
-  const commentTitle = document.createElement("h3");
-  commentTitle.textContent = "评论";
-  commentTitle.style.fontSize = "15px";
-  commentTitle.style.margin = "0 0 6px 0";
-
-  const commentInfo = document.createElement("div");
-  commentInfo.style.fontSize = "12px";
-  commentInfo.style.color = "#6b7280";
-  commentInfo.style.marginBottom = "6px";
-
-  const commentList = document.createElement("div");
-  commentList.style.fontSize = "14px";
-
-  const commentForm = document.createElement("div");
-  commentForm.style.marginTop = "8px";
-
-  const textarea = document.createElement("textarea");
-  textarea.rows = 3;
-  textarea.placeholder = "写下你的评论...";
-  textarea.style.width = "100%";
-  textarea.style.boxSizing = "border-box";
-  textarea.style.resize = "vertical";
-  textarea.style.borderRadius = "8px";
-  textarea.style.border = "1px solid #d1d5db";
-  textarea.style.padding = "6px 8px";
-  textarea.style.fontSize = "14px";
-
-  const actionRow = document.createElement("div");
-  actionRow.style.display = "flex";
-  actionRow.style.justifyContent = "space-between";
-  actionRow.style.alignItems = "center";
-  actionRow.style.marginTop = "6px";
-
-  const statusSpan = document.createElement("span");
-  statusSpan.style.fontSize = "12px";
-  statusSpan.style.color = "#6b7280";
-
-  const submitBtn = document.createElement("button");
-  submitBtn.textContent = "发表评论";
-  submitBtn.type = "button";
-  submitBtn.style.border = "none";
-  submitBtn.style.borderRadius = "999px";
-  submitBtn.style.padding = "6px 14px";
-  submitBtn.style.fontSize = "13px";
-  submitBtn.style.cursor = "pointer";
-  submitBtn.style.background = "#16a34a";
-  submitBtn.style.color = "#ffffff";
-
-  submitBtn.addEventListener("click", async () => {
-    await submitComment(post.id, textarea, statusSpan, commentList, commentInfo);
-  });
-
-  actionRow.appendChild(statusSpan);
-  actionRow.appendChild(submitBtn);
-  commentForm.appendChild(textarea);
-  commentForm.appendChild(actionRow);
-
-  commentBlock.appendChild(commentTitle);
-  commentBlock.appendChild(commentInfo);
-  commentBlock.appendChild(commentList);
-  commentBlock.appendChild(commentForm);
-
+  const card = forumNode("section", undefined, "forum-dialog");
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "forumDetailTitle");
+  const close = () => {
+    document.removeEventListener("keydown", onKeyDown);
+    overlay.remove();
+    if (previousFocus?.isConnected) previousFocus.focus();
+  };
+  overlay.forumClose = close;
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") close();
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(card.querySelectorAll("button, a[href], textarea")).filter((node) => !node.disabled);
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
+  const closeBtn = forumNode("button", "×", "forum-close");
+  closeBtn.type = "button";
+  closeBtn.setAttribute("aria-label", "关闭讨论详情");
+  closeBtn.addEventListener("click", close);
+  const title = forumNode("h2", forumPostTitle(post));
+  title.id = "forumDetailTitle";
   card.appendChild(closeBtn);
-  card.appendChild(metaEl);
-  card.appendChild(contentEl);
-  if (imagesWrapper.childElementCount > 0) {
-    card.appendChild(imagesWrapper);
-  }
-  card.appendChild(commentBlock);
+  card.appendChild(title);
+  card.appendChild(forumNode("p", `发布于：${formatDate(post.created_at)} · 达尔文时间`, "forum-meta"));
+  card.appendChild(forumNode("div", post.content || "", "forum-text"));
 
-  overlay.appendChild(card);
-
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+  const images = forumNode("div", undefined, "forum-detail-photos");
+  forumPostImages(post).forEach((src, index) => {
+    const box = forumNode("div");
+    const image = forumNode("img");
+    image.src = src;
+    image.alt = `讨论配图 ${index + 1}`;
+    image.loading = "lazy";
+    image.referrerPolicy = "no-referrer";
+    const view = forumNode("a", "查看大图");
+    view.href = src;
+    view.target = "_blank";
+    view.rel = "noopener noreferrer";
+    const save = forumNode("a", "保存图片");
+    save.href = src;
+    save.download = `forum-image-${index + 1}`;
+    box.appendChild(image);
+    box.appendChild(view);
+    box.appendChild(save);
+    images.appendChild(box);
   });
+  if (images.childElementCount) card.appendChild(images);
 
+  const commentBlock = forumNode("div", undefined, "forum-comments");
+  commentBlock.appendChild(forumNode("h3", "评论"));
+  const info = forumNode("div", "", "forum-meta");
+  const list = forumNode("div");
+  list.setAttribute("aria-live", "polite");
+  const label = forumNode("label", "分享你的经验或补充信息");
+  label.htmlFor = "forumCommentContent";
+  const textarea = forumNode("textarea");
+  textarea.id = "forumCommentContent";
+  textarea.rows = 3;
+  textarea.maxLength = FORUM_MAX_COMMENT;
+  textarea.placeholder = "请友善交流，不要公开个人敏感信息";
+  const status = forumNode("p", "", "forum-meta");
+  status.setAttribute("role", "status");
+  const submit = forumNode("button", "发表评论");
+  submit.type = "button";
+  submit.addEventListener("click", () => submitComment(post.id, textarea, status, list, info, submit));
+  const login = forumNode("a", "登录后可参与讨论", "forum-login-link");
+  login.href = "login.html";
+  login.target = "_blank";
+  login.rel = "noopener noreferrer";
+  for (const node of [info, list, label, textarea, status, submit, login]) commentBlock.appendChild(node);
+  card.appendChild(commentBlock);
+  overlay.appendChild(card);
+  overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
   document.body.appendChild(overlay);
-
-  loadComments(post.id, commentList, commentInfo);
+  document.addEventListener("keydown", onKeyDown);
+  closeBtn.focus();
+  loadComments(post.id, list, info);
 }
 
-/* ============= 列表展示 ============= */
+/* ============= 列表与搜索 ============= */
+function renderForumPosts() {
+  const list = document.getElementById("posts");
+  const status = document.getElementById("forumListStatus");
+  const retry = document.getElementById("forumRetry");
+  if (!list || !status) return;
+  list.innerHTML = "";
+  list.setAttribute("aria-busy", String(forumLoadState === "loading"));
+  if (retry) { retry.hidden = forumLoadState !== "error"; retry.disabled = forumLoadState === "loading"; }
+  if (forumLoadState === "loading") { status.textContent = "正在加载社区讨论…"; return; }
+  if (forumLoadState === "error") { status.textContent = "社区讨论暂时无法加载，请重试。"; return; }
+  if (forumLoadState !== "ready") { status.textContent = "等待加载社区讨论…"; return; }
+  const terms = forumSearchTerm.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const visible = forumPosts.filter((post) => {
+    const text = `${forumPostTitle(post)}\n${post.content || ""}`.toLocaleLowerCase();
+    return terms.every((term) => text.includes(term));
+  });
+  if (!forumPosts.length) { status.textContent = "还没有公开讨论，欢迎发布第一个话题。"; return; }
+  if (!visible.length) { status.textContent = "没有找到匹配的讨论，试试其他关键词。"; return; }
+  status.textContent = terms.length ? `找到 ${visible.length} 条讨论（已加载 ${forumPosts.length} 条）` : `共 ${forumPosts.length} 条讨论 · 最新发布在前`;
+  visible.forEach((post) => {
+    const card = forumNode("article", undefined, "post-card");
+    const heading = forumNode("h3");
+    const open = forumNode("button", forumPostTitle(post), "forum-post-title");
+    open.type = "button";
+    open.addEventListener("click", () => showForumDetail(post));
+    heading.appendChild(open);
+    card.appendChild(heading);
+    const content = String(post.content || "");
+    card.appendChild(forumNode("p", content.slice(0, 180) + (content.length > 180 ? "…" : ""), "forum-text"));
+    const images = forumPostImages(post);
+    if (images.length) {
+      const photos = forumNode("div", undefined, "forum-photos");
+      images.slice(0, 3).forEach((src, index) => {
+        const image = forumNode("img");
+        image.src = src;
+        image.alt = `讨论配图 ${index + 1}`;
+        image.loading = "lazy";
+        image.referrerPolicy = "no-referrer";
+        photos.appendChild(image);
+      });
+      if (images.length > 3) photos.appendChild(forumNode("span", `另有 ${images.length - 3} 张图片`));
+      card.appendChild(photos);
+    }
+    card.appendChild(forumNode("p", `发布于：${formatDate(post.created_at)}`, "forum-meta"));
+    list.appendChild(card);
+  });
+}
 
 async function loadForumPosts() {
-  const list = document.getElementById("posts");
-  if (!list) return;
-
-  list.innerHTML = "加载中...";
-
-  if (!ensureSupabase()) {
-    list.textContent = "系统配置错误，无法加载数据。";
-    return;
-  }
-
-  const { data, error } = await supabaseClient
-    .from("forum_posts")
-    .select("id, title, content, images, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("加载帖子失败：", error);
-    list.textContent = "加载失败，请稍后再试。";
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    list.innerHTML =
-      `<div class="posts-empty">暂时还没有内容，欢迎 Biu 第一条。</div>`;
-    return;
-  }
-
-  list.innerHTML = "";
-
-  data.forEach((p) => {
-    const div = document.createElement("div");
-    div.className = "post-card";
-    div.style.cursor = "pointer";
-
-    const dateStr = formatDate(p.created_at);
-
-    let imgHtml = "";
-    if (Array.isArray(p.images) && p.images.length > 0) {
-      imgHtml = `
-        <div class="forum-photos">
-          ${p.images
-            .slice(0, 3)
-            .map((url) => `<img src="${url}" alt="帖子图片">`)
-            .join("")}
-          ${
-            p.images.length > 3
-              ? `<span style="font-size:12px;color:#6b7280;margin-left:6px;">+${p.images.length - 3} 张</span>`
-              : ""
-          }
-        </div>
-      `;
+  const version = ++forumLoadVersion;
+  forumLoadState = "loading";
+  forumPosts = [];
+  renderForumPosts();
+  try {
+    if (!ensureSupabase()) throw new Error("Forum service unavailable");
+    const posts = [];
+    for (let start = 0; ; start += FORUM_PAGE_SIZE) {
+      const { data, error } = await window.supabaseClient.from("forum_posts")
+        .select("id, title, content, images, created_at")
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .range(start, start + FORUM_PAGE_SIZE - 1);
+      if (version !== forumLoadVersion) return;
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Invalid forum response");
+      posts.push(...data);
+      if (data.length < FORUM_PAGE_SIZE) break;
     }
-
-    let summary = p.content || "";
-    if (summary.length > 120) summary = summary.slice(0, 120) + "…";
-
-    div.innerHTML = `
-      <p style="white-space:pre-wrap;line-height:1.7;">${summary}</p>
-      ${imgHtml}
-      <small style="color:#6b7280;display:block;margin-top:6px;">发布于：${dateStr}</small>
-    `;
-
-    div.addEventListener("click", () => showForumDetail(p));
-
-    list.appendChild(div);
-  });
+    // Pagination can overlap when a new post is added while the list is loading.
+    forumPosts = [...new Map(posts.map((post) => [post.id, post])).values()];
+    forumLoadState = "ready";
+  } catch (error) {
+    if (version !== forumLoadVersion) return;
+    console.error("加载帖子失败：", error);
+    forumLoadState = "error";
+  }
+  renderForumPosts();
 }
 
-/* ============= 发帖表单 ============= */
-
+/* ============= 发帖 ============= */
 function updateForumPreview() {
   const preview = document.getElementById("forumPreview");
   if (!preview) return;
-
   preview.innerHTML = "";
-
-  forumImagesList.forEach((file, idx) => {
-    const wrap = document.createElement("div");
-    wrap.className = "preview-item";
-
-    const img = document.createElement("img");
-    img.style.width = "90px";
-    img.style.height = "90px";
-    img.style.objectFit = "cover";
-    img.style.borderRadius = "8px";
-    img.style.border = "1px solid #d1e5d4";
-
+  forumImagesList.forEach((file, index) => {
+    const wrap = forumNode("div", undefined, "preview-item");
+    const image = forumNode("img");
+    image.alt = `待发布配图 ${index + 1}`;
     const reader = new FileReader();
-    reader.onload = (e) => (img.src = e.target.result);
+    reader.onload = (event) => { image.src = safeForumImage(event.target.result); };
     reader.readAsDataURL(file);
-
-    const del = document.createElement("button");
-    del.textContent = "×";
-    del.type = "button";
-    del.className = "preview-remove";
-    del.onclick = () => {
-      forumImagesList.splice(idx, 1);
-      updateForumPreview();
-    };
-
-    wrap.appendChild(img);
-    wrap.appendChild(del);
+    const remove = forumNode("button", "×", "preview-remove");
+    remove.type = "button";
+    remove.setAttribute("aria-label", `移除第 ${index + 1} 张配图`);
+    remove.disabled = forumPosting;
+    remove.addEventListener("click", () => { if (!forumPosting) { forumImagesList.splice(index, 1); updateForumPreview(); } });
+    wrap.appendChild(image);
+    wrap.appendChild(remove);
     preview.appendChild(wrap);
   });
 }
 
+function forumDarwinDayBounds(now = Date.now()) {
+  const day = new Date(now + 9.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const start = Date.parse(`${day}T00:00:00+09:30`);
+  return { start: new Date(start).toISOString(), end: new Date(start + 86400000).toISOString() };
+}
+
 function setupForumForm() {
   const form = document.getElementById("forumForm");
-  const statusEl = document.getElementById("forumStatus");
+  const status = document.getElementById("forumStatus");
   const input = document.getElementById("forumImages");
-  const clearBtn = document.getElementById("forumClearImages");
-
-  if (!form || !statusEl) return;
-
-  if (input) {
-    input.onchange = (e) => {
-      const newFiles = Array.from(e.target.files || []);
-      for (let file of newFiles) {
-        if (forumImagesList.length >= FORUM_MAX_IMAGES) break;
-        forumImagesList.push(file);
-      }
-      input.value = "";
-      updateForumPreview();
-    };
-  }
-
-  if (clearBtn) {
-    clearBtn.onclick = () => {
-      forumImagesList = [];
-      updateForumPreview();
-      if (input) input.value = "";
-    };
-  }
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    if (!ensureSupabase()) return;
-
-    const content = document.getElementById("content").value.trim();
-
-    if (!content) {
-      statusEl.textContent = "请输入内容";
-      statusEl.style.color = "red";
-      return;
+  const clear = document.getElementById("forumClearImages");
+  if (!form || !status) return;
+  if (input) input.onchange = (event) => {
+    if (forumPosting) return;
+    let skipped = 0;
+    for (const file of Array.from(event.target.files || [])) {
+      if (!/^image\/(?:png|jpeg|gif|webp|avif|bmp)$/.test(file.type) || file.size > FORUM_MAX_IMAGE_BYTES || forumImagesList.length >= FORUM_MAX_IMAGES) { skipped++; continue; }
+      forumImagesList.push(file);
     }
-
-    statusEl.textContent = "Biu 中...";
-    statusEl.style.color = "#6b7280";
-
-    const { data: userData, error: userErr } =
-      await supabaseClient.auth.getUser();
-    if (userErr || !userData?.user) {
-      alert("请先登录后再发布。");
-      window.location.href = "login.html";
-      return;
-    }
-    const user = userData.user;
-
-// ===== 每人每天最多 3 条 =====
-const now = new Date();
-const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-const { count, error: countError } = await supabaseClient
-  .from("forum_posts")
-  .select("id", { count: "exact", head: true })
-  .eq("user_id", user.id)
-  .gte("created_at", startOfDay.toISOString())
-  .lt("created_at", endOfDay.toISOString());
-
-if (countError) {
-  console.error("检查今日发帖次数失败：", countError);
-  statusEl.textContent = "检查发帖次数失败，请稍后再试。";
-  statusEl.style.color = "red";
-  return;
-}
-
-if ((count || 0) >= 3) {
-  statusEl.textContent = "今天已经发满 3 条了，明天再来吧。";
-  statusEl.style.color = "red";
-  return;
-}
-    let urls = [];
-    try {
-      urls = await forumFilesToBase64(
-        forumImagesList.slice(0, FORUM_MAX_IMAGES)
-      );
-    } catch (err) {
-      console.error("读取图片失败：", err);
-      statusEl.textContent = "读取图片失败，请重试。";
-      statusEl.style.color = "red";
-      return;
-    }
-
-    const payload = {
-      title: "Biu一下",
-      content,
-      images: urls,
-      user_id: user.id,
-      user_email: user.email,
-    };
-
-    const { error } = await supabaseClient.from("forum_posts").insert(payload);
-
-    if (error) {
-      console.error("发布失败：", error);
-      statusEl.textContent = "发布失败，请稍后再试。";
-      statusEl.style.color = "red";
-      return;
-    }
-
-    form.reset();
+    input.value = "";
+    updateForumPreview();
+    forumSetStatus(status, skipped ? "部分图片未加入。请选择 JPG、PNG、GIF、WebP、AVIF 或 BMP，每张不超过 5MB，最多 5 张。" : "", Boolean(skipped));
+  };
+  if (clear) clear.onclick = () => {
+    if (forumPosting) return;
     forumImagesList = [];
     updateForumPreview();
-
-    statusEl.textContent = "Biu 成功";
-    statusEl.style.color = "green";
-
-    loadForumPosts();
+    if (input) input.value = "";
+  };
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    if (forumPosting) return;
+    const title = document.getElementById("forumTitle").value.trim();
+    const content = document.getElementById("content").value.trim();
+    if (!title || title.length > FORUM_MAX_TITLE || !content || content.length > FORUM_MAX_CONTENT) {
+      forumSetStatus(status, `请填写 1–${FORUM_MAX_TITLE} 字的标题和 1–${FORUM_MAX_CONTENT} 字的正文。`, true);
+      return;
+    }
+    forumPosting = true;
+    const controls = Array.from(form.querySelectorAll("input, textarea, button"));
+    const disabledStates = controls.map((control) => control.disabled);
+    controls.forEach((control) => { control.disabled = true; });
+    forumSetStatus(status, "正在发布讨论…");
+    try {
+      if (!ensureSupabase()) throw new Error("Forum service unavailable");
+      const client = window.supabaseClient;
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData?.user) { forumSetStatus(status, "请先登录，再返回这里发布。草稿仍保留。", true); return; }
+      const user = userData.user;
+      // Existing per-day form check only; this is not a server-enforced anti-spam control.
+      const day = forumDarwinDayBounds();
+      const { count, error: countError } = await client.from("forum_posts")
+        .select("id", { count: "exact", head: true }).eq("user_id", user.id)
+        .gte("created_at", day.start).lt("created_at", day.end);
+      if (countError || !Number.isInteger(count) || count < 0) {
+        forumSetStatus(status, "暂时无法检查今日发帖数量，请稍后再试。草稿仍保留。", true); return;
+      }
+      if (count >= 3) { forumSetStatus(status, "当前表单每日最多提交 3 条讨论（达尔文时间），请明天再来。草稿仍保留。", true); return; }
+      const images = await forumFilesToBase64(forumImagesList.slice(0, FORUM_MAX_IMAGES));
+      const { error } = await client.from("forum_posts").insert({
+        title, content, images, user_id: user.id, user_email: user.email,
+      });
+      if (error) throw error;
+      form.reset();
+      forumImagesList = [];
+      updateForumPreview();
+      forumSetStatus(status, "讨论已发布。");
+      await loadForumPosts();
+    } catch (error) {
+      console.error("发布讨论失败：", error);
+      forumSetStatus(status, "未能确认讨论是否发布。请刷新列表确认后再试，避免重复提交。草稿仍保留。", true);
+    } finally {
+      forumPosting = false;
+      controls.forEach((control, index) => { control.disabled = disabledStates[index]; });
+    }
   };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const search = document.getElementById("forumSearch");
+  if (search) search.addEventListener("input", () => { forumSearchTerm = search.value; renderForumPosts(); });
+  const retry = document.getElementById("forumRetry");
+  if (retry) retry.addEventListener("click", loadForumPosts);
   loadForumPosts();
   setupForumForm();
 });
