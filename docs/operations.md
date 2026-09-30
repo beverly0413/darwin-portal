@@ -41,6 +41,7 @@ This reconciliation changes database records and is not performed by the local v
 
 - No production environment values, RLS state, cron invocations, or writes were verified by this patch preparation
 - The local headless browser was unavailable due execution socket restrictions, and cloud browser localhost navigation was blocked; visual QA needs a supported preview deployment
+- Vercel automatically created successful branch previews for both `darwin-portal` and `darwin-price-finder`. The target preview redirects to Vercel SSO, preventing visual verification without an authorized session. Before a main merge, confirm or obtain approval for the existing two-project production fan-out; do not silently publish an unrelated project
 - News/event live smoke checks encountered individual source timeouts; valid items were retained and the source groups reported partial coverage
 - Broader NT employers, regional councils, popular-event ranking, Chinese translation, moderation/reporting and community identity flows need separate tested follow-on work
 - Existing public news administrator and comment policies require a dedicated RLS/auth review; displaying a login-free editor does not itself establish anonymous write permission
